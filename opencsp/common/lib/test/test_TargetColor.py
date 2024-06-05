@@ -1,5 +1,5 @@
 """
-Test generation of color target images.
+Test generation of color optical target images.
 """
 
 import matplotlib

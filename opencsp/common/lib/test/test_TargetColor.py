@@ -1,5 +1,6 @@
 """
 Test generation of color optical target images.
+Note that other target images are published under OpenCSP data.
 """
 
 import matplotlib

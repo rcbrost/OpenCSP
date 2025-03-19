@@ -1,5 +1,4 @@
-"""Photogrammetric reconstruction class based on images of Aruco markers
-"""
+"""Photogrammetric reconstruction class based on images of Aruco markers"""
 
 from glob import glob
 from os.path import join
@@ -380,6 +379,7 @@ class SceneReconstruction:
         self.figures.append(fig)
 
         # Plot camera locations with direction needle
+        direction_needle_length_m = 0.25  # meters  # TODO: PASS THIS IN
         for image in self.images:
             if not image.pose_known:
                 continue
@@ -387,7 +387,7 @@ class SceneReconstruction:
             rvec = image.rvec
             rot_cam_to_world = Rotation.from_rotvec(rvec).inv()
             tvec_world = rot_cam_to_world.apply(-tvec[None, :])
-            z_vec = rot_cam_to_world.apply(np.array([[0.0, 0.0, 1.0]]))
+            z_vec = rot_cam_to_world.apply(np.array([[0.0, 0.0, direction_needle_length_m]]))
             ax.scatter(*tvec_world.T, color="orange")
             ax.plot(
                 [tvec_world[0, 0], tvec_world[0, 0] + z_vec[0, 0]],
@@ -404,9 +404,12 @@ class SceneReconstruction:
         ax.axis("equal")
         ax.set_title("Point and Camera Positions")
 
+        # Show plot
+        plt.show()
+
     def plot_reprojection_errors(self) -> None:
         """Plots mean reprojection error magnitude vs camera pose"""
-        fig = plt.figure("Scene_Reconstruction_ReprojectionError")
+        fig = plt.figure("Scene_Reconstruction_ReprojectionError2")
         ax = fig.gca()
         self.figures.append(fig)
 

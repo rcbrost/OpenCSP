@@ -5,7 +5,7 @@ class DebugOpticsGeometry:
     """Class for holding debug data for used in 'process_optics_geometry"""
 
     def __init__(self):
-        self.debug_active: bool = False
+        self.debug_active: bool = True  # False # ?? SCRATCH RCB -- RESET ??
         """To activate geometry debugging. Default False"""
         self.figures: list = []
         """List to hold figure objects once created."""

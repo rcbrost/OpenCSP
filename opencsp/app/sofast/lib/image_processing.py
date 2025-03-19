@@ -88,8 +88,12 @@ def calc_mask_raw(
 
     # Check for enough active pixels
     thresh_active_pixels = int(mask_raw.size * thresh_active_pixels)
-    if mask_raw.sum() < thresh_active_pixels:
-        lt.error_and_raise(ValueError, f"Mask contains less than {thresh_active_pixels:d} active pixels.")
+    mask_sum = mask_raw.sum()
+    if mask_sum < thresh_active_pixels:
+        lt.error_and_raise(
+            ValueError,
+            f"Mask contains  {mask_sum:d} active pixels, which is less than the threshold {thresh_active_pixels:d} active pixels.",
+        )
 
     # Return raw, unprocessed mask
     return mask_raw

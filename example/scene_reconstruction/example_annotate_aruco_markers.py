@@ -1,5 +1,5 @@
 from glob import glob
-from os.path import join, exists, basename, dirname
+from os.path import join, exists, basename, dirname, splitext
 
 import cv2 as cv
 import imageio
@@ -12,7 +12,7 @@ import opencsp.common.lib.tool.log_tools as lt
 
 
 def annotate_aruco_markers(
-    source_pattern: str, save_dir: str, line_width: int = 1, font_thickness: int = 2, font_scale: float = 2
+    source_pattern: str, save_dir: str, line_width: int = 3, font_thickness: int = 2, font_scale: float = 2
 ):
     """Finds aruco markers, annotates edges, labels, and saves into destination folder
 
@@ -66,10 +66,11 @@ def annotate_aruco_markers(
 
             # Add text
             orig = (int(pt_img[:, 0].min()), int(pt_img[:, 1].min() - 5))
-            cv.putText(img_rgb, str(id_), orig, font_type, font_scale, (0, 0, 255), font_thickness)
+            cv.putText(img_rgb, str(id_), orig, font_type, font_scale, (255, 0, 255), font_thickness)
 
         # Save image
-        save_name = basename(file)
+        (body, ext) = splitext(basename(file))
+        save_name = body + "_annotated" + ext
         lt.debug(f'Currently saving annotated Aruco markers to: {save_name:s}')
         imageio.imwrite(join(save_dir, save_name), img_rgb)
 

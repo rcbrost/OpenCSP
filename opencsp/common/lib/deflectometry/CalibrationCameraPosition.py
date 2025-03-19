@@ -30,7 +30,11 @@ class CalibrationCameraPosition:
     """
 
     def __init__(
-        self, camera: Camera, pts_xyz_corners: Vxyz, ids_corners: ndarray, cal_image: ndarray
+        self,
+        camera: Camera,
+        reconstruction_pts_xyz_corners: Vxyz,
+        reconstruction_ids_corners: ndarray,
+        cal_image: ndarray,
     ) -> "CalibrationCameraPosition":
         """Instantiates class
 
@@ -47,14 +51,16 @@ class CalibrationCameraPosition:
         """
         # Initialize attributes data types
         self.camera = camera
-        self.pts_xyz_corners = pts_xyz_corners
-        self.ids_corners = ids_corners
+        self.reconstruction_pts_xyz_corners = reconstruction_pts_xyz_corners
+        self.reconstruction_ids_corners = reconstruction_ids_corners
         self.image = cal_image
 
         self.ids_corners: ndarray
         self.image: ndarray
-        self.ids_marker: ndarray[int]
-        self.pts_xy_marker_corners_list: list[ndarray]
+        self.found_ids_marker: ndarray[int]
+        self.found_pts_xy_marker_corners_list: list[ndarray]
+        self.found_reconstruction_ids_marker: ndarray[int]
+        self.found_reconstruction_pts_xy_marker_corners_list: list[ndarray]
         self.pts_xyz_active_corner_locations: Vxyz
         self.rot_screen_cam: Rotation
         self.v_cam_screen_cam: Vxyz
@@ -68,25 +74,62 @@ class CalibrationCameraPosition:
 
     def find_markers(self) -> None:
         """Finds marker corner locations in image"""
-        self.ids_marker, self.pts_xy_marker_corners_list = find_aruco_marker(self.image)
+        self.found_ids_marker, self.found_pts_xy_marker_corners_list = find_aruco_marker(self.image)
+        lt.info("Markers found: " + str(self.found_ids_marker))
+        lt.info("In CalibrationCameraPosition.find_markers(), n Found markers: " + str(len(self.found_ids_marker)))
+        lt.info(
+            "In CalibrationCameraPosition.find_markers(), n Found marker corner sets: "
+            + str(len(self.found_pts_xy_marker_corners_list))
+        )
+        pass
+
+    def discard_new_markers(self) -> None:
+        """
+        The scene reconstruction analysis of a set of photogrammetry camera images found some collection of Aruco markers, each with an associated unique ID.  Thus there is a set of expected marker IDs.  We will call this set ER, for "Expected from Reconstruction."
+
+        Meanwhile, the spatial orientation image captured by the SOFAST camera will generally not see all of these markers, because some may be outside the field of view, partially occluded, etc.
+
+        Thus we need to search the SOFAST camera image for markers.  We will call the resulting set of markers FS, for "Found in SOFAST image."
+
+        Typically we expect FS to be a subset of ER.
+
+        However, new Aruco markers might appear in the SOFAST camera image that were not seen in reconstruction.  These may occurs because an Aruco marker was not found during reconstruction (due to occlusion, etc, or becuase of image processing "surprises."  In ny case, we need to disregard tany new Aruco markers found in the SOFAST camera image.  That is, we ignore all markers in (FS - ER).
+
+        """
+        # self.found_reconstruction_ids_marker = self.found_ids_marker
+        # self.found_reconstruction_pts_xy_marker_corners_list = self.found_pts_xy_marker_corners_list
+
+        reconstruction_ids_corners_list = self.reconstruction_ids_corners.tolist()
+        self.found_reconstruction_ids_marker = []
+        self.found_reconstruction_pts_xy_marker_corners_list = []
+        for found_marker_id, found_pts_xy_marker_corners in zip(
+            self.found_ids_marker, self.found_pts_xy_marker_corners_list
+        ):
+            # See if the found marker was identified by the scene reconstruction.
+            marker_corner_zero_id = found_marker_id * 4
+            if marker_corner_zero_id in reconstruction_ids_corners_list:
+                self.found_reconstruction_ids_marker.append(found_marker_id)
+                self.found_reconstruction_pts_xy_marker_corners_list.append(found_pts_xy_marker_corners)
 
     def collect_corner_xyz_locations(self) -> None:
         """Collects corner locations of viewed markers"""
         # Extract object points
         self.pts_xyz_active_corner_locations = Vxyz.empty()
-        ids_corners_list = self.ids_corners.tolist()
-        for marker_id in self.ids_marker:
+        reconstruction_ids_corners_list = self.reconstruction_ids_corners.tolist()
+        # Markers that are both found in the SOFAST image and also identified by
+        # the scene reconstruction are active.
+        for active_marker_id in self.found_reconstruction_ids_marker:
             # Get index of current marker
-            index = ids_corners_list.index(marker_id * 4)
+            index = reconstruction_ids_corners_list.index(active_marker_id * 4)
             # Extract calibrated corner locations (4 corners per marker)
             self.pts_xyz_active_corner_locations = self.pts_xyz_active_corner_locations.concatenate(
-                self.pts_xyz_corners[index : index + 4]
+                self.reconstruction_pts_xyz_corners[index : index + 4]
             )
 
     def calculate_camera_pose(self) -> None:
         """Calculates the camera pose"""
         # Concatenate image points
-        pts_img = np.vstack(self.pts_xy_marker_corners_list)
+        pts_img = np.vstack(self.found_reconstruction_pts_xy_marker_corners_list)
 
         # Calculate rvec/tvec
         ret, rvec, tvec = cv.solvePnP(
@@ -137,7 +180,7 @@ class CalibrationCameraPosition:
 
         # Calculate errors
         self.errors_reprojection_xy = self.pts_xy_marker_corners_reprojected - Vxy(
-            np.vstack(self.pts_xy_marker_corners_list).T
+            np.vstack(self.found_reconstruction_pts_xy_marker_corners_list).T
         )
 
         errors_mag: ndarray = np.sqrt((self.errors_reprojection_xy.data.T**2).sum(axis=1))
@@ -152,7 +195,18 @@ class CalibrationCameraPosition:
         ax = fig.gca()
 
         ax.imshow(self.image, cmap="gray")
-        for id_, pts in zip(self.ids_marker, self.pts_xy_marker_corners_list):
+        for id_, pts in zip(self.found_ids_marker, self.found_pts_xy_marker_corners_list):
+            plt.scatter(*pts.T, marker="+")
+            plt.text(*pts.mean(0).T + np.array([60, 0]), id_, backgroundcolor="white")
+
+    def plot_found_reconstruction_corners(self) -> None:
+        """Plots camera image and found corners"""
+        fig = plt.figure("CalibrationCameraPosition_Found_Reconstruction_Markers")
+        self.figures.append(fig)
+        ax = fig.gca()
+
+        ax.imshow(self.image, cmap="gray")
+        for id_, pts in zip(self.found_reconstruction_ids_marker, self.found_reconstruction_pts_xy_marker_corners_list):
             plt.scatter(*pts.T, marker="+")
             plt.text(*pts.mean(0).T + np.array([60, 0]), id_, backgroundcolor="white")
 
@@ -162,7 +216,7 @@ class CalibrationCameraPosition:
         self.figures.append(fig)
         ax = fig.gca()
 
-        pts_img = np.vstack(self.pts_xy_marker_corners_list)
+        pts_img = np.vstack(self.found_reconstruction_pts_xy_marker_corners_list)
 
         ax.imshow(self.image, cmap="gray")
         ax.scatter(*pts_img.T, edgecolor="green", facecolor="none", label="Image Points")
@@ -178,6 +232,7 @@ class CalibrationCameraPosition:
 
         # Run calibration
         self.find_markers()
+        self.discard_new_markers()
         self.collect_corner_xyz_locations()
         self.calculate_camera_pose()
         self.calculate_reprojection_error()
@@ -185,4 +240,5 @@ class CalibrationCameraPosition:
         # Plot figures
         if self.make_figures:
             self.plot_found_corners()
+            self.plot_found_reconstruction_corners()
             self.plot_reprojection_error()

@@ -76,12 +76,6 @@ class CalibrationCameraPosition:
         """Finds marker corner locations in image"""
         self.found_ids_marker, self.found_pts_xy_marker_corners_list = find_aruco_marker(self.image)
         lt.info("Markers found: " + str(self.found_ids_marker))
-        lt.info("In CalibrationCameraPosition.find_markers(), n Found markers: " + str(len(self.found_ids_marker)))
-        lt.info(
-            "In CalibrationCameraPosition.find_markers(), n Found marker corner sets: "
-            + str(len(self.found_pts_xy_marker_corners_list))
-        )
-        pass
 
     def discard_new_markers(self) -> None:
         """

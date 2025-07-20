@@ -84,10 +84,10 @@ def example_driver(dir_output_fixture, dir_input_fixture):
     if dir_input_fixture:
         dir_input = dir_input_fixture
     if dir_output_fixture:
-        dir_output = dir_input_fixture
+        dir_output = dir_output_fixture
 
     # Define output directory
-    ft.create_directories_if_necessary(dir_input)
+    ft.create_directories_if_necessary(dir_output)
 
     # Set up logger
     lt.logger(join(dir_output, 'log.txt'), lt.log.INFO)

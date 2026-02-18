@@ -94,7 +94,11 @@ class LoopXY:
         #
         # To prevent this, avoid input with vertices connecting collinear edges.
         if vertex_positive.size > 1:
-            raise ValueError("Loop may not be convex or edges cross within loop.")
+            raise ValueError(
+                "In LoopXY._check_convex(): Loop may not be convex or edges cross within loop."
+                + " vertex_angles="
+                + str(vertex_angles)
+            )
 
     def _vertex_to_vertex_angles(self):
         """
@@ -333,7 +337,32 @@ class LoopXY:
 
     def draw(self, ax: plt.Axes = None, style: rcps.RenderControlPointSeq = None) -> None:
         """
-        Draws lines as arrows and marks starting point.
+        Draws loop as lines with vertx markers, identifying first vertex.
+
+        An earlier version of this was designed to draw the loop as lines with arrowheads.
+        It used the more sophisticated style control provided by the View3d.draw_pq()
+        function, with the following code:
+            if style is None:
+                # Arrow markers don't work reliably here.  See above for how to get them.
+                style = rcps.default(marker='arrow')
+            ...
+            view = View3d(ax.figure, ax, vs.view_spec_xy())
+            view.draw_pq((closed_loop_verts.x, closed_loop_verts.y), style)
+
+        This was found to fail sometimes, because it would execute but then cause later
+        figure save operations to fail.
+
+        To prevent this difficult-to-diagnose problem, we removed the call to View3d.draw_pq(),
+        and called the matplotlib plot() function instead.  See below.
+
+        If you have a handle to the view, you can still get plots with arrows around the loop,
+        by using the draw_pq_list() function.  Here is a code fragment, which starts with a
+        figure record fig_rec:
+
+            my_loop = LoopXY(...)
+            fig_record.view.draw_pq_list(my_loop.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
+
+        This avoids the call to the View3d function, which caused the later crash during save.
 
         Parameters
         ----------
@@ -341,20 +370,17 @@ class LoopXY:
             The axes to draw on. If not given, uses current axes.
         style : str, optional
             The style used to draw this region. Default rcps.default().
-
         """
         if ax is None:
             ax = plt.gca()
         if style is None:
-            style = rcps.default(marker='arrow')
-
-        # Draw arrows
+            # Arrow markers don't work reliably here.  See above for how to get them.
+            style = rcps.default()
+        # Draw loop
         first_vert_np = np.array([self.vertices.x[:1], self.vertices.y[:1]])
         closed_loop_verts = Vxy(np.concatenate((self.vertices.data, first_vert_np), axis=1))
-        view = View3d(ax.figure, ax, vs.view_spec_xy())
-        view.draw_pq((closed_loop_verts.x, closed_loop_verts.y), style)
-
-        # Plot starting point as green dot
+        ax.plot(*closed_loop_verts.data, color="green")
+        # Draw first point.
         ax.scatter(*self.vertices.data[:, 0:1], color="green")
 
     def edge_sample(self, count: int) -> Vxy:
@@ -389,6 +415,9 @@ class LoopXY:
         # Order
         order = np.argsort(thetas)
         return vertices[order]
+
+    def as_xy_list(self):
+        return [xy for xy in zip(self.vertices.x, self.vertices.y)]
 
     def aabbox(self, *args, **kwargs) -> tuple[float, float, float, float]:
         """

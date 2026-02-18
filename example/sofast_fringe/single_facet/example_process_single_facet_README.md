@@ -139,8 +139,8 @@ For an example settings file designed for measuring and logging results over tim
     <OpenCSP_code_dir>\example\sofast_fringe\single_facet\20250818_163443_SNLTF-A_OLSLrsqw_p001_default_process_single_facet_settings_ctemp.ini
 
 If you replace "C:\ctemp\OpenCS_example_data\" with the path to your data, or a suitable mapped 
-drive letter, then you should be able to run the example_process_sigle_facet.py script to analyze 
-your data.  Note that the configuration file includes various parametres for comntrolling the 
+drive letter, then you should be able to run the example_process_single_facet.py script to analyze 
+your data.  Note that the configuration file includes various parameters for controlling the 
 analysis process, selecting desired output figures, setting ray tracing scenario parameters, etc.
 
 

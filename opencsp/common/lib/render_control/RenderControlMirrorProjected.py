@@ -74,11 +74,11 @@ def mirror_origin_contour(slice_n_vertices: int = 5) -> RenderControlMirrorProje
     )
 
 
-def mirror_boundary() -> RenderControlMirrorProjected:
+def mirror_boundary(boundary_color: str = 'red', projected_color: str = 'blue') -> RenderControlMirrorProjected:
     """Style for drawing the projection of a mirror XyRegion up to the embedding surface."""
     return RenderControlMirrorProjected(
-        lifted_line_style=rcps.outline(color='red'),
-        lifted_vertex_style=rcps.marker(color='red', markersize=2),
-        projected_style=rcps.outline(color='blue'),
-        connection_style=rcps.outline(color='blue', linewidth=0.6),
+        lifted_line_style=rcps.outline(color=boundary_color),
+        lifted_vertex_style=rcps.marker(color=boundary_color, markersize=2),
+        projected_style=rcps.outline(color=projected_color),
+        connection_style=rcps.outline(color=projected_color, linewidth=0.6),
     )

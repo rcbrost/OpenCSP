@@ -36,6 +36,7 @@ import imageio.v3 as imageio
 
 import numpy as np
 
+
 from opencsp.app.sofast.lib.DisplayShape import DisplayShape as Display
 from opencsp.app.sofast.lib.DefinitionFacet import DefinitionFacet
 from opencsp.app.sofast.lib.Fringes import Fringes
@@ -60,6 +61,7 @@ import opencsp.common.lib.render.view_spec as vs
 import opencsp.common.lib.render_control.RenderControlFigure as rcfg
 import opencsp.common.lib.render_control.RenderControlMirror as rcm
 import opencsp.common.lib.render_control.RenderControlMirrorEmbedded as rcme
+import opencsp.common.lib.render_control.RenderControlMirrorProjected as rcmp
 import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
 import opencsp.common.lib.tool.file_tools as ft
 import opencsp.common.lib.tool.log_tools as lt
@@ -200,34 +202,34 @@ def process_single_facet(
 
     # &&&& DELETE-SCAFFOLDING -- ADD EXAGGERATED Z
 
-    # Draw plot of reference mirror, to enable review of what is requested.
-    fig_control = rcfg.RenderControlFigure(tile_array=(2, 1), tile_square=True)
-    view_spec_list = [vs.view_spec_3d(), vs.view_spec_xy(), vs.view_spec_xz(), vs.view_spec_yz()]
+    # &&&& DELETE-SCAFFOLDING -- BEGIN SURFACE NORMAL NEEDLE STUDY
+    draw_reference_mirror_overview = True  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
+    needle_length = 0.5  # m  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
+    sofast_view_azim_deg = -21.40  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
+    sofast_view_elev_deg = 49.84  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
+    sofast_view_roll_deg = 74  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
+    pause_to_set_view_direction = False  # &&&& DELETE-SCAFFOLDING -- INPUT FROM COMMAND-LINE ARGUMENTS
+    draw_exaggerated_z_views = True  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
+    exaggerated_zlim = 0.02  # None  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
+    # &&&& DELETE-SCAFFOLDING -- END SURFACE NORMAL NEEDLE STUDY
+
+    # Initialize debug figure counter.
     debug_figure_idx = 0
-    for view_spec in view_spec_list:
-        # Draw the expected mirror and its embedding surface.
-        fig_record = ems.setup_and_draw_mirror_and_embedding_mirror(
-            figure_control=fig_control,
-            parametric_mirror=mirror_reference,
-            title='Expected Mirror',
-            view_spec=view_spec,
-            mirror_style=rcm.RenderControlMirror(),
-            embedding_style=rcme.RenderControlMirrorEmbedded(margin=0.01, round_to=0.25),
-        )
-        # Draw the expected mirror centroid defined by the facet definition file.
-        facet_data.v_facet_centroid.draw_points(figure=fig_record, style=rcps.marker())
-        # Save.
-        figure_file_body = fig_record.title.replace(' ', '_')
-        figure_dir_body_ext = join(dir_save_cur, f'{debug_figure_idx:02d}_input_{figure_file_body}.png')
-        debug_figure_idx += 1
-        fig_record.save(
-            output_dir=dir_save_cur,
-            output_file_body=figure_dir_body_ext,
-            dpi=200,
-            format='png',
-            close_after_save=True,
-            include_view_suffix=True,
-            include_limit_suffix=False,
+
+    # Draw reference mirror, to enable review of what is requested.
+    if draw_reference_mirror_overview:
+        debug_figure_idx = draw_and_save_views_of_reference_mirror(
+            mirror_reference=mirror_reference,
+            facet_data=facet_data,
+            needle_length=needle_length,
+            sofast_view_azim_deg=sofast_view_azim_deg,
+            sofast_view_elev_deg=sofast_view_elev_deg,
+            sofast_view_roll_deg=sofast_view_roll_deg,
+            pause_to_set_view_direction=pause_to_set_view_direction,
+            draw_exaggerated_z_views=draw_exaggerated_z_views,
+            exaggerated_zlim=exaggerated_zlim,
+            dir_save_cur=dir_save_cur,
+            debug_figure_idx=debug_figure_idx,
         )
 
     # Calibrate fringes - (aka sinosoidal image)
@@ -242,26 +244,37 @@ def process_single_facet(
     sofast = Sofast(measurement, orientation, camera, display)
 
     # Turn on debug mode
-    if verbose:
+    # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 1
+    # if verbose:
+    if True:
         sofast.params.debug_geometry.debug_active = True
         sofast.params.debug_geometry.save_dir = dir_save_cur
         sofast.params.debug_geometry.figure_idx = debug_figure_idx
         sofast.params.debug_slope_solver.debug_active = True
         sofast.params.debug_slope_solver.save_dir = dir_save_cur
         sofast.params.debug_slope_solver.figure_idx = 100
+    # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 1
 
     # Process SOFAST
-    try:
-        # Process
-        sofast.process_optic_singlefacet(facet_data, fit_surface)
-        # Get measurement statistics
-        config = SofastConfiguration()
-        config.load_sofast_object(sofast)
-        measurement_stats = config.get_measurement_stats()
-    except ValueError:
-        # Save all debug figures
-        save_all_debug_figures(dir_save_cur, sofast)
-        return
+    # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 2
+    # try:
+    #     # Process
+    #     sofast.process_optic_singlefacet(facet_data, fit_surface)
+    #     # Get measurement statistics
+    #     config = SofastConfiguration()
+    #     config.load_sofast_object(sofast)
+    #     measurement_stats = config.get_measurement_stats()
+    # except ValueError:
+    #     # Save all debug figures
+    #     save_all_debug_figures(dir_save_cur, sofast)
+    #     return
+    # Process
+    sofast.process_optic_singlefacet(facet_data, fit_surface)
+    # Get measurement statistics
+    config = SofastConfiguration()
+    config.load_sofast_object(sofast)
+    measurement_stats = config.get_measurement_stats()
+    # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 2
 
     # Save all debug figures
     save_all_debug_figures(dir_save_cur, sofast)
@@ -314,7 +327,158 @@ def process_single_facet(
     plots.plot()
 
 
+def draw_and_save_views_of_reference_mirror(
+    mirror_reference: MirrorParametric,
+    facet_data: DefinitionFacet,
+    needle_length: float,
+    sofast_view_azim_deg: float,
+    sofast_view_elev_deg: float,
+    sofast_view_roll_deg: float,
+    pause_to_set_view_direction: bool,
+    draw_exaggerated_z_views: bool,
+    exaggerated_zlim: float | None,
+    dir_save_cur: str,
+    debug_figure_idx: int,
+) -> int:
+    """
+    Draw plots of reference mirror from multiple viewpoints,
+    to enable review of what is requested.
+    """
+    # Initialization.
+    fig_control = rcfg.RenderControlFigure(tile=False)
+    mirror_style = rcm.RenderControlMirror()
+    embedding_style = rcme.RenderControlMirrorEmbedded(margin=0.01, round_to=0.25)
+    debug_figure_idx = 0
+
+    # Standard views: 3d, xy, xz, yz
+    view_spec_list = [vs.view_spec_3d(), vs.view_spec_xy(), vs.view_spec_xz(), vs.view_spec_yz()]
+    for view_spec in view_spec_list:
+        # Draw the expected mirror and its embedding surface.
+        fig_record = ems.setup_and_draw_mirror_and_embedding_mirror(
+            figure_control=fig_control,
+            parametric_mirror=mirror_reference,
+            title='Expected Mirror',
+            view_spec=view_spec,
+            mirror_style=mirror_style,
+            embedding_style=embedding_style,
+        )
+        # Draw the expected mirror centroid defined by the facet definition file.
+        draw_centroid_and_centroid_normal(fig_record, facet_data, needle_length)
+        # Save.
+        save_reference_mirror_figure(fig_record, dir_save_cur, debug_figure_idx)
+        debug_figure_idx += 1
+
+    # 3d view, from SOFAST look direction.
+    # Draw the expected mirror and its embedding surface.
+    fig_record = ems.setup_and_draw_mirror_and_embedding_mirror(
+        figure_control=fig_control,
+        parametric_mirror=mirror_reference,
+        title='Expected Mirror, SOFAST View',
+        view_spec=vs.view_spec_3d(),
+        mirror_style=mirror_style,
+        projected_style=rcmp.mirror_boundary(projected_color='lightgray'),
+        embedding_style=embedding_style,
+    )
+    # Draw the expected mirror centroid defined by the facet definition file.
+    draw_centroid_and_centroid_normal(fig_record, facet_data, needle_length)
+    # We are now drawing the second instance of a 3-d plot, so we will change the view
+    # direction to see the view specified in the settings.ini file.  This is intended
+    # to show roughly how the mirror is expected appear in a SOFAST camera image.
+    lt.info('Setting view (axis, elev) to ' + str((sofast_view_azim_deg, sofast_view_elev_deg)) + ' degrees.')
+    fig_record.view.axis.view_init(azim=sofast_view_azim_deg, elev=sofast_view_elev_deg, roll=sofast_view_roll_deg)
+    if pause_to_set_view_direction:
+        # If the user has indicated, provide a user interaction window to rotate the plot until
+        # the desired view direction is achieved.  Then after pressing "Enter" the resulting
+        # view azimuth, elevation, and roll parameters are printed to the console.
+        # These can then be entered in the settings.ini file to set the view direction for
+        # the "SOFAST view" plot.
+        # Note that I don't see a way to interactively adjust the roll parameter, so the user
+        # will need to hypothesize a roll parameter, modify it in the settings.ini file, and
+        # then run again to see the result.  They can then repeat this until the desired
+        # view orientation is achieved.
+        lt.info('')
+        lt.info('Current view orientation:')
+        lt.info('   azimuth   = ' + str(fig_record.view.axis.azim) + ' deg.')
+        lt.info('   elevation = ' + str(fig_record.view.axis.elev) + ' deg.')
+        lt.info('   roll      = ' + str(fig_record.view.axis.roll) + ' deg.')
+        lt.info('In the 3-d plot window, manually rotate the view to the orientation that')
+        lt.info('the SOFAST camera is expected to see.  For most installations, this is')
+        lt.info('approximately where the surface normal at the facet origin is pointing')
+        lt.info('directly at the camera.  In this orientation, the surface normal needle')
+        lt.info('vanishes to zero apparent length.')
+        lt.info('')
+        input('Do not close the figure window.  Press "Enter" when ready.')
+        lt.info('')
+        lt.info('View direction when you pressed Enter:')
+        lt.info('   Selected azimuth   = ' + str(fig_record.view.axis.azim) + ' deg.')
+        lt.info('   Selected elevation = ' + str(fig_record.view.axis.elev) + ' deg.')
+        lt.info('   Selected roll      = ' + str(fig_record.view.axis.roll) + ' deg.')
+        lt.info('')
+        lt.info('If you want this view to be used in the future, then enter the above')
+        lt.info('values into the settings.ini file, and run the program again.')
+        lt.info('')
+    # Save.
+    save_reference_mirror_figure(fig_record, dir_save_cur, debug_figure_idx)
+    debug_figure_idx += 1
+
+    # Standard views, but with exaggerated z: 3d, xy, xz, yz
+    if draw_exaggerated_z_views:
+        view_spec_list = [vs.view_spec_3d(), vs.view_spec_xy(), vs.view_spec_xz(), vs.view_spec_yz()]
+        for view_spec in view_spec_list:
+            # Draw the expected mirror and its embedding surface.
+            fig_record = ems.setup_and_draw_mirror_and_embedding_mirror(
+                figure_control=fig_control,
+                parametric_mirror=mirror_reference,
+                title='Expected Mirror, Exaggerated Z',
+                view_spec=view_spec,
+                exaggerate_z=True,
+                exaggerated_zlim=exaggerated_zlim,
+                mirror_style=mirror_style,
+                embedding_style=embedding_style,
+            )
+            # Draw the expected mirror centroid defined by the facet definition file.
+            draw_centroid_and_centroid_normal(fig_record, facet_data, needle_length)
+            # Save.
+            save_reference_mirror_figure(fig_record, dir_save_cur, debug_figure_idx)
+            debug_figure_idx += 1
+
+    # Return.
+    return debug_figure_idx
+
+
+def draw_centroid_and_centroid_normal(
+    fig_record: rcfg.RenderControlFigure, facet_data: DefinitionFacet, needle_length: float
+) -> None:
+    """Draws the facet centroid and a needle from it showing the surface normal."""
+    # Draw the expected mirror centroid defined by the facet definition file.
+    facet_data.v_facet_centroid.draw_points(figure=fig_record, style=rcps.marker())
+    # Surface normal at facet origin
+    needle_base = facet_data.v_facet_centroid
+    needle_tip = needle_base + (facet_data.u_facet_centroid_normal.as_Vxyz() * needle_length)
+    needle = Vxyz.from_list((needle_base, needle_tip))
+    needle.draw_line(figure=fig_record, style=rcps.outline(color='m'))
+
+
+def save_reference_mirror_figure(
+    fig_record: rcfg.RenderControlFigure, dir_save_cur: str, debug_figure_idx: int
+) -> None:
+    figure_file_body = fig_record.title.replace(',', '')
+    figure_file_body = figure_file_body.replace(' ', '_')
+    figure_dir_body_ext = join(dir_save_cur, f'{debug_figure_idx:02d}_input_{figure_file_body}')
+    debug_figure_idx += 1
+    fig_record.save(
+        output_dir=dir_save_cur,
+        output_file_body=figure_dir_body_ext,
+        dpi=200,
+        format='png',
+        close_after_save=True,
+        include_view_suffix=True,
+        include_limit_suffix=False,
+    )
+
+
 def save_all_debug_figures(dir_save_cur: str, sofast: Sofast) -> None:
+    """Saves the list of debug figures, so they can be studied later."""
     lt.info(f'Saving all debug figures to {dir_save_cur}.')
     for idx, fig in enumerate(sofast.params.debug_geometry.figures):
         debug_geometry_figure_dir_body_ext = join(dir_save_cur, f'debug_geometry_{idx:02d}.png')
@@ -345,7 +509,10 @@ def example_process_single_facet_driver(arg_settings_dir_body_ext: str = None, v
     plots = StandardPlotOutput()
 
     # Get settings
-    if arg_settings_dir_body_ext is None:
+    # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 3
+    # if arg_settings_dir_body_ext is None:
+    if False:
+        # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 3
         print("Using default control settings.")
         # Verbose control
         if verbose_param is None:
@@ -401,6 +568,10 @@ def example_process_single_facet_driver(arg_settings_dir_body_ext: str = None, v
         plots.params_ray_trace.v_target_normal = v_target_normal
 
     else:
+        # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 4
+        arg_settings_dir_body_ext = r"C:\ctemp\OpenCSP_example_data\sofast_fringe\single_facet\input\Results\OLSL\20250818_163443\20250818_163443_SNLTF-A_OLSLrsqw_p001_default_process_single_facet_settings_ctemp.ini"
+        # arg_settings_dir_body_ext = r"Z:\input\Results\PASL\20250818_090647\20250818_090647_PAQ24-001_PASLr_p001_default_process_single_facet_settings.ini"
+        # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 4
         print("Loading control from settings file:", arg_settings_dir_body_ext)
         if not ft.file_exists(arg_settings_dir_body_ext):
             print("ERROR: In " + basename(__file__) + ", settings file does not exist. Settings file:")

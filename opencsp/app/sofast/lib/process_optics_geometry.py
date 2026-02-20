@@ -100,6 +100,8 @@ def process_singlefacet_geometry(
     # Get optic data
     v_facet_corners: Vxyz = facet_data.v_facet_corners  # Corners of facet in facet coordinates
     v_centroid_facet: Vxyz = facet_data.v_facet_centroid  # Centroid of facet in facet coordinates
+    # Surface normal at centroid in facet coordinates
+    u_facet_centroid_normal: Uxyz = facet_data.u_facet_centroid_normal
 
     # Save mask raw
     data_image_processing_general.mask_raw = mask_raw
@@ -135,6 +137,15 @@ def process_singlefacet_geometry(
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red')
         _finish_debug_image_figure(figure_title, fig_rec, debug)
 
+    # Plot optic corners, before translation or rotation.
+    if debug.debug_active:
+        v_optic_corners_image_0 = camera.project(v_facet_corners, Rotation.identity(), Vxyz([0, 0, 0]))
+        figure_title = "Expected Optic Corners, Before Translation or Rotation"
+        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_raw, cmap="gray")
+        _plot_labeled_points(v_optic_corners_image_0)
+        _finish_debug_image_figure(figure_title, fig_rec, debug)
+
     # Find expected position of optic centroid
     v_cam_optic_centroid_cam_exp = sp.t_from_distance(
         v_mask_centroid_image, dist_optic_screen, camera, ori.v_cam_screen_cam
@@ -152,27 +163,35 @@ def process_singlefacet_geometry(
         fig_rec.view.axis.legend()
         _finish_debug_image_figure(figure_title, fig_rec, debug)
 
+    # Plot optic corners, before rotation.
+    if debug.debug_active:
+        v_optic_corners_image_1 = camera.project(v_facet_corners, Rotation.identity(), v_cam_optic_centroid_cam_exp)
+        figure_title = "Expected Optic Corners, Translated Only, No Rotation"
+        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_raw, cmap="gray")
+        _plot_labeled_points(v_optic_corners_image_1)
+        _finish_debug_image_figure(figure_title, fig_rec, debug)
+
     # Find expected orientation of optic
     r_cam_optic_exp_1 = sp.r_from_position(v_cam_optic_centroid_cam_exp, ori.v_cam_screen_cam)
+
+    # Plot optic corners, rotated but without consideration of surface normal at centroid.
+    if debug.debug_active:
+        v_cam_optic_cam_2 = v_cam_optic_centroid_cam_exp - v_centroid_facet.rotate(r_cam_optic_exp_1.inv())
+        v_optic_corners_image_2 = camera.project(v_facet_corners, r_cam_optic_exp_1, v_cam_optic_cam_2)
+        figure_title = "Expected Optic Corners, Translated and Rotated, But Without Centroid Normal"
+        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_raw, cmap="gray")
+        _plot_labeled_points(v_optic_corners_image_2)
+        _finish_debug_image_figure(figure_title, fig_rec, debug)
+
+    # Add consideration of surface normal at optic centroid.
     # &&&& DELETE-SCAFFOLDING -- BEGIN: ADD OPTIC CENTROID SURFACE NORMAL ROTATION
     print("In process_singlefacet_geometry(), r_cam_optic_exp_1 = ", r_cam_optic_exp_1.as_euler('xyz', degrees=True))
     # Surface normal at facet origin
-    optic_centroid_surface_normal_x_optic = 0.59938
-    optic_centroid_surface_normal_y_optic = -0.23315
-    optic_centroid_surface_normal_z_optic = 0.76576
-    optic_centroid_surface_normal_u_optic = Uxyz(
-        (
-            optic_centroid_surface_normal_x_optic,
-            optic_centroid_surface_normal_y_optic,
-            optic_centroid_surface_normal_z_optic,
-        )
-    )
     z_axis = Uxyz([0.0, 0.0, 1.0])
-    rotate_to_surface_normal = optic_centroid_surface_normal_u_optic.align_to(z_axis)
-    print(
-        "In process_singlefacet_geometry(), optic_centroid_surface_normal_u_optic = ",
-        optic_centroid_surface_normal_u_optic,
-    )
+    rotate_to_surface_normal = u_facet_centroid_normal.align_to(z_axis)
+    print("In process_singlefacet_geometry(), u_facet_centroid_normal = ", u_facet_centroid_normal)
     print("In process_singlefacet_geometry(), z_axis = ", z_axis)
     print(
         "In process_singlefacet_geometry(), rotate_to_surface_normal = ",
@@ -192,7 +211,7 @@ def process_singlefacet_geometry(
 
     # Plot expected optic corners
     if debug.debug_active:
-        figure_title = "Expected Optic Corners"
+        figure_title = "Expected Optic Corners, Translated and Rotated, Including Centroid Normal"
         fig_rec = _start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         _plot_labeled_points(v_optic_corners_image_exp)
@@ -217,8 +236,38 @@ def process_singlefacet_geometry(
         loop_facet_image_refine = ip.refine_mask_perimeter(loop_optic_image_exp, v_edges_image, *prs)
         data_image_processing_facet.loop_facet_image_refine = loop_facet_image_refine
     except ValueError as er:
-        lt.critical(repr(er))
-        lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
+        # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK
+        # lt.critical(repr(er))
+        # lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
+        # lt.critical(repr(er))
+        lt.info("WARNING: SOFAST failed to find the corners of the optic.  Using simple first estimate.")
+
+        # Orient optic
+        ori.orient_optic_cam(r_cam_optic_exp, v_cam_optic_cam_exp)
+
+        # Calculate measure point pointing direction
+        u_cam_measure_point_facet = Uxyz((ori.v_cam_optic_optic + v_measure_point_facet).data)
+        data_geometry_facet.u_cam_measure_point_facet = u_cam_measure_point_facet
+
+        # Set error fields to "skipped" values.
+        data_error.error_dist_optic_screen_1 = 999
+        data_error.error_reprojection_1 = 999
+        data_error.error_dist_optic_screen_2 = 999
+        data_error.error_reprojection_2 = 999
+
+        # Save other data
+        data_geometry_facet.measure_point_screen_distance = dist_optic_screen
+        data_geometry_facet.spatial_orientation = ori
+        data_geometry_facet.v_align_point_facet = v_centroid_facet
+
+        return (
+            data_geometry_general,
+            data_image_processing_general,
+            [data_geometry_facet],
+            [data_image_processing_facet],
+            data_error,
+        )
+        # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK
 
     # Plot refined optic corners
     if debug.debug_active:

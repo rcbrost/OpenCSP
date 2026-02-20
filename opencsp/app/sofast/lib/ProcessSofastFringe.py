@@ -210,13 +210,23 @@ class ProcessSofastFringe(ProcessSofastAbstract):
             Surface type definition.
         """
         # Process optic/setup geometry
+        print(
+            "In process_optic_singlefacet(), entering _process_optic_singlefacet_geometry(facet_data)..."
+        )  # &&&& DELETE-SCAFFOLDING
         self._process_optic_singlefacet_geometry(facet_data)
+        print(
+            "In process_optic_singlefacet(), returned from _process_optic_singlefacet_geometry(facet_data)."
+        )  # &&&& DELETE-SCAFFOLDING
 
         # Process display ray intersection points
+        print("In process_optic_singlefacet(), entering _process_display()...")  # &&&& DELETE-SCAFFOLDING
         self._process_display()
+        print("In process_optic_singlefacet(), returned from _process_display()...")  # &&&& DELETE-SCAFFOLDING
 
         # Solve slopes
+        print("In process_optic_singlefacet(), entering _solve_slopes()...")  # &&&& DELETE-SCAFFOLDING
         self._solve_slopes([surface])
+        print("In process_optic_singlefacet(), returned from _solve_slopes().")  # &&&& DELETE-SCAFFOLDING
 
     def process_optic_multifacet(
         self, facet_data: list[DefinitionFacet], ensemble_data: DefinitionEnsemble, surfaces: list[Surface2DAbstract]

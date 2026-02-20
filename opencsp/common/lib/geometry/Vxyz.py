@@ -149,8 +149,8 @@ class Vxyz:
         return cls(data, dtype)
 
     @classmethod
-    def from_list(cls, vals: list[Union["Vxy", tuple]]):
-        """Builds a single Vxy instance from a list of Vxy or (x,y) instances."""
+    def from_list(cls, vals: list[Union["Vxyz", tuple]]):
+        """Builds a single Vxyz instance from a list of Vxyz or (x,y) instances."""
         xs, ys, zs = [], [], []
         for val in vals:
             if isinstance(val, Vxyz):

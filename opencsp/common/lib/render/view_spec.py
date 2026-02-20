@@ -10,6 +10,39 @@ different projections of the 3-d coordinates.
 import numpy as np
 
 
+# HELPER FUNCTIONS
+
+
+def view_spec_is_3d(view_spec: dict) -> bool:
+    """
+    Returns True if the view spec has three axes.
+    """
+    return view_spec["type"] == "3d"
+
+
+def view_spec_does_not_have_z_axis(view_spec: dict) -> bool:
+    """
+    Returns True if the view_spec does not have a z axis.
+    Examples include xy, image, camera, etc.
+
+    This is useful for situations where we desire exaggeration of the z axis for sets
+    of plots with different view_specs. In such a situation, we want to set axis to
+    not equal for all plots with a z axis, but we do not want to do so for plots that
+    do not have a z axsis.  For example, if we have an xy plan view of a mirror and
+    an xz side view, we want to exaggerate z for the xz side view, but not the xy plan
+    view.
+    """
+    return view_spec["type"] in ["xy", "image", "camera"]
+
+
+def view_spec_has_z_axis(view_spec: dict) -> bool:
+    """
+    See comments for view_spec_does_not_have_z_axis() above;
+    this is the complement.
+    """
+    return not view_spec_does_not_have_z_axis(view_spec)
+
+
 # COMMON VIEWS
 
 

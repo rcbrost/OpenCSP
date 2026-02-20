@@ -9,6 +9,7 @@ import opencsp.common.lib.tool.log_tools as lt
 from opencsp.common.lib.csp.MirrorParametric import MirrorParametric
 from opencsp.common.lib.csp.MirrorParametricRectangular import MirrorParametricRectangular
 import opencsp.common.lib.render.figure_management as fm
+from opencsp.common.lib.geometry.Pxy import Pxy
 from opencsp.common.lib.geometry.TransformXYZ import TransformXYZ, identity_transform
 from opencsp.common.lib.render.View3d import View3d
 import opencsp.common.lib.render.view_spec as vs
@@ -116,6 +117,8 @@ def construct_embedding_mirror(
 def draw_mirror_and_embedding_mirror(
     input_mirror: MirrorParametric,
     view: View3d,
+    exaggerate_z=False,
+    exaggerated_zlim: float | None = None,
     mirror_style: rcm.RenderControlMirror = None,
     draw_projection: bool = True,
     projected_style: rcmp.RenderControlMirrorProjected = None,
@@ -131,7 +134,7 @@ def draw_mirror_and_embedding_mirror(
     input_mirror : MirrorParametric
         Mirror to draw.
     view : View3d
-        Vie to display the mirorr.
+        View to display the mirror.
     mirror_style : RenderControlMirror, optional
         Attributes for drawing mirror features.  Default None.
     draw_projection : bool, optional
@@ -153,7 +156,23 @@ def draw_mirror_and_embedding_mirror(
     # Also set equal axes to prevent z exaggeration.
     embedding_x_min, embedding_x_max, embedding_y_min, embedding_y_max = embedding_mirror.axis_aligned_bounding_box
     limit_xy = max(abs(embedding_x_min), abs(embedding_x_max), abs(embedding_y_min), abs(embedding_y_max))
-    view.show(x_limits=[-limit_xy, limit_xy], y_limits=[-limit_xy, limit_xy], z_limits=[0, 2 * limit_xy])
+    x_limits = [-limit_xy, limit_xy]
+    y_limits = [-limit_xy, limit_xy]
+    z_limits = [0, 2 * limit_xy]
+    if exaggerate_z:
+        if exaggerated_zlim is not None:
+            z_limits = [0, exaggerated_zlim]
+        else:
+            # If the embedding surface is square and centered on the (x,y,z) origin, then the
+            # maximum z value of the embedding surface may be found at any of the four corners.
+            # Thus computing at any one of the corners will suffice.
+            # If that is not the case, then this routine will need to be revisited.
+            embedding_z_max = embedding_mirror.surface_displacement_at(Pxy([limit_xy, limit_xy]))
+            z_limits = [0, 2.0 * embedding_z_max]
+    if view.is_3d:
+        view.show(x_limits=x_limits, y_limits=y_limits, z_limits=z_limits)
+    else:
+        view.show(x_limits=x_limits, y_limits=y_limits, z_limits=z_limits)
 
     # Draw second mirror showing embedding surface.
     embedding_mirror.draw(view=view, mirror_style=mirror_style, draw_projection=False, transform=transform)
@@ -192,6 +211,8 @@ def setup_and_draw_mirror_and_embedding_mirror(
     # Options.
     axis_control: rca.RenderControlAxis = None,
     view_spec: dict = None,
+    exaggerate_z: bool = False,
+    exaggerated_zlim: float | None = None,
     number_in_name: bool = False,
     input_prefix: str = None,
     caption: str = None,
@@ -216,11 +237,18 @@ def setup_and_draw_mirror_and_embedding_mirror(
     if transform is None:
         transform = identity_transform()
 
+    # Determine whether to exaggerate the z axis for this plot.
+    if vs.view_spec_has_z_axis(view_spec):
+        this_plot_exaggerate_z = exaggerate_z
+    else:
+        this_plot_exaggerate_z = False
+
     # Setup figure.
     fig_record = fm.setup_figure_for_3d_data(
         figure_control=figure_control,
         axis_control=axis_control,
         view_spec=view_spec,
+        equal=not this_plot_exaggerate_z,
         number_in_name=number_in_name,
         input_prefix=input_prefix,
         title=title,
@@ -233,6 +261,8 @@ def setup_and_draw_mirror_and_embedding_mirror(
     draw_mirror_and_embedding_mirror(
         parametric_mirror,
         view=fig_record.view,
+        exaggerate_z=exaggerate_z,
+        exaggerated_zlim=exaggerated_zlim,
         mirror_style=mirror_style,
         draw_projection=draw_projection,
         projected_style=projected_style,
@@ -253,6 +283,7 @@ def setup_draw_and_save_mirror_and_embedding_mirror(
     # Options.
     axis_control: rca.RenderControlAxis = None,
     view_spec: dict = None,
+    exaggerate_z: bool = False,
     number_in_name: bool = False,
     input_prefix: str = None,
     caption: str = None,
@@ -282,6 +313,7 @@ def setup_draw_and_save_mirror_and_embedding_mirror(
         title=title,
         axis_control=axis_control,
         view_spec=view_spec,
+        exaggerate_z=exaggerate_z,
         number_in_name=number_in_name,
         input_prefix=input_prefix,
         caption=caption,

@@ -99,7 +99,7 @@ def process_singlefacet_geometry(
 
     # Get optic data
     v_facet_corners: Vxyz = facet_data.v_facet_corners  # Corners of facet in facet coordinates
-    v_centroid_facet: Vxyz = facet_data.v_facet_centroid  # Centroid of facet in facet coordinates
+    v_facet_centroid: Vxyz = facet_data.v_facet_centroid  # Centroid of facet in facet coordinates
     # Surface normal at centroid in facet coordinates
     u_facet_centroid_normal: Uxyz = facet_data.u_facet_centroid_normal
 
@@ -146,7 +146,7 @@ def process_singlefacet_geometry(
         _plot_labeled_points(v_optic_corners_image_0)
         _finish_debug_image_figure(figure_title, fig_rec, debug)
 
-    # Find expected position of optic centroid
+    # Find expected 3-d position of optic centroid, in camera coordinates.
     v_cam_optic_centroid_cam_exp = sp.t_from_distance(
         v_mask_centroid_image, dist_optic_screen, camera, ori.v_cam_screen_cam
     )
@@ -159,62 +159,156 @@ def process_singlefacet_geometry(
         fig_rec.view.imshow(mask_raw, cmap="gray")
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=45, label='Mask Centroid')
         expected_centroid = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
-        fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='blue', s=35, label='Expected Centroid')
+        fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='cyan', s=35, label='Expected Centroid')
         fig_rec.view.axis.legend()
         _finish_debug_image_figure(figure_title, fig_rec, debug)
 
     # Plot optic corners, before rotation.
     if debug.debug_active:
-        v_optic_corners_image_1 = camera.project(v_facet_corners, Rotation.identity(), v_cam_optic_centroid_cam_exp)
         figure_title = "Expected Optic Corners, Translated Only, No Rotation"
         fig_rec = _start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
+        # Centroid measured in image.
+        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=55, label='Mask Centroid')
+        # 3-d position of centroid in camera coordinates, projected back into image.
+        expected_centroid_1 = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
+        fig_rec.view.axis.scatter(*expected_centroid_1.data, marker=".", c='cyan', s=45, label='Expected Centroid')
+        # The variable "v_cam_optic_centroid_cam_exp_1" is the estimated 3-d positon of the optic centroid, in camera coordinates.
+        # It also may be viewed as a vector from the front nodal point of the camera to the optic centroid.
+        # If we add this vector to all the facet corners, we will obtain an estimate of their position in 3-d space.
+        #
+        # That's not quite right, because adding the vector will place the facet corners relative of the facet centroid.
+        # But if the facet centroid is not at the origin of the facet coordinate system (the general case), then these
+        # will be offset by the vector from the facet origin to the facet centroid.  So our translation should be the
+        # vector from the camera front nodal point to the facet centroid, minus the vector from the facet origin to
+        # the facet centroid.
+        #
+        # Then we can project and render them using the same method as used for the centroid.
+        # Note this is for illustration purposes only; this result is not useful for the computation.
+        #
+        # Vector from camera front nodal point to 3-d optic centroid position, and then to the optic origin,
+        # if there were no rotation.
+        # In other words, position of optic origin in 3-d space, in camera coordinates.
+        translation = v_cam_optic_centroid_cam_exp - v_facet_centroid
+        # Computed 3-d position of facet corners in camera coordinates, assuming no rotation.
+        v_facet_corners_cam = v_facet_corners + translation
+        # 3-d facet corner positions, projected back into image.
+        v_optic_corners_image_1 = camera.project(v_facet_corners_cam, Rotation.identity(), Vxyz((0, 0, 0)))
         _plot_labeled_points(v_optic_corners_image_1)
+        # Treat centroid the same way, for cross-check.
+        # Re-computed 3-d position of facet centroid in camera coordinates, assuming no rotation.
+        v_facet_centroid_cam = v_facet_centroid + translation
+        # Re-computed 3-d facet centroid position, projected back into image.
+        expected_centroid_1b = camera.project(v_facet_centroid_cam, Rotation.identity(), Vxyz((0, 0, 0)))
+        fig_rec.view.axis.scatter(
+            *expected_centroid_1b.data, marker="+", c='blue', s=35, label='Centroid from Translation'
+        )
+        fig_rec.view.axis.legend()
         _finish_debug_image_figure(figure_title, fig_rec, debug)
 
-    # Find expected orientation of optic
-    r_cam_optic_exp_1 = sp.r_from_position(v_cam_optic_centroid_cam_exp, ori.v_cam_screen_cam)
+    # Find expected orientation of optic, assuming that reflection at centroid shows the cross-hair center during alignment.
+    # This produces the rotation for the optic centroid, not the optic coordinate system.
+    r_cam_optic_exp_A = sp.r_from_position(v_cam_optic_centroid_cam_exp, ori.v_cam_screen_cam)
 
     # Plot optic corners, rotated but without consideration of surface normal at centroid.
     if debug.debug_active:
-        v_cam_optic_cam_2 = v_cam_optic_centroid_cam_exp - v_centroid_facet.rotate(r_cam_optic_exp_1.inv())
-        v_optic_corners_image_2 = camera.project(v_facet_corners, r_cam_optic_exp_1, v_cam_optic_cam_2)
-        figure_title = "Expected Optic Corners, Translated and Rotated, But Without Centroid Normal"
+        figure_title = "Expected Corners, Translated and Rotated, without Centroid Normal"
         fig_rec = _start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
-        _plot_labeled_points(v_optic_corners_image_2)
+        # Centroid measured in image.
+        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
+        # Original computation of 3-d position of centroid in camera coordinates, projected back into image.
+        expected_centroid_2 = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
+        fig_rec.view.axis.scatter(*expected_centroid_2.data, marker=".", c='cyan', s=55, label='Expected Centroid')
+
+        # In other words, position of optic origin in 3-d space, in camera coordinates.
+        translation_2 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_A)
+        # Computed 3-d position of facet corners in camera coordinates.
+        v_facet_corners_cam_2 = v_facet_corners.rotate(r_cam_optic_exp_A) + translation_2
+        # 3-d facet corner positions, projected back into image.
+        v_optic_corners_image_2 = camera.project(v_facet_corners_cam_2, Rotation.identity(), Vxyz((0, 0, 0)))
+        _plot_labeled_points(v_optic_corners_image_2, legend_label='Points Using Identity Camera')
+        # Treat centroid the same way, for cross-check.
+        # Re-computed 3-d position of facet centroid in camera coordinates.
+        v_facet_centroid_cam_2 = v_facet_centroid.rotate(r_cam_optic_exp_A) + translation_2
+        # Re-computed 3-d facet centroid position, projected back into image.
+        expected_centroid_2b = camera.project(v_facet_centroid_cam_2, Rotation.identity(), Vxyz((0, 0, 0)))
+        fig_rec.view.axis.scatter(
+            *expected_centroid_2b.data, marker="+", c='blue', s=35, label='Centroid Using Identity Camera'
+        )
+
+        # Position of optic origin in 3-d space, in camera coordinates, including rotation.
+        v_cam_optic_cam_2b = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_A)
+        # Expected positions of optic corners in the image, using the full [rotation, translation] camera transform,
+        # but so far only considering part A of the rotation analysis -- not yet taking into account the optic
+        # surface normal at the centroid.
+        v_optic_corners_image_2b = camera.project(v_facet_corners, r_cam_optic_exp_A, v_cam_optic_cam_2b)
+        _plot_labeled_points(
+            v_optic_corners_image_2b, marker_size=10, point_color='k', legend_label='Points Using Camera Pose'
+        )
+        # Treat centroid the same way, for cross-check.
+        # Re-computed 3-d facet centroid position in the image, using the full [rotation, translation] camera transform,
+        # so far only considering part A of the rotation analysis.
+        expected_centroid_2b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_cam_2b)
+        fig_rec.view.axis.scatter(
+            *expected_centroid_2b.data, marker="+", c='magenta', s=10, label='Centroid Using Camera Pose'
+        )
+        fig_rec.view.axis.legend()
         _finish_debug_image_figure(figure_title, fig_rec, debug)
 
     # Add consideration of surface normal at optic centroid.
-    # &&&& DELETE-SCAFFOLDING -- BEGIN: ADD OPTIC CENTROID SURFACE NORMAL ROTATION
-    print("In process_singlefacet_geometry(), r_cam_optic_exp_1 = ", r_cam_optic_exp_1.as_euler('xyz', degrees=True))
     # Surface normal at facet origin
     z_axis = Uxyz([0.0, 0.0, 1.0])
     rotate_to_surface_normal = u_facet_centroid_normal.align_to(z_axis)
-    print("In process_singlefacet_geometry(), u_facet_centroid_normal = ", u_facet_centroid_normal)
-    print("In process_singlefacet_geometry(), z_axis = ", z_axis)
-    print(
-        "In process_singlefacet_geometry(), rotate_to_surface_normal = ",
-        rotate_to_surface_normal.as_euler('xyz', degrees=True),
-    )
-    r_cam_optic_exp = r_cam_optic_exp_1 * rotate_to_surface_normal
-    print("In process_singlefacet_geometry(), r_cam_optic_exp = ", r_cam_optic_exp.as_euler('xyz', degrees=True))
-    # &&&& DELETE-SCAFFOLDING -- END: ADD OPTIC CENTROID SURFACE NORMAL ROTATION
+    r_cam_optic_exp = r_cam_optic_exp_A * rotate_to_surface_normal
     data_geometry_general.r_optic_cam_exp = r_cam_optic_exp.inv()
 
     # Find expected position of optic origin
-    v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_centroid_facet.rotate(r_cam_optic_exp.inv())
+    v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp.inv())
     data_geometry_general.v_cam_optic_cam_exp = v_cam_optic_cam_exp
 
     # Find expected optic vertices
     v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
 
-    # Plot expected optic corners
+    # Plot expected optic corners, rotated including consideration of surface normal at centroid.
     if debug.debug_active:
-        figure_title = "Expected Optic Corners, Translated and Rotated, Including Centroid Normal"
+        figure_title = "Expected Corners, Translated and Rotated, including Centroid Normal"
         fig_rec = _start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
-        _plot_labeled_points(v_optic_corners_image_exp)
+        # Centroid measured in image.
+        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
+        # Original computation of 3-d position of centroid in camera coordinates, projected back into image.
+        expected_centroid = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
+        fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='cyan', s=55, label='Expected Centroid')
+
+        # In other words, position of optic origin in 3-d space, in camera coordinates.
+        translation_3 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp.inv())
+        # Computed 3-d position of facet corners in camera coordinates, assuming no rotation.
+        v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp.inv()) + translation_3
+        # 3-d facet corner positions, projected back into image.
+        v_optic_corners_image_3 = camera.project(v_facet_corners_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
+        _plot_labeled_points(v_optic_corners_image_3, legend_label='Points Using Identity Camera')
+        # Treat centroid the same way, for cross-check.
+        # Re-computed 3-d position of facet centroid in camera coordinates, assuming no rotation.
+        v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp.inv()) + translation_3
+        # Re-computed 3-d facet centroid position, projected back into image.
+        expected_centroid_b = camera.project(v_facet_centroid_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
+        fig_rec.view.axis.scatter(
+            *expected_centroid_b.data, marker="+", c='blue', s=35, label='Centroid Using Identity Camera'
+        )
+
+        # Position of optic origin in 3-d space, in camera coordinates, including rotation.
+        # Expected positions of optic corners in the image, using the full [rotation, translation] camera transform.
+        _plot_labeled_points(
+            v_optic_corners_image_exp, marker_size=10, point_color='k', legend_label='Points Using Camera Pose'
+        )
+        # Treat centroid the same way, for cross-check.
+        # Re-computed 3-d facet centroid position in the image, using the full [rotation, translation] camera transform.
+        expected_centroid_3b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
+        fig_rec.view.axis.scatter(
+            *expected_centroid_3b.data, marker="+", c='magenta', s=10, label='Centroid Using Camera Pose'
+        )
+        fig_rec.view.axis.legend()
         _finish_debug_image_figure(figure_title, fig_rec, debug)
 
     # Construct expected optic loop in pixels
@@ -226,8 +320,17 @@ def process_singlefacet_geometry(
         figure_title = "Expected Optic Loop"
         fig_rec = _start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
-        _plot_labeled_points(v_optic_corners_image_exp)
+        # Centroid measured in image.
+        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
+        # Expected positions of optic corners in the image.
+        _plot_labeled_points(v_optic_corners_image_exp, legend_label='Points Using Camera Pose')
         fig_rec.view.draw_pq_list(loop_optic_image_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
+        # Expected position of optic centroid in the image.
+        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
+        fig_rec.view.axis.scatter(
+            *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
+        )
+        fig_rec.view.axis.legend()
         _finish_debug_image_figure(figure_title, fig_rec, debug)
 
     # Refine locations of optic corners with mask
@@ -258,7 +361,7 @@ def process_singlefacet_geometry(
         # Save other data
         data_geometry_facet.measure_point_screen_distance = dist_optic_screen
         data_geometry_facet.spatial_orientation = ori
-        data_geometry_facet.v_align_point_facet = v_centroid_facet
+        data_geometry_facet.v_align_point_facet = v_facet_centroid
 
         return (
             data_geometry_general,
@@ -352,7 +455,7 @@ def process_singlefacet_geometry(
     # Save other data
     data_geometry_facet.measure_point_screen_distance = dist_optic_screen
     data_geometry_facet.spatial_orientation = ori
-    data_geometry_facet.v_align_point_facet = v_centroid_facet
+    data_geometry_facet.v_align_point_facet = v_facet_centroid
 
     return (
         data_geometry_general,
@@ -805,11 +908,13 @@ def process_multifacet_geometry(
     )
 
 
-def _plot_labeled_points(pts: Vxy) -> None:
+def _plot_labeled_points(
+    pts: Vxy, marker_size: int = 30, point_color: str = 'r', label_color: str = 'g', legend_label: str = ''
+) -> None:
     """Plots labeled points on axis for debugging"""
-    plt.scatter(*pts.data, c='r')
+    plt.scatter(*pts.data, s=marker_size, c=point_color, label=legend_label)
     for idx, pt in enumerate(pts):
-        plt.text(*pt.data, idx, color="r")
+        plt.text(*pt.data, idx, color=label_color)
 
 
 def _start_debug_image_figure(figure_title: str) -> rcfg.RenderControlFigure:

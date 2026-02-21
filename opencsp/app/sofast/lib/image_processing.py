@@ -2,11 +2,14 @@ import cv2 as cv
 import numpy as np
 from scipy.signal import find_peaks
 
+from opencsp.app.sofast.lib.DebugOpticsGeometry import DebugOpticsGeometry
+import opencsp.app.sofast.lib.sofast_debug_figure_support as sdfs
 from opencsp.common.lib.camera.Camera import Camera
 from opencsp.common.lib.geometry.LineXY import LineXY
 from opencsp.common.lib.geometry.LoopXY import LoopXY
 from opencsp.common.lib.geometry.Vxy import Vxy
 from opencsp.common.lib.geometry.Uxyz import Uxyz
+import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
 import opencsp.common.lib.tool.log_tools as lt
 
 
@@ -186,7 +189,14 @@ def edges_from_mask(mask: np.ndarray) -> Vxy:
     return Puv_edges
 
 
-def refine_mask_perimeter(loop_outline_exp: LoopXY, Puv_edges: Vxy, d_ax: float, d_perp: float) -> LoopXY:
+def refine_mask_perimeter(
+    debug: DebugOpticsGeometry,
+    debug_mask_img: np.ndarray | None,
+    loop_outline_exp: LoopXY,
+    Puv_edges: Vxy,
+    d_ax: float,
+    d_perp: float,
+) -> LoopXY:
     """
     Given mask edge points and an expected 2D PERIMETER region, this function refines the perimeter region.
 
@@ -200,6 +210,10 @@ def refine_mask_perimeter(loop_outline_exp: LoopXY, Puv_edges: Vxy, d_ax: float,
 
     Parameters
     ----------
+    debug_cls : DebugOpticsGeometry
+        Carries parameters controlling debugging output.
+    debug_mask_img: np.ndarray
+        Image of mask to provide visual context for debugging figures.
     loop_outline_exp : LoopXY
         Expected perimeter 2D region.
     Puv_edges : Vxy
@@ -226,6 +240,41 @@ def refine_mask_perimeter(loop_outline_exp: LoopXY, Puv_edges: Vxy, d_ax: float,
         # Find points in loop
         pts_mask = loop.is_inside(Puv_edges)
         lines.append(LineXY.fit_from_points(Puv_edges[pts_mask], neighbor_dist=neighbor_dist))
+
+        # Debugging output for diagnosis
+        if debug.debug_active:
+            if debug_mask_img is None:
+                lt.warn('In refine_mask_perimeter(), skipping debugging figures because a mask image was not provided.')
+            else:
+                figure_title = f"Loop Edge {idx} Analysis"
+                fig_rec = sdfs.start_debug_image_figure(figure_title)
+                fig_rec.view.imshow(debug_mask_img, cmap="gray")
+                fig_rec.view.axis.scatter(*Puv_edges.data, marker=".", c='cyan', s=0.05)
+                print('In refine_mask_perimeter(), idx=', idx, '  p1=', p1, '  p2=', p2)
+                # points = line.original_two_points()
+                # pt_0 = points[0]
+                # pt_1 = points[1]
+                # print(f"In refine_mask_perimeter(), pt_0={str(pt_0)}; pt_1={str(pt_1)}.")
+                fig_rec.view.draw_pq_list(
+                    loop_outline_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='green')
+                )
+                fig_rec.view.draw_pq_list(loop.as_xy_list(), close=True, style=rcps.outline(color='orange'))
+                relevant_pts = Puv_edges[pts_mask]
+                fig_rec.view.axis.scatter(*relevant_pts.data, marker=".", c='red', s=0.05)
+                # fig_rec.view.draw_pq_list([p1, p2], style=rcps.default(marker='arrow'))
+
+            # # Centroid measured in image.
+            # fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
+            # # Expected positions of optic corners in the image.
+            # sdfs.plot_labeled_points(v_optic_corners_image_exp, legend_label='Points Using Camera Pose')
+            # fig_rec.view.draw_pq_list(loop_optic_image_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
+            # # Expected position of optic centroid in the image.
+            # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
+            # fig_rec.view.axis.scatter(
+            #     *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
+            # )
+            # fig_rec.view.axis.legend()
+            sdfs.finish_debug_image_figure(figure_title, 'image', fig_rec, debug)
 
     # Create updated region
     return LoopXY.from_lines(lines)

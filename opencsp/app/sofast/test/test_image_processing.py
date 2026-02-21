@@ -7,6 +7,7 @@ import cv2 as cv
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+from opencsp.app.sofast.lib.DebugOpticsGeometry import DebugOpticsGeometry
 from opencsp.app.sofast.lib.ImageCalibrationScaling import ImageCalibrationScaling
 from opencsp.app.sofast.lib.MeasurementSofastFringe import MeasurementSofastFringe
 from opencsp.app.sofast.lib.MeasurementSofastFixed import MeasurementSofastFixed
@@ -126,8 +127,9 @@ class TestImageProcessing(unittest.TestCase):
 
         # Perform calculation
         loop_facet_exp = LoopXY.from_vertices(Vxy(data["loop_optic_image_exp"]))
+        # Debugging plots are not supported in this test.
         loop_facet_refine = ip.refine_mask_perimeter(
-            loop_facet_exp, Vxy(data["v_edges_image"]), *args
+            DebugOpticsGeometry(), None, loop_facet_exp, Vxy(data["v_edges_image"]), *args
         ).vertices.data.squeeze()
 
         # Test

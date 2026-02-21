@@ -10,11 +10,12 @@ from scipy.spatial.transform import Rotation
 
 from opencsp.common.lib.camera.Camera import Camera
 import opencsp.app.sofast.lib.calculation_data_classes as cdc
+from opencsp.app.sofast.lib.DebugOpticsGeometry import DebugOpticsGeometry
 from opencsp.app.sofast.lib.DefinitionEnsemble import DefinitionEnsemble
 from opencsp.app.sofast.lib.DefinitionFacet import DefinitionFacet
 from opencsp.app.sofast.lib.ParamsOpticGeometry import ParamsOpticGeometry
 from opencsp.app.sofast.lib.ParamsMaskCalculation import ParamsMaskCalculation
-from opencsp.app.sofast.lib.DebugOpticsGeometry import DebugOpticsGeometry
+import opencsp.app.sofast.lib.sofast_debug_figure_support as sdfs
 import opencsp.app.sofast.lib.image_processing as ip
 from opencsp.app.sofast.lib.SpatialOrientation import SpatialOrientation
 import opencsp.app.sofast.lib.spatial_processing as sp
@@ -109,9 +110,9 @@ def process_singlefacet_geometry(
     # Plot mask
     if debug.debug_active:
         figure_title = "Raw Mask"
-        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
-        _finish_debug_image_figure(figure_title, fig_rec, debug)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Find edges of mask
     v_edges_image = ip.edges_from_mask(mask_raw)
@@ -120,10 +121,10 @@ def process_singlefacet_geometry(
     # Plot mask edges
     if debug.debug_active:
         figure_title = "Mask Edges"
-        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         fig_rec.view.axis.scatter(*v_edges_image.data, marker=".", c='red', s=0.05)
-        _finish_debug_image_figure(figure_title, fig_rec, debug)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Find centroid of processed mask
     v_mask_centroid_image = ip.centroid_mask(mask_raw)
@@ -132,19 +133,19 @@ def process_singlefacet_geometry(
     # Plot centroid
     if debug.debug_active:
         figure_title = "Mask Centroid"
-        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red')
-        _finish_debug_image_figure(figure_title, fig_rec, debug)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Plot optic corners, before translation or rotation.
     if debug.debug_active:
         v_optic_corners_image_0 = camera.project(v_facet_corners, Rotation.identity(), Vxyz([0, 0, 0]))
         figure_title = "Expected Optic Corners, Before Translation or Rotation"
-        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
-        _plot_labeled_points(v_optic_corners_image_0)
-        _finish_debug_image_figure(figure_title, fig_rec, debug)
+        sdfs.plot_labeled_points(v_optic_corners_image_0)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Find expected 3-d position of optic centroid, in camera coordinates.
     v_cam_optic_centroid_cam_exp = sp.t_from_distance(
@@ -155,18 +156,18 @@ def process_singlefacet_geometry(
     # Plot expected centroid
     if debug.debug_active:
         figure_title = "Expected Optic Centroid"
-        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=45, label='Mask Centroid')
         expected_centroid = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
         fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='cyan', s=35, label='Expected Centroid')
         fig_rec.view.axis.legend()
-        _finish_debug_image_figure(figure_title, fig_rec, debug)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Plot optic corners, before rotation.
     if debug.debug_active:
         figure_title = "Expected Optic Corners, Translated Only, No Rotation"
-        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=55, label='Mask Centroid')
@@ -194,7 +195,7 @@ def process_singlefacet_geometry(
         v_facet_corners_cam = v_facet_corners + translation
         # 3-d facet corner positions, projected back into image.
         v_optic_corners_image_1 = camera.project(v_facet_corners_cam, Rotation.identity(), Vxyz((0, 0, 0)))
-        _plot_labeled_points(v_optic_corners_image_1)
+        sdfs.plot_labeled_points(v_optic_corners_image_1)
         # Treat centroid the same way, for cross-check.
         # Re-computed 3-d position of facet centroid in camera coordinates, assuming no rotation.
         v_facet_centroid_cam = v_facet_centroid + translation
@@ -204,7 +205,7 @@ def process_singlefacet_geometry(
             *expected_centroid_1b.data, marker="+", c='blue', s=35, label='Centroid from Translation'
         )
         fig_rec.view.axis.legend()
-        _finish_debug_image_figure(figure_title, fig_rec, debug)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Find expected orientation of optic, assuming that reflection at centroid shows the cross-hair center during alignment.
     # This produces the rotation for the optic centroid, not the optic coordinate system.
@@ -213,7 +214,7 @@ def process_singlefacet_geometry(
     # Plot optic corners, rotated but without consideration of surface normal at centroid.
     if debug.debug_active:
         figure_title = "Expected Corners, Translated and Rotated, without Centroid Normal"
-        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
@@ -227,7 +228,7 @@ def process_singlefacet_geometry(
         v_facet_corners_cam_2 = v_facet_corners.rotate(r_cam_optic_exp_A) + translation_2
         # 3-d facet corner positions, projected back into image.
         v_optic_corners_image_2 = camera.project(v_facet_corners_cam_2, Rotation.identity(), Vxyz((0, 0, 0)))
-        _plot_labeled_points(v_optic_corners_image_2, legend_label='Points Using Identity Camera')
+        sdfs.plot_labeled_points(v_optic_corners_image_2, legend_label='Points Using Identity Camera')
         # Treat centroid the same way, for cross-check.
         # Re-computed 3-d position of facet centroid in camera coordinates.
         v_facet_centroid_cam_2 = v_facet_centroid.rotate(r_cam_optic_exp_A) + translation_2
@@ -243,7 +244,7 @@ def process_singlefacet_geometry(
         # but so far only considering part A of the rotation analysis -- not yet taking into account the optic
         # surface normal at the centroid.
         v_optic_corners_image_2b = camera.project(v_facet_corners, r_cam_optic_exp_A, v_cam_optic_cam_2b)
-        _plot_labeled_points(
+        sdfs.plot_labeled_points(
             v_optic_corners_image_2b, marker_size=10, point_color='k', legend_label='Points Using Camera Pose'
         )
         # Treat centroid the same way, for cross-check.
@@ -254,7 +255,7 @@ def process_singlefacet_geometry(
             *expected_centroid_2b.data, marker="+", c='magenta', s=10, label='Centroid Using Camera Pose'
         )
         fig_rec.view.axis.legend()
-        _finish_debug_image_figure(figure_title, fig_rec, debug)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Add consideration of surface normal at optic centroid.
     # Surface normal at facet origin
@@ -273,7 +274,7 @@ def process_singlefacet_geometry(
     # Plot expected optic corners, rotated including consideration of surface normal at centroid.
     if debug.debug_active:
         figure_title = "Expected Corners, Translated and Rotated, including Centroid Normal"
-        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
@@ -287,7 +288,7 @@ def process_singlefacet_geometry(
         v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp.inv()) + translation_3
         # 3-d facet corner positions, projected back into image.
         v_optic_corners_image_3 = camera.project(v_facet_corners_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
-        _plot_labeled_points(v_optic_corners_image_3, legend_label='Points Using Identity Camera')
+        sdfs.plot_labeled_points(v_optic_corners_image_3, legend_label='Points Using Identity Camera')
         # Treat centroid the same way, for cross-check.
         # Re-computed 3-d position of facet centroid in camera coordinates, assuming no rotation.
         v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp.inv()) + translation_3
@@ -299,7 +300,7 @@ def process_singlefacet_geometry(
 
         # Position of optic origin in 3-d space, in camera coordinates, including rotation.
         # Expected positions of optic corners in the image, using the full [rotation, translation] camera transform.
-        _plot_labeled_points(
+        sdfs.plot_labeled_points(
             v_optic_corners_image_exp, marker_size=10, point_color='k', legend_label='Points Using Camera Pose'
         )
         # Treat centroid the same way, for cross-check.
@@ -309,7 +310,7 @@ def process_singlefacet_geometry(
             *expected_centroid_3b.data, marker="+", c='magenta', s=10, label='Centroid Using Camera Pose'
         )
         fig_rec.view.axis.legend()
-        _finish_debug_image_figure(figure_title, fig_rec, debug)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Construct expected optic loop in pixels
     loop_optic_image_exp = LoopXY.from_vertices(v_optic_corners_image_exp)
@@ -318,12 +319,12 @@ def process_singlefacet_geometry(
     # Plot expected optic loop
     if debug.debug_active:
         figure_title = "Expected Optic Loop"
-        fig_rec = _start_debug_image_figure(figure_title)
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
         # Expected positions of optic corners in the image.
-        _plot_labeled_points(v_optic_corners_image_exp, legend_label='Points Using Camera Pose')
+        sdfs.plot_labeled_points(v_optic_corners_image_exp, legend_label='Points Using Camera Pose')
         fig_rec.view.draw_pq_list(loop_optic_image_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
         # Expected position of optic centroid in the image.
         expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
@@ -331,53 +332,55 @@ def process_singlefacet_geometry(
             *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
         )
         fig_rec.view.axis.legend()
-        _finish_debug_image_figure(figure_title, fig_rec, debug)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Refine locations of optic corners with mask
     try:
         prs = [params.perimeter_refine_axial_search_dist, params.perimeter_refine_perpendicular_search_dist]
-        loop_facet_image_refine = ip.refine_mask_perimeter(loop_optic_image_exp, v_edges_image, *prs)
+        loop_facet_image_refine = ip.refine_mask_perimeter(debug, mask_raw, loop_optic_image_exp, v_edges_image, *prs)
         data_image_processing_facet.loop_facet_image_refine = loop_facet_image_refine
     except ValueError as er:
-        # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK
-        # lt.critical(repr(er))
-        # lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
-        # lt.critical(repr(er))
-        lt.info("WARNING: SOFAST failed to find the corners of the optic.  Using simple first estimate.")
+        lt.critical(repr(er))
+        lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
+        # # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK
+        # # lt.critical(repr(er))
+        # # lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
+        # # lt.critical(repr(er))
+        # lt.info("WARNING: SOFAST failed to find the corners of the optic.  Using simple first estimate.")
 
-        # Orient optic
-        ori.orient_optic_cam(r_cam_optic_exp, v_cam_optic_cam_exp)
+        # # Orient optic
+        # ori.orient_optic_cam(r_cam_optic_exp, v_cam_optic_cam_exp)
 
-        # Calculate measure point pointing direction
-        u_cam_measure_point_facet = Uxyz((ori.v_cam_optic_optic + v_measure_point_facet).data)
-        data_geometry_facet.u_cam_measure_point_facet = u_cam_measure_point_facet
+        # # Calculate measure point pointing direction
+        # u_cam_measure_point_facet = Uxyz((ori.v_cam_optic_optic + v_measure_point_facet).data)
+        # data_geometry_facet.u_cam_measure_point_facet = u_cam_measure_point_facet
 
-        # Set error fields to "skipped" values.
-        data_error.error_dist_optic_screen_1 = 999
-        data_error.error_reprojection_1 = 999
-        data_error.error_dist_optic_screen_2 = 999
-        data_error.error_reprojection_2 = 999
+        # # Set error fields to "skipped" values.
+        # data_error.error_dist_optic_screen_1 = 999
+        # data_error.error_reprojection_1 = 999
+        # data_error.error_dist_optic_screen_2 = 999
+        # data_error.error_reprojection_2 = 999
 
-        # Save other data
-        data_geometry_facet.measure_point_screen_distance = dist_optic_screen
-        data_geometry_facet.spatial_orientation = ori
-        data_geometry_facet.v_align_point_facet = v_facet_centroid
+        # # Save other data
+        # data_geometry_facet.measure_point_screen_distance = dist_optic_screen
+        # data_geometry_facet.spatial_orientation = ori
+        # data_geometry_facet.v_align_point_facet = v_facet_centroid
 
-        return (
-            data_geometry_general,
-            data_image_processing_general,
-            [data_geometry_facet],
-            [data_image_processing_facet],
-            data_error,
-        )
-        # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK
+        # return (
+        #     data_geometry_general,
+        #     data_image_processing_general,
+        #     [data_geometry_facet],
+        #     [data_image_processing_facet],
+        #     data_error,
+        # )
+        # # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK
 
     # Plot refined optic corners
     if debug.debug_active:
         fig = plt.figure()
         debug.figures.append(fig)
         plt.imshow(mask_raw)
-        _plot_labeled_points(loop_facet_image_refine.vertices)
+        sdfs.plot_labeled_points(loop_facet_image_refine.vertices)
         plt.title("Refined Optic Corners")
 
     # Create fitted mask
@@ -404,7 +407,7 @@ def process_singlefacet_geometry(
         debug.figures.append(fig)
         plt.imshow(mask_raw)
         pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_1)
-        _plot_labeled_points(pts_reproj)
+        sdfs.plot_labeled_points(pts_reproj)
         plt.title("Reprojected Points 1")
 
     # Calculate refined measure point vector in optic coordinates
@@ -422,7 +425,7 @@ def process_singlefacet_geometry(
         debug.figures.append(fig)
         plt.imshow(mask_raw)
         pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_2)
-        _plot_labeled_points(pts_reproj)
+        sdfs.plot_labeled_points(pts_reproj)
         plt.title("Reprojected Points 2")
 
     # Orient optic
@@ -721,7 +724,7 @@ def process_multifacet_geometry(
         fig = plt.figure()
         debug.figures.append(fig)
         plt.imshow(mask_raw)
-        _plot_labeled_points(v_ensemble_corners_exp_image)
+        sdfs.plot_labeled_points(v_ensemble_corners_exp_image)
         plt.title("Expected Perimeter Points")
 
     # Refine perimeter points
@@ -730,7 +733,7 @@ def process_multifacet_geometry(
             params_geometry.perimeter_refine_axial_search_dist,
             params_geometry.perimeter_refine_perpendicular_search_dist,
         ]
-        loop_ensemble_image_refine = ip.refine_mask_perimeter(loop_ensemble_exp, v_edges_image, *args)
+        loop_ensemble_image_refine = ip.refine_mask_perimeter(debug, mask_raw, loop_ensemble_exp, v_edges_image, *args)
         data_image_processing_general.loop_optic_image_refine = loop_ensemble_image_refine
     except ValueError as er:
         lt.critical(repr(er))
@@ -741,7 +744,7 @@ def process_multifacet_geometry(
         fig = plt.figure()
         debug.figures.append(fig)
         plt.imshow(mask_raw)
-        _plot_labeled_points(loop_ensemble_image_refine.vertices)
+        sdfs.plot_labeled_points(loop_ensemble_image_refine.vertices)
         plt.title("Refined Perimeter Points")
 
     # Refine ensemble position/orientation with perimeter points
@@ -905,41 +908,4 @@ def process_multifacet_geometry(
         data_geometry_facet,
         data_image_processing_facet,
         data_error,
-    )
-
-
-def _plot_labeled_points(
-    pts: Vxy, marker_size: int = 30, point_color: str = 'r', label_color: str = 'g', legend_label: str = ''
-) -> None:
-    """Plots labeled points on axis for debugging"""
-    plt.scatter(*pts.data, s=marker_size, c=point_color, label=legend_label)
-    for idx, pt in enumerate(pts):
-        plt.text(*pt.data, idx, color=label_color)
-
-
-def _start_debug_image_figure(figure_title: str) -> rcfg.RenderControlFigure:
-    """Begins a debug figure setup to show an image,
-    possibly with other annotations."""
-    fig_rec = fm.setup_figure(
-        figure_control=rcfg.RenderControlFigure(tile=False),
-        axis_control=rca.image(grid=False),
-        view_spec=vs.view_spec_im(),
-        title=figure_title,
-    )
-    return fig_rec
-
-
-def _finish_debug_image_figure(
-    figure_title: str, fig_rec: rcfg.RenderControlFigure, debug: DebugOpticsGeometry
-) -> None:
-    figure_file_body = f"{debug.figure_idx:02d}_geometry_{figure_title.replace(' ', '_')}"
-    debug.figure_idx += 1
-    fig_rec.save(
-        output_dir=debug.save_dir,
-        output_file_body=figure_file_body,
-        dpi=200,
-        format='png',
-        close_after_save=True,
-        include_view_suffix=False,
-        include_limit_suffix=False,
     )

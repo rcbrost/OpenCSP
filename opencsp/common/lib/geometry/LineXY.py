@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 
 from opencsp.common.lib.geometry.angle import normalize as normalize_angle
 from opencsp.common.lib.geometry.Vxy import Vxy
+import opencsp.common.lib.tool.log_tools as lt
 
 
 class LineXY:
@@ -65,6 +66,35 @@ class LineXY:
 
     def __repr__(self):
         return "2D Line: " + self.A.__repr__() + ", " + self.B.__repr__() + ", " + self.C.__repr__()
+
+    def has_original_two_points(self) -> bool:
+        """
+        Returns True if the line has two original defining points.
+
+        Returns
+        -------
+        bool
+            True if the line has two original defining points.
+
+        """
+        return self._original_two_points is not None
+
+    def original_two_points(self) -> tuple[Vxy, Vxy]:
+        """
+        Returns the two original points defining the line.
+        Throws an error if they do not exist.
+
+        Returns
+        -------
+        tuple[Vxy, Vxy]
+            The two original defining points.
+
+        """
+        if not self.has_original_two_points():
+            lt.error_and_raise(
+                ValueError, "Two points requested from a line that does not have original defining points."
+            )
+        return self._original_two_points
 
     @property
     def n_vec(self) -> Vxy:

@@ -569,8 +569,8 @@ def example_process_single_facet_driver(arg_settings_dir_body_ext: str = None, v
 
     else:
         # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 4
-        arg_settings_dir_body_ext = r"C:\ctemp\OpenCSP_example_data\sofast_fringe\single_facet\input\Results\OLSL\20250818_163443\20250818_163443_SNLTF-A_OLSLrsqw_p001_default_process_single_facet_settings_ctemp.ini"
-        # arg_settings_dir_body_ext = r"Z:\input\Results\PASL\20250818_090647\20250818_090647_PAQ24-001_PASLr_p001_default_process_single_facet_settings.ini"
+        # arg_settings_dir_body_ext = r"C:\ctemp\OpenCSP_example_data\sofast_fringe\single_facet\input\Results\OLSL\20250818_163443\20250818_163443_SNLTF-A_OLSLrsqw_p001_default_process_single_facet_settings_ctemp.ini"
+        arg_settings_dir_body_ext = r"Z:\input\Results\PASL\20250818_090647\20250818_090647_PAQ24-001_PASLr_p001_default_process_single_facet_settings.ini"
         # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 4
         print("Loading control from settings file:", arg_settings_dir_body_ext)
         if not ft.file_exists(arg_settings_dir_body_ext):

@@ -3,6 +3,7 @@
 import copy
 import os.path
 
+import cv2 as cv
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import ndarray
@@ -83,6 +84,19 @@ def process_singlefacet_geometry(
     data_error: calculation_data_classes.CalculationError
         Geometric/positional errors and reprojection errors associated with solving for facet location.
     """
+    # &&&& DELETE-SCAFFOLDING -- PASS THESE IN
+    mask_insert_background_clutter = True
+    mask_clutter_box = (250, 1750, 50, 390)  # (x_min, x_max, y_min, y_max)
+    mask_clutter_circle = (250, 500, 400)  # (x_center, y_center, radius)
+    mask_remove_background = True
+    mask_ROI_loop = LoopXY.from_vertices(
+        Vxy.from_list([(500, 1100), (1400, 1100), (1400, 450), (900, 450), (500, 900)])
+    )
+    mask_dilate_erode = True
+    dilate_erode_kernel_size = 8
+    mask_keep_largest_area = True
+    mask_add_border = True
+
     if debug.debug_active:
         lt.debug("process_optics_geometry debug on.")
     else:
@@ -114,27 +128,169 @@ def process_singlefacet_geometry(
         fig_rec.view.imshow(mask_raw, cmap="gray")
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
+    mask_copy_for_cleanup = np.copy(mask_raw)
+
+    # Introduce background clutter, for test/demonstration purposes.
+    if mask_insert_background_clutter:
+        # OpenCV doesn't support rectangle or circle for Boolean arrays.
+        # We multiply by 128 to make visualizations recognizable.
+        # We multiply by 128 instead of 255 to make visualizations different from Boolean masks.
+        mask_copy_for_cleanup_uint8 = mask_copy_for_cleanup.astype(np.uint8) * 128
+        # Draw a white rectangle
+        x_min = mask_clutter_box[0]
+        x_max = mask_clutter_box[1]
+        y_min = mask_clutter_box[2]
+        y_max = mask_clutter_box[3]
+        cv.rectangle(mask_copy_for_cleanup_uint8, (x_min, y_min), (x_max, y_max), 255, -1)
+        # Draw a white circle
+        x_center = mask_clutter_circle[0]
+        y_center = mask_clutter_circle[1]
+        radius = mask_clutter_circle[2]
+        cv.circle(mask_copy_for_cleanup_uint8, (x_center, y_center), radius, 255, -1)
+        # Convert back to Boolean.
+        mask_copy_for_cleanup = mask_copy_for_cleanup_uint8.astype('bool')
+        if debug.debug_active:
+            figure_title = "After Inserting Background Clutter"
+            fig_rec = sdfs.start_debug_image_figure(figure_title)
+            fig_rec.view.imshow(mask_copy_for_cleanup, cmap="gray")
+            sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+
+    # Remove mask background clutter.
+    # These can lead to incorrect region focus, gross error in facet centroid identification, etc.
+    if mask_remove_background:
+        # Plot ROI specifying removal.
+        if debug.debug_active:
+            figure_title = "User-Specified Region of Interest (ROI)"
+            fig_rec = sdfs.start_debug_image_figure(figure_title)
+            fig_rec.view.imshow(mask_copy_for_cleanup, cmap="gray")
+            fig_rec.view.draw_pq_list(mask_ROI_loop.as_xy_list(), close=True, style=rcps.outline(color='red'))
+            sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+        # Execute removal.
+        vx = np.arange(mask_copy_for_cleanup.shape[1])
+        vy = np.arange(mask_copy_for_cleanup.shape[0])
+        mask_ROI = mask_ROI_loop.as_mask(vx, vy)
+        mask_copy_after_ROI = np.logical_and(mask_copy_for_cleanup, mask_ROI)
+        # Plot removal result.
+        if debug.debug_active:
+            figure_title = "After Background Removal"
+            fig_rec = sdfs.start_debug_image_figure(figure_title)
+            fig_rec.view.imshow(mask_copy_after_ROI, cmap="gray")
+            sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+    else:
+        mask_copy_after_ROI = mask_copy_for_cleanup.copy()
+
+    # Remove mask internal features.
+    # These can corrupt centroid finding and loop refinement.
+    # We do this by first dilating the white in the image, and then eroding it.
+    #
+    # This could be accomplished with a single OpenCV "close" operation:
+    #    closing = cv.morphologyEx(mask_clean, cv.MORPH_CLOSE, kernel)
+    # But we split into two operations so that we can draw figures illustrating
+    # the construction.
+    #
+    # For a detailed explanation of these operations, see:
+    #    https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
+    #
+    if mask_dilate_erode:
+        # OpenCV doesn't support dilate or erode for Boolean arrays.
+        # We multiply by 128 to make visualizations recognizable.
+        # We multiply by 128 instead of 255 to make visualizations different from Boolean masks.
+        mask_copy_after_ROI_uint8 = mask_copy_after_ROI.astype(np.uint8) * 128
+        kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (dilate_erode_kernel_size, dilate_erode_kernel_size))
+        mask_copy_after_ROI_dilate_uint8 = cv.dilate(mask_copy_after_ROI_uint8, kernel)
+        mask_copy_after_ROI_dilate_erode_uint8 = cv.erode(mask_copy_after_ROI_dilate_uint8, kernel, iterations=1)
+        # Convert back to Boolean.
+        mask_copy_after_ROI_dilate = mask_copy_after_ROI_dilate_uint8.astype('bool')
+        mask_copy_after_ROI_dilate_erode = mask_copy_after_ROI_dilate_erode_uint8.astype('bool')
+        if debug.debug_active:
+            # Dilated
+            figure_title = "Dilated Mask"
+            fig_rec = sdfs.start_debug_image_figure(figure_title)
+            fig_rec.view.imshow(mask_copy_after_ROI_dilate, cmap="gray")
+            sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+            # Dilated then eroded
+            figure_title = "Dilated Then Eroded Mask"
+            fig_rec = sdfs.start_debug_image_figure(figure_title)
+            fig_rec.view.imshow(mask_copy_after_ROI_dilate_erode, cmap="gray")
+            sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+        else:
+            mask_copy_after_ROI_dilate_erode = mask_copy_after_ROI.copy()
+
+    # Select largest mask area.
+    # If enabled, keep only the largest mask area
+    if mask_keep_largest_area:
+        mask_copy_after_ROI_dilate_erode_largest = ip.keep_largest_mask_area(mask_copy_after_ROI_dilate_erode)
+        if debug.debug_active:
+            figure_title = "After Keeping Largest Area"
+            fig_rec = sdfs.start_debug_image_figure(figure_title)
+            fig_rec.view.imshow(mask_copy_after_ROI_dilate_erode_largest, cmap="gray")
+            sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+    else:
+        mask_copy_after_ROI_dilate_erode_largest = mask_copy_after_ROI_dilate_erode.copy()
+
+    # Show edges of mask, before adding border.
+    if debug.debug_active:
+        # Find edges of mask
+        v_edges_image_before_border = ip.edges_from_mask(mask_copy_after_ROI_dilate_erode_largest)
+        figure_title = "Edges of Current Mask"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_copy_after_ROI_dilate_erode_largest, cmap="gray")
+        fig_rec.view.axis.scatter(*v_edges_image_before_border.data, marker=".", c='red', s=0.8)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+
+    # Add black border, so that edges will be generated for any places where
+    # mirror touches the boundary of the field of view.
+    #
+    # This is needed because otherwise the loop refinement will be degraded or fail.
+    # Note that ideally it is better to get a differnt data set that avoids this,
+    # but that may be inconvenient or even impractical due to measurement constraints.
+    #
+    mask_copy_after_ROI_dilate_erode_largest_border = mask_copy_after_ROI_dilate_erode_largest.copy()
+    if mask_add_border:
+        n_rows = mask_copy_after_ROI_dilate_erode_largest_border.shape[0]
+        n_cols = mask_copy_after_ROI_dilate_erode_largest_border.shape[1]
+        mask_copy_after_ROI_dilate_erode_largest_border[0, :] = 0
+        mask_copy_after_ROI_dilate_erode_largest_border[(n_rows - 1), :] = 0
+        mask_copy_after_ROI_dilate_erode_largest_border[:, 0] = 0
+        mask_copy_after_ROI_dilate_erode_largest_border[:, (n_cols - 1)] = 0
+        if debug.debug_active:
+            figure_title = "After Adding Black Border"
+            fig_rec = sdfs.start_debug_image_figure(figure_title)
+            fig_rec.view.imshow(mask_copy_after_ROI_dilate_erode_largest_border, cmap="gray")
+            sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+
+    # Construct final cleaned-up mask.
+    mask_clean = mask_copy_after_ROI_dilate_erode_largest_border.copy()
+    data_image_processing_facet.mask_clean = mask_clean
+
     # Find edges of mask
-    v_edges_image = ip.edges_from_mask(mask_raw)
+    v_edges_image = ip.edges_from_mask(mask_clean)
     data_image_processing_general.v_edges_image = v_edges_image
 
     # Plot mask edges
     if debug.debug_active:
-        figure_title = "Mask Edges"
+        figure_title = "Mask Edges After Adding Border"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_raw, cmap="gray")
-        fig_rec.view.axis.scatter(*v_edges_image.data, marker=".", c='red', s=0.05)
+        fig_rec.view.imshow(mask_clean, cmap="gray")
+        fig_rec.view.axis.scatter(*v_edges_image.data, marker=".", c='red', s=0.8)
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+
+    # Plot cleaned-up mask
+    if debug.debug_active:
+        figure_title = "Cleaned-Up Mask"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_clean, cmap="gray")
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Find centroid of processed mask
-    v_mask_centroid_image = ip.centroid_mask(mask_raw)
+    v_mask_centroid_image = ip.centroid_mask(mask_clean)
     data_image_processing_general.v_mask_centroid_image = v_mask_centroid_image
 
     # Plot centroid
     if debug.debug_active:
         figure_title = "Mask Centroid"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_raw, cmap="gray")
+        fig_rec.view.imshow(mask_clean, cmap="gray")
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red')
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
@@ -143,7 +299,7 @@ def process_singlefacet_geometry(
         v_optic_corners_image_0 = camera.project(v_facet_corners, Rotation.identity(), Vxyz([0, 0, 0]))
         figure_title = "Expected Optic Corners, Before Translation or Rotation"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_raw, cmap="gray")
+        fig_rec.view.imshow(mask_clean, cmap="gray")
         sdfs.plot_labeled_points(v_optic_corners_image_0)
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
@@ -157,7 +313,7 @@ def process_singlefacet_geometry(
     if debug.debug_active:
         figure_title = "Expected Optic Centroid"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_raw, cmap="gray")
+        fig_rec.view.imshow(mask_clean, cmap="gray")
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=45, label='Mask Centroid')
         expected_centroid = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
         fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='cyan', s=35, label='Expected Centroid')
@@ -168,7 +324,7 @@ def process_singlefacet_geometry(
     if debug.debug_active:
         figure_title = "Expected Optic Corners, Translated Only, No Rotation"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_raw, cmap="gray")
+        fig_rec.view.imshow(mask_clean, cmap="gray")
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=55, label='Mask Centroid')
         # 3-d position of centroid in camera coordinates, projected back into image.
@@ -215,7 +371,7 @@ def process_singlefacet_geometry(
     if debug.debug_active:
         figure_title = "Expected Corners, Translated and Rotated, without Centroid Normal"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_raw, cmap="gray")
+        fig_rec.view.imshow(mask_clean, cmap="gray")
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
         # Original computation of 3-d position of centroid in camera coordinates, projected back into image.
@@ -275,7 +431,7 @@ def process_singlefacet_geometry(
     if debug.debug_active:
         figure_title = "Expected Corners, Translated and Rotated, including Centroid Normal"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_raw, cmap="gray")
+        fig_rec.view.imshow(mask_clean, cmap="gray")
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
         # Original computation of 3-d position of centroid in camera coordinates, projected back into image.
@@ -320,7 +476,7 @@ def process_singlefacet_geometry(
     if debug.debug_active:
         figure_title = "Expected Optic Loop"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_raw, cmap="gray")
+        fig_rec.view.imshow(mask_clean, cmap="gray")
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
         # Expected positions of optic corners in the image.
@@ -337,7 +493,7 @@ def process_singlefacet_geometry(
     # Refine locations of optic corners with mask
     try:
         prs = [params.perimeter_refine_axial_search_dist, params.perimeter_refine_perpendicular_search_dist]
-        loop_facet_image_refine = ip.refine_mask_perimeter(debug, mask_raw, loop_optic_image_exp, v_edges_image, *prs)
+        loop_facet_image_refine = ip.refine_mask_perimeter(debug, mask_clean, loop_optic_image_exp, v_edges_image, *prs)
         data_image_processing_facet.loop_facet_image_refine = loop_facet_image_refine
     except ValueError as er:
         lt.critical(repr(er))
@@ -377,21 +533,72 @@ def process_singlefacet_geometry(
 
     # Plot refined optic corners
     if debug.debug_active:
-        fig = plt.figure()
-        debug.figures.append(fig)
-        plt.imshow(mask_raw)
-        sdfs.plot_labeled_points(loop_facet_image_refine.vertices)
-        plt.title("Refined Optic Corners")
+        figure_title = "Refined Optic Loop, Clean Mask"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_clean, cmap="gray")
+        # Centroid measured in image.
+        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
+        # Refined positions of optic corners in the image.
+        sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
+        fig_rec.view.draw_pq_list(loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
+        # Expected position of optic centroid in the image.
+        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
+        fig_rec.view.axis.scatter(
+            *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
+        )
+        fig_rec.view.axis.legend()
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+
+    # Plot refined optic corners, against original mask
+    if debug.debug_active:
+        figure_title = "Refined Optic Loop, Original Mask"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_raw, cmap="gray")
+        # Centroid measured in image.
+        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
+        # Refined positions of optic corners in the image.
+        sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
+        fig_rec.view.draw_pq_list(loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
+        # Expected position of optic centroid in the image.
+        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
+        fig_rec.view.axis.scatter(
+            *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
+        )
+        fig_rec.view.axis.legend()
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Create fitted mask
-    vx = np.arange(mask_raw.shape[1])
-    vy = np.arange(mask_raw.shape[0])
+    vx = np.arange(mask_clean.shape[1])
+    vy = np.arange(mask_clean.shape[0])
     mask_fitted = loop_facet_image_refine.as_mask(vx, vy)
-    data_image_processing_facet.mask_fitted = mask_fitted
+    data_image_processing_facet.mask_fitted = mask_fitted  # &&&& DELETE-SCAFFOLDING -- HOW IS THIS USED?
 
     # Remove non-active pixels from mask
-    mask_processed = np.logical_and(mask_fitted, mask_raw)
-    data_image_processing_facet.mask_processed = mask_processed
+    mask_processed = np.logical_and(mask_fitted, mask_clean)
+    data_image_processing_facet.mask_processed = mask_processed  # &&&& DELETE-SCAFFOLDING -- HOW IS THIS USED?
+
+    # Plot the four masks for comparison.
+    if debug.debug_active:
+        # Raw
+        figure_title = "Raw Mask"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_raw, cmap="gray")
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+        # Cleaned up
+        figure_title = "Cleaned-Up Mask"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_clean, cmap="gray")
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+        # Fitted
+        figure_title = "Fitted Mask"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_fitted, cmap="gray")
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+        # Processed
+        figure_title = "Processed Mask"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_processed, cmap="gray")
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Calculate R/T from found corners
     r_optic_cam_refine_1, v_cam_optic_cam_refine_1 = sp.calc_rt_from_img_pts(

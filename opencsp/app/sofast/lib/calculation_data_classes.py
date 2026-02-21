@@ -158,8 +158,10 @@ class CalculationImageProcessingFacet(hdf5_tools.HDF5_SaveAbstract):
     """
 
     loop_facet_image_refine: LoopXY = None
-    mask_fitted: ndarray = None
-    mask_processed: ndarray = None
+    mask_raw: ndarray = None  # &&&& DELETE-SCAFFOLDING -- WHICH OF THESE IS NEEDED?  FIGURE OUT AND SIMPLIFY.
+    mask_clean: ndarray = None  # &&&& DELETE-SCAFFOLDING -- WHICH OF THESE IS NEEDED?  FIGURE OUT AND SIMPLIFY.
+    mask_fitted: ndarray = None  # &&&& DELETE-SCAFFOLDING -- WHICH OF THESE IS NEEDED?  FIGURE OUT AND SIMPLIFY.
+    mask_processed: ndarray = None  # &&&& DELETE-SCAFFOLDING -- WHICH OF THESE IS NEEDED?  FIGURE OUT AND SIMPLIFY.
     v_facet_corners_image_exp: Vxy = None
     v_facet_centroid_image_exp: Vxy = None
     mask_bad_pixels: ndarray = None

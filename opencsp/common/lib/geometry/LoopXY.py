@@ -18,7 +18,7 @@ class LoopXY:
     satisfy the following:
 
      * Closed geometry (currently checked)
-     * Must be convex (currently not checked)
+     * Must be convex (currently checked)
      * Linear boundary types (only linear is supported)
      * The orientation of the edges must be consistent (all CCW/CW)
     """

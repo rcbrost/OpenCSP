@@ -236,6 +236,7 @@ def process_single_facet(
     measurement.calibrate_fringe_images(calibration)
 
     # &&&& DELETE-SCAFFOLDING -- ADD PLOT OF CALIBRATION
+    # &&&& DELETE-SCAFFOLDING -- (BUT WHAT ABOUT CALIBRATION SCALING TYPE?)
 
     # 5. Process data with Sofast
     # =============================
@@ -268,6 +269,7 @@ def process_single_facet(
     #     # Save all debug figures
     #     save_all_debug_figures(dir_save_cur, sofast)
     #     return
+    # &&&& DELETE-SCAFFOLDING -- MIDDLE PASS-THROUGH HACK 2
     # Process
     sofast.process_optic_singlefacet(facet_data, fit_surface)
     # Get measurement statistics

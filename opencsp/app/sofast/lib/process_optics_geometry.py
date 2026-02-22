@@ -481,7 +481,9 @@ def process_singlefacet_geometry(
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
         # Expected positions of optic corners in the image.
         sdfs.plot_labeled_points(v_optic_corners_image_exp, legend_label='Points Using Camera Pose')
-        fig_rec.view.draw_pq_list(loop_optic_image_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
+        fig_rec.view.draw_pq_list(
+            loop_optic_image_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='green')
+        )
         # Expected position of optic centroid in the image.
         expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
         fig_rec.view.axis.scatter(
@@ -540,7 +542,9 @@ def process_singlefacet_geometry(
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
         # Refined positions of optic corners in the image.
         sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
-        fig_rec.view.draw_pq_list(loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
+        fig_rec.view.draw_pq_list(
+            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+        )
         # Expected position of optic centroid in the image.
         expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
         fig_rec.view.axis.scatter(
@@ -558,7 +562,9 @@ def process_singlefacet_geometry(
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
         # Refined positions of optic corners in the image.
         sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
-        fig_rec.view.draw_pq_list(loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
+        fig_rec.view.draw_pq_list(
+            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+        )
         # Expected position of optic centroid in the image.
         expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
         fig_rec.view.axis.scatter(

@@ -235,46 +235,50 @@ def refine_mask_perimeter(
         p2 = loop_outline_exp.vertices[np.mod(idx + 1, len(loop_outline_exp))]
 
         # Get bounding rectangle region
-        loop = rectangle_loop_from_two_points(p1, p2, d_ax, d_perp)
+        rectangle_loop = rectangle_loop_from_two_points(p1, p2, d_ax, d_perp)
 
         # Find points in loop
-        pts_mask = loop.is_inside(Puv_edges)
-        lines.append(LineXY.fit_from_points(Puv_edges[pts_mask], neighbor_dist=neighbor_dist))
+        pts_mask = rectangle_loop.is_inside(Puv_edges)
+        line = LineXY.fit_from_points(Puv_edges[pts_mask], neighbor_dist=neighbor_dist)
+        lines.append(line)
 
         # Debugging output for diagnosis
         if debug.debug_active:
             if debug_mask_img is None:
                 lt.warn('In refine_mask_perimeter(), skipping debugging figures because a mask image was not provided.')
             else:
+                # Setup figure.
                 figure_title = f"Loop Edge {idx} Analysis"
                 fig_rec = sdfs.start_debug_image_figure(figure_title)
+                # Mask
                 fig_rec.view.imshow(debug_mask_img, cmap="gray")
-                fig_rec.view.axis.scatter(*Puv_edges.data, marker=".", c='cyan', s=0.05)
-                print('In refine_mask_perimeter(), idx=', idx, '  p1=', p1, '  p2=', p2)
-                # points = line.original_two_points()
-                # pt_0 = points[0]
-                # pt_1 = points[1]
-                # print(f"In refine_mask_perimeter(), pt_0={str(pt_0)}; pt_1={str(pt_1)}.")
+                # All edge points.
+                fig_rec.view.axis.scatter(*Puv_edges.data, marker=".", c='pink', s=0.8)
+                # Input loop to refine.
                 fig_rec.view.draw_pq_list(
                     loop_outline_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='green')
                 )
-                fig_rec.view.draw_pq_list(loop.as_xy_list(), close=True, style=rcps.outline(color='orange'))
+                # Bounding rectangle.
+                fig_rec.view.draw_pq_list(rectangle_loop.as_xy_list(), close=True, style=rcps.outline(color='orange'))
+                # Edge points within rectangle.
                 relevant_pts = Puv_edges[pts_mask]
-                fig_rec.view.axis.scatter(*relevant_pts.data, marker=".", c='red', s=0.05)
-                # fig_rec.view.draw_pq_list([p1, p2], style=rcps.default(marker='arrow'))
-
-            # # Centroid measured in image.
-            # fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
-            # # Expected positions of optic corners in the image.
-            # sdfs.plot_labeled_points(v_optic_corners_image_exp, legend_label='Points Using Camera Pose')
-            # fig_rec.view.draw_pq_list(loop_optic_image_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow'))
-            # # Expected position of optic centroid in the image.
-            # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
-            # fig_rec.view.axis.scatter(
-            #     *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
-            # )
-            # fig_rec.view.axis.legend()
-            sdfs.finish_debug_image_figure(figure_title, 'image', fig_rec, debug)
+                fig_rec.view.axis.scatter(*relevant_pts.data, marker=".", c='red', s=0.8)
+                # Fit line.
+                # if line.A > line.B:
+                #     # A line with B=0 implies a vertical constant-x line.
+                #     # So we intersect with the horizontal box boundaries.
+                # line_pt_1 = (750, 1000)
+                # line_pt_2 = (1250, 800)
+                # fig_rec.view.draw_pq_list([line_pt_1, line_pt_2], style=rcps.outline(color='green'))
+                x_min = 0
+                x_max = debug_mask_img.shape[1] - 1
+                y_min = 0
+                y_max = debug_mask_img.shape[0] - 1
+                line.draw_in_axis_aligned_box(
+                    (x_min, x_max, y_min, y_max), ax=fig_rec.view.axis, style=rcps.outline(color='magenta')
+                )
+                # Save and close figure.
+                sdfs.finish_debug_image_figure(figure_title, 'image', fig_rec, debug)
 
     # Create updated region
     return LoopXY.from_lines(lines)

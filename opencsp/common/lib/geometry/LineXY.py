@@ -1,9 +1,11 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from numpy.random import RandomState, SeedSequence, MT19937
 from scipy.optimize import minimize
 
 from opencsp.common.lib.geometry.angle import normalize as normalize_angle
 from opencsp.common.lib.geometry.Vxy import Vxy
+import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
 import opencsp.common.lib.tool.log_tools as lt
 
 
@@ -491,3 +493,133 @@ class LineXY:
 
         if self._original_two_points is not None:
             self._original_two_points = self._original_two_points[1], self._original_two_points[0]
+
+    def draw_in_axis_aligned_box(
+        self, box: tuple[float, float, float, float], ax: plt.Axes = None, style: rcps.RenderControlPointSeq = None
+    ) -> None:
+        """
+        Draws the line spanning from edge to edge of an box aligned with the XY axes.
+        Since the line has infinite extent, the box is typically the field of view.
+
+        Parameters
+        ----------
+        box : tuple[float, float, float, float]
+            (left, right, bottom, top) bounding box.
+        ax : Axes, optional
+            The axes to draw on. If not given, uses current axes.
+        style : str, optional
+            The style used to draw this region. Default rcps.outline().
+
+        Returns
+        -------
+        None
+        """
+        if ax is None:
+            ax = plt.gca()
+        if style is None:
+            style = rcps.outline()
+        # Fetch box limits
+        x_min = box[0]
+        x_max = box[1]
+        y_min = box[2]
+        y_max = box[3]
+        # Check input.
+        if x_min >= x_max:
+            lt.error_and_raise(
+                ValueError, "In LineXY.draw_in_axis_aligned_box(), x_min and x_max are reversed in box: " + str(box)
+            )
+        if y_min >= y_max:
+            lt.error_and_raise(
+                ValueError, "In LineXY.draw_in_axis_aligned_box(), y_min and y_max are reversed in box: " + str(box)
+            )
+        # Draw line
+        if abs(self.A) > abs(self.B):
+            # Line coefficient B=0 would imply a vertical constant-x line.
+            # Since A and B cannot both be zero, we know that A is non-zero.
+            # For robustness, we will intersect with the horizontal box boundaries.
+            # This is guaranteed to avoid a divide by zero error if B=0.
+            x1 = self.x_from_y(y_min)
+            y1 = y_min
+            x2 = self.x_from_y(y_max)
+            y2 = y_max
+            # Determine if the line passes through the left side of the box.
+            if (x1 < x_min) and (x2 < x_min):
+                # Then the line passes entirely to the left of the box.
+                return
+            if x1 < x_min:
+                # Then point 1 is left of the box, and point 2 is not.
+                x1 = x_min
+                y1 = self.y_from_x(x_min)
+            if x2 < x_min:
+                # Then point 2 is left of the box, and point 1 is not.
+                x2 = x_min
+                y2 = self.y_from_x(x_min)
+            # Determine if the line passes through the right side of the box.
+            if (x1 > x_max) and (x2 > x_max):
+                # Then the line passes entirely to the right of the box.
+                return
+            if x1 > x_max:
+                # Then point 1 is right of the box, and point 2 is not.
+                x1 = x_max
+                y1 = self.y_from_x(x_max)
+            if x2 > x_max:
+                # Then point 2 is right of the box, and point 1 is not.
+                x2 = x_max
+                y2 = self.y_from_x(x_max)
+        else:
+            # Line coefficient A=0 would imply a horizontal constant-y line.
+            # Since A and B cannot both be zero, we know that B is non-zero.
+            # For robustness, we will intersect with the vertical box boundaries.
+            # This is guaranteed to avoid a divide by zero error if A=0.
+            x1 = x_min
+            y1 = self.y_from_x(x_min)
+            x2 = x_max
+            y2 = self.y_from_x(x_max)
+            # Determine if the line passes through the bottom of the box.
+            if (y1 < y_min) and (y2 < y_min):
+                # Then the line passes entirely below the box.
+                return
+            if y1 < y_min:
+                # Then point 1 is below the box, and point 2 is not.
+                x1 = self.x_from_y(y_min)
+                y1 = y_min
+            if y2 < y_min:
+                # Then point 2 is below the box, and point 1 is not.
+                x2 = self.x_from_y(y_min)
+                y2 = y_min
+            # Determine if the line passes through the top of the box.
+            if (y1 > y_max) and (y2 > y_max):
+                # Then the line passes entirely above the box.
+                return
+            if y1 > y_max:
+                # Then point 1 is above the box, and point 2 is not.
+                x1 = self.x_from_y(y_max)
+                y1 = y_max
+            if y2 > y_max:
+                # Then point 2 is above the box, and point 1 is not.
+                x2 = self.x_from_y(y_max)
+                y2 = y_max
+        # Check result.
+        if (
+            (x1 < x_min)
+            or (x1 > x_max)
+            or (x2 < x_min)
+            or (x2 > x_max)
+            or (y1 < y_min)
+            or (y1 > y_max)
+            or (y2 < y_min)
+            or (y2 > y_max)
+        ):
+            lt.error_and_raise(ValueError, "In LineXY.draw_in_axis_aligned_box(), result out of bounds.")
+        pair_xy = Vxy.from_list([(x1, y1), (x2, y2)])
+        ax.plot(
+            *pair_xy.data,
+            linestyle=style.linestyle,
+            linewidth=style.linewidth,
+            color=style.color,
+            marker=style.marker,
+            markersize=style.markersize,
+            markeredgecolor=style.markeredgecolor,
+            markeredgewidth=style.markeredgewidth,
+            markerfacecolor=style.markerfacecolor,
+        )

@@ -251,14 +251,14 @@ class LoopXY:
 
     def as_mask(self, vx: np.ndarray, vy: np.ndarray) -> np.ndarray:
         """
-        Returns 2d mask given sample points on x and y axis.
+        Returns 2d mask given grid-defining sample points on x and y axis.
 
         Parameters
         ----------
         xv : np.ndarray
-            1d array, x sample points.
+            1d array, grid-defining points in x direction.
         yv : np.ndarray
-            1d array, y sample points.
+            1d array, grid-defining points in y direction.
 
         Returns
         -------

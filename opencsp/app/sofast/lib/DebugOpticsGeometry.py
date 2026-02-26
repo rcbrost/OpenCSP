@@ -13,3 +13,5 @@ class DebugOpticsGeometry:
         """Where to save figure objects."""
         self.figure_idx = 0
         """Incrementing figure index, so figures appear in order created."""
+        self.display = None
+        """Used for diagnostic output showing SOFAST setup."""

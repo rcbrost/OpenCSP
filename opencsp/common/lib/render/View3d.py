@@ -101,7 +101,8 @@ class View3d(aph.AbstractPlotHandler):
         image_frame_style=rcps.outline(color="r"),  # Image frame boundary style.
         image_frame_legend=False,  # Include image frame as a legend entry.
         legend=False,  # Draw the plot legend.
-        block=False,
+        show=True,  # If True, then display the plot, as opposed to just generating it.
+        block=False,  # If True, then block execution until the figure is closed.
     ) -> None:
         """
         Shows a plot, ensuring that equal axis is set if applicable.
@@ -214,7 +215,8 @@ class View3d(aph.AbstractPlotHandler):
         if legend:
             self.axis.legend()
         # Draw.
-        plt.show(block=block)
+        if show:
+            plt.show(block=block)
 
     # INTERACTION
 

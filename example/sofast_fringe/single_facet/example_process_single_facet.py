@@ -43,7 +43,8 @@ from opencsp.app.sofast.lib.Fringes import Fringes
 from opencsp.app.sofast.lib.ImageCalibrationScaling import ImageCalibrationScaling
 from opencsp.app.sofast.lib.MeasurementSofastFringe import MeasurementSofastFringe
 from opencsp.app.sofast.lib.ProcessSofastFringe import ProcessSofastFringe as Sofast
-from opencsp.app.sofast.lib.SofastConfiguration import SofastConfiguration
+import opencsp.app.sofast.lib.SofastConfiguration as sfcfg
+import opencsp.app.sofast.lib.sofast_debug_figure_support as sdfs
 from opencsp.app.sofast.lib.SpatialOrientation import SpatialOrientation
 from opencsp.common.lib.camera.Camera import Camera
 import opencsp.common.lib.csp.embedding_mirror_surface as ems
@@ -217,7 +218,7 @@ def process_single_facet(
     debug_figure_idx = 0
 
     # Draw reference mirror, to enable review of what is requested.
-    if draw_reference_mirror_overview:
+    if True:  # False:  # draw_reference_mirror_overview:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         debug_figure_idx = draw_and_save_views_of_reference_mirror(
             mirror_reference=mirror_reference,
             facet_data=facet_data,
@@ -248,35 +249,86 @@ def process_single_facet(
     # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 1
     # if verbose:
     if True:
-        sofast.params.debug_geometry.debug_active = True
+        sofast.params.debug_geometry.debug_active = False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_geometry.save_dir = dir_save_cur
         sofast.params.debug_geometry.figure_idx = debug_figure_idx
-        sofast.params.debug_slope_solver.debug_active = True
+        sofast.params.debug_geometry.display = display  # Used only for diagnostic rendering.
+        sofast.params.debug_slope_solver.debug_active = False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_slope_solver.save_dir = dir_save_cur
         sofast.params.debug_slope_solver.figure_idx = 100
     # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 1
 
+    # Draw SOFAST setup, wthout a mirror.
+    # if sofast.params.debug_geometry.debug_active:
+    #     # 3-d
+    #     figure_title = "SOFAST Setup, Without Mirror, Before Process"
+    #     fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_3d())
+    #     # Version: SofastConfiguration class object.
+    #     config_for_plots = sfcfg.SofastConfiguration()
+    #     config_for_plots.load_sofast_object(sofast)
+    #     # Provide different display data depending on fringe or fixed.
+    #     config_for_plots.visualize_setup(
+    #         ax=fig_rec.view.axis,
+    #         title=None,
+    #         length_z_axis_cam=0.25,
+    #         axes_length=0.0625,
+    #         min_axis_length_screen=0.03125,
+    #         v_screen_object_screen=None,
+    #         r_object_screen=None,
+    #     )
+    #     # # Version: Stand-alone.
+    #     # sfcfg.visualize_sofast_setup(
+    #     #     sofast_is_fringe=True,
+    #     #     sofast_is_fixed=False,
+    #     #     camera=camera,
+    #     #     display=display,
+    #     #     orientation=orientation,
+    #     #     dot_locations=None,
+    #     #     ax=fig_rec.view.axis,
+    #     #     length_z_axis_cam=0.25,
+    #     #     axes_length=0.0625,
+    #     #     min_axis_length_screen=0.03125,
+    #     #     v_screen_object_screen=None,
+    #     #     r_object_screen=None,
+    #     # )
+    #     fig_rec.view.show()
+    #     sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
+    # # xy
+    # figure_title = "SOFAST Setup, Without Mirror"
+    # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_xy())
+    # config_for_plots = SofastConfiguration()
+    # config_for_plots.load_sofast_object(sofast)
+    # config_for_plots.visualize_setup(ax=fig_rec.view.axis)
+    # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
+    # # xz
+    # figure_title = "SOFAST Setup, Without Mirror"
+    # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_xz())
+    # config_for_plots = SofastConfiguration()
+    # config_for_plots.load_sofast_object(sofast)
+    # config_for_plots.visualize_setup(ax=fig_rec.view.axis)
+    # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
+
     # Process SOFAST
     # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 2
-    # try:
-    #     # Process
-    #     sofast.process_optic_singlefacet(facet_data, fit_surface)
-    #     # Get measurement statistics
-    #     config = SofastConfiguration()
-    #     config.load_sofast_object(sofast)
-    #     measurement_stats = config.get_measurement_stats()
-    # except ValueError:
-    #     # Save all debug figures
-    #     save_all_debug_figures(dir_save_cur, sofast)
-    #     return
+    try:
+        # Process
+        sofast.process_optic_singlefacet(facet_data, fit_surface)
+        # Get measurement statistics
+        config = SofastConfiguration()
+        config.load_sofast_object(sofast)
+        measurement_stats = config.get_measurement_stats()
+    except ValueError:
+        # Save all debug figures
+        save_all_debug_figures(dir_save_cur, sofast)
+        return
     # &&&& DELETE-SCAFFOLDING -- MIDDLE PASS-THROUGH HACK 2
-    # Process
-    sofast.process_optic_singlefacet(facet_data, fit_surface)
-    # Get measurement statistics
-    config = SofastConfiguration()
-    config.load_sofast_object(sofast)
-    measurement_stats = config.get_measurement_stats()
-    # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 2
+    # # Process
+    # sofast.process_optic_singlefacet(facet_data, fit_surface)
+    # # Get measurement statistics
+    # config = SofastConfiguration()
+    # config.load_sofast_object(sofast)
+    # measurement_stats = config.get_measurement_stats()
+    # # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 2
 
     # Save all debug figures
     save_all_debug_figures(dir_save_cur, sofast)
@@ -386,7 +438,11 @@ def draw_and_save_views_of_reference_mirror(
     # We are now drawing the second instance of a 3-d plot, so we will change the view
     # direction to see the view specified in the settings.ini file.  This is intended
     # to show roughly how the mirror is expected appear in a SOFAST camera image.
-    lt.info('Setting view (axis, elev) to ' + str((sofast_view_azim_deg, sofast_view_elev_deg)) + ' degrees.')
+    lt.info(
+        'In draw_and_save_reference_mirror(), setting view (azimuth, elevation, roll) to '
+        + str((sofast_view_azim_deg, sofast_view_elev_deg, sofast_view_roll_deg))
+        + ' degrees.'
+    )
     fig_record.view.axis.view_init(azim=sofast_view_azim_deg, elev=sofast_view_elev_deg, roll=sofast_view_roll_deg)
     if pause_to_set_view_direction:
         # If the user has indicated, provide a user interaction window to rotate the plot until

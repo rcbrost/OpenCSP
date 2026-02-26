@@ -124,6 +124,7 @@ def draw_mirror_and_embedding_mirror(
     projected_style: rcmp.RenderControlMirrorProjected = None,
     embedding_style: rcme.RenderControlMirrorEmbedded = None,
     transform: TransformXYZ | None = None,
+    show: bool = False,
 ) -> None:
     """
     Draws a mirror in the given view, and also a slightly larger embedding mirror.
@@ -169,10 +170,7 @@ def draw_mirror_and_embedding_mirror(
             # If that is not the case, then this routine will need to be revisited.
             embedding_z_max = embedding_mirror.surface_displacement_at(Pxy([limit_xy, limit_xy]))
             z_limits = [0, 2.0 * embedding_z_max]
-    if view.is_3d:
-        view.show(x_limits=x_limits, y_limits=y_limits, z_limits=z_limits)
-    else:
-        view.show(x_limits=x_limits, y_limits=y_limits, z_limits=z_limits)
+    view.show(x_limits=x_limits, y_limits=y_limits, z_limits=z_limits, show=show)
 
     # Draw second mirror showing embedding surface.
     embedding_mirror.draw(view=view, mirror_style=mirror_style, draw_projection=False, transform=transform)

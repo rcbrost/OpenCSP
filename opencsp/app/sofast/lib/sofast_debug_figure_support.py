@@ -34,7 +34,7 @@ def start_debug_image_figure(figure_title: str) -> rcfg.RenderControlFigure:
 def finish_debug_image_figure(
     figure_title: str, phase: str, fig_rec: rcfg.RenderControlFigure, debug: DebugOpticsGeometry
 ) -> None:
-    """Closes and saves debug figure."""
+    """Closes and saves debug image figure."""
     figure_title_clean = figure_title.replace(' ', '_').replace(',', '')
     figure_file_body = f"{debug.figure_idx:02d}_{phase}_{figure_title_clean}"
     debug.figure_idx += 1
@@ -45,5 +45,37 @@ def finish_debug_image_figure(
         format='png',
         close_after_save=True,
         include_view_suffix=False,
+        include_limit_suffix=False,
+    )
+
+
+def start_debug_3d_figure(
+    figure_title: str, view_spec: dict = vs.view_spec_3d(), equal: bool = True, grid=True
+) -> rcfg.RenderControlFigure:
+    """Begins a debug figure setup to show data in a 3-d space."""
+    fig_rec = fm.setup_figure_for_3d_data(
+        figure_control=rcfg.RenderControlFigure(tile=False),
+        axis_control=rca.meters(grid=grid),
+        view_spec=view_spec,
+        equal=equal,
+        title=figure_title,
+    )
+    return fig_rec
+
+
+def finish_debug_3d_figure(
+    figure_title: str, phase: str, fig_rec: rcfg.RenderControlFigure, debug: DebugOpticsGeometry
+) -> None:
+    """Closes and saves debug 3-d figure."""
+    figure_title_clean = figure_title.replace(' ', '_').replace(',', '')
+    figure_file_body = f"{debug.figure_idx:02d}_{phase}_{figure_title_clean}"
+    debug.figure_idx += 1
+    fig_rec.save(
+        output_dir=debug.save_dir,
+        output_file_body=figure_file_body,
+        dpi=200,
+        format='png',
+        close_after_save=True,
+        include_view_suffix=True,
         include_limit_suffix=False,
     )

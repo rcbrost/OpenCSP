@@ -118,6 +118,127 @@ def process_singlefacet_geometry(
     # Surface normal at centroid in facet coordinates
     u_facet_centroid_normal: Uxyz = facet_data.u_facet_centroid_normal
 
+    # Draw SOFAST setup, wthout a mirror.
+    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        # Import here, to avoid circular import.
+        import opencsp.app.sofast.lib.SofastConfiguration as sfcfg
+
+        figure_title = "SOFAST Setup, Without Mirror"
+        view_spec_az_el_roll_list = [
+            (vs.view_spec_3d(), None),
+            (vs.view_spec_xy(), None),
+            (vs.view_spec_xz(), None),
+            (vs.view_spec_yz(), None),
+            (vs.view_spec_3d(), (20, 20, 0)),
+        ]
+        for view_spec_az_el_roll in view_spec_az_el_roll_list:
+            view_spec = view_spec_az_el_roll[0]
+            az_el_roll_deg = view_spec_az_el_roll[1]
+            start_draw_and_finish_sofast_setup_figure(
+                figure_title,
+                view_spec,
+                camera,
+                orientation,
+                dist_optic_screen,
+                debug,
+                view_az_el_roll_deg=az_el_roll_deg,
+            )
+
+        # start_draw_and_finish_sofast_setup_figure(
+        #     figure_title, vs.view_spec_3d(), camera, orientation, dist_optic_screen, debug
+        # )
+        # start_draw_and_finish_sofast_setup_figure(
+        #     figure_title, vs.view_spec_xy(), camera, orientation, dist_optic_screen, debug
+        # )
+        # start_draw_and_finish_sofast_setup_figure(
+        #     figure_title, vs.view_spec_xz(), camera, orientation, dist_optic_screen, debug
+        # )
+        # start_draw_and_finish_sofast_setup_figure(
+        #     figure_title, vs.view_spec_yz(), camera, orientation, dist_optic_screen, debug
+        # )
+        # start_draw_and_finish_sofast_setup_figure(
+        #     figure_title,
+        #     vs.view_spec_3d(),
+        #     camera,
+        #     orientation,
+        #     dist_optic_screen,
+        #     debug,
+        #     view_az_el_roll_deg=(45, 60, 0),
+        # )
+
+        # 3-d
+        # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_3d())
+        # sfcfg.visualize_sofast_setup(
+        #     sofast_is_fringe=True,
+        #     sofast_is_fixed=False,
+        #     camera=camera,
+        #     display=debug.display,  # Used only for diagnostic rendering.
+        #     orientation=orientation,
+        #     dot_locations=None,
+        #     ax=fig_rec.view.axis,
+        #     length_z_axis_cam=dist_optic_screen,
+        #     axes_length=0.0625,
+        #     min_axis_length_screen=0.03125,
+        #     v_screen_object_screen=None,
+        #     r_object_screen=None,
+        # )
+        # fig_rec.view.show()  # Uncomment to rotate view.
+        # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)
+        # xy
+        # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_xy())
+        # sfcfg.visualize_sofast_setup(
+        #     sofast_is_fringe=True,
+        #     sofast_is_fixed=False,
+        #     camera=camera,
+        #     display=debug.display,  # Used only for diagnostic rendering.
+        #     orientation=orientation,
+        #     dot_locations=None,
+        #     ax=fig_rec.view.axis,
+        #     length_z_axis_cam=dist_optic_screen,
+        #     axes_length=0.0625,
+        #     min_axis_length_screen=0.03125,
+        #     v_screen_object_screen=None,
+        #     r_object_screen=None,
+        # )
+        # # fig_rec.view.show()  # Uncomment to rotate view.
+        # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)
+        # # xz
+        # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_xz())
+        # sfcfg.visualize_sofast_setup(
+        #     sofast_is_fringe=True,
+        #     sofast_is_fixed=False,
+        #     camera=camera,
+        #     display=debug.display,  # Used only for diagnostic rendering.
+        #     orientation=orientation,
+        #     dot_locations=None,
+        #     ax=fig_rec.view.axis,
+        #     length_z_axis_cam=dist_optic_screen,
+        #     axes_length=0.0625,
+        #     min_axis_length_screen=0.03125,
+        #     v_screen_object_screen=None,
+        #     r_object_screen=None,
+        # )
+        # # fig_rec.view.show()  # Uncomment to rotate view.
+        # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)
+        # # yz
+        # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_yz())
+        # sfcfg.visualize_sofast_setup(
+        #     sofast_is_fringe=True,
+        #     sofast_is_fixed=False,
+        #     camera=camera,
+        #     display=debug.display,  # Used only for diagnostic rendering.
+        #     orientation=orientation,
+        #     dot_locations=None,
+        #     ax=fig_rec.view.axis,
+        #     length_z_axis_cam=dist_optic_screen,
+        #     axes_length=0.0625,
+        #     min_axis_length_screen=0.03125,
+        #     v_screen_object_screen=None,
+        #     r_object_screen=None,
+        # )
+        # # fig_rec.view.show()  # Uncomment to rotate view.
+        # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)
+
     # Save mask raw
     data_image_processing_general.mask_raw = mask_raw
 
@@ -438,15 +559,15 @@ def process_singlefacet_geometry(
         expected_centroid = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
         fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='cyan', s=55, label='Expected Centroid')
 
-        # In other words, position of optic origin in 3-d space, in camera coordinates.
+        # Position of optic origin in 3-d space, in camera coordinates.
         translation_3 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp.inv())
-        # Computed 3-d position of facet corners in camera coordinates, assuming no rotation.
+        # Computed 3-d position of facet corners in camera coordinates.
         v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp.inv()) + translation_3
         # 3-d facet corner positions, projected back into image.
         v_optic_corners_image_3 = camera.project(v_facet_corners_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
         sdfs.plot_labeled_points(v_optic_corners_image_3, legend_label='Points Using Identity Camera')
         # Treat centroid the same way, for cross-check.
-        # Re-computed 3-d position of facet centroid in camera coordinates, assuming no rotation.
+        # Re-computed 3-d position of facet centroid in camera coordinates.
         v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp.inv()) + translation_3
         # Re-computed 3-d facet centroid position, projected back into image.
         expected_centroid_b = camera.project(v_facet_centroid_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
@@ -500,38 +621,6 @@ def process_singlefacet_geometry(
     except ValueError as er:
         lt.critical(repr(er))
         lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
-        # # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK
-        # # lt.critical(repr(er))
-        # # lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
-        # # lt.critical(repr(er))
-        # lt.info("WARNING: SOFAST failed to find the corners of the optic.  Using simple first estimate.")
-
-        # # Orient optic
-        # ori.orient_optic_cam(r_cam_optic_exp, v_cam_optic_cam_exp)
-
-        # # Calculate measure point pointing direction
-        # u_cam_measure_point_facet = Uxyz((ori.v_cam_optic_optic + v_measure_point_facet).data)
-        # data_geometry_facet.u_cam_measure_point_facet = u_cam_measure_point_facet
-
-        # # Set error fields to "skipped" values.
-        # data_error.error_dist_optic_screen_1 = 999
-        # data_error.error_reprojection_1 = 999
-        # data_error.error_dist_optic_screen_2 = 999
-        # data_error.error_reprojection_2 = 999
-
-        # # Save other data
-        # data_geometry_facet.measure_point_screen_distance = dist_optic_screen
-        # data_geometry_facet.spatial_orientation = ori
-        # data_geometry_facet.v_align_point_facet = v_facet_centroid
-
-        # return (
-        #     data_geometry_general,
-        #     data_image_processing_general,
-        #     [data_geometry_facet],
-        #     [data_image_processing_facet],
-        #     data_error,
-        # )
-        # # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK
 
     # Plot refined optic corners
     if debug.debug_active:
@@ -560,15 +649,15 @@ def process_singlefacet_geometry(
         fig_rec.view.imshow(mask_raw, cmap="gray")
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
-        # Refined positions of optic corners in the image.
-        sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
-        fig_rec.view.draw_pq_list(
-            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
-        )
         # Expected position of optic centroid in the image.
         expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
         fig_rec.view.axis.scatter(
             *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
+        )
+        # Refined positions of optic corners in the image.
+        sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
+        fig_rec.view.draw_pq_list(
+            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
         )
         fig_rec.view.axis.legend()
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
@@ -623,8 +712,44 @@ def process_singlefacet_geometry(
         sdfs.plot_labeled_points(pts_reproj)
         plt.title("Reprojected Points 1")
 
+    # Plot reprojected points in comparison to refined optic corners
+    if debug.debug_active:
+        figure_title = "Refined Loop Points vs. Reprojected Points 1"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_raw, cmap="gray")
+        # Centroid measured in image.
+        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
+        # Expected position of optic centroid in the image.
+        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp.inv(), v_cam_optic_cam_exp)
+        fig_rec.view.axis.scatter(
+            *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
+        )
+        # Refined positions of optic corners in the image.
+        sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
+        fig_rec.view.draw_pq_list(
+            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+        )
+        # Points reprojected using camera pose from solvePnP()
+        pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_1)
+        sdfs.plot_labeled_points(
+            pts_reproj, marker_size=30, point_color='b', label_color='b', legend_label='Reprojected by solvePnP()'
+        )
+        fig_rec.view.axis.legend()
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+
     # Calculate refined measure point vector in optic coordinates
     v_measure_point_optic_cam_refine_1 = v_measure_point_facet.rotate(r_optic_cam_refine_1)
+
+    if debug.debug_active:
+        lt.info('In process_singlefacet_geometry():')
+        lt.info('  dist_optic_screen        = ' + str(dist_optic_screen))
+        lt.info('  ori.v_cam_screen_cam     = ' + str(ori.v_cam_screen_cam))
+        lt.info('  v_measure_point_facet    = ' + str(v_measure_point_facet))
+        lt.info('  v_facet_centroid         = ' + str(v_facet_centroid))
+        lt.info('  v_cam_optic_cam_exp      = ' + str(v_cam_optic_cam_exp))
+        lt.info('  v_cam_optic_cam_refine_1 = ' + str(v_cam_optic_cam_refine_1))
+        lt.info('  r_cam_optic_exp          = ' + str(r_cam_optic_exp.as_euler('XYZ', degrees=True)))
+        lt.info('  r_optic_cam_refine_1     = ' + str(r_optic_cam_refine_1.as_euler('XYZ', degrees=True)))
 
     # Refine V with measured optic to display distance
     v_cam_optic_cam_refine_2 = sp.refine_v_distance(
@@ -1122,3 +1247,73 @@ def process_multifacet_geometry(
         data_image_processing_facet,
         data_error,
     )
+
+
+# DEBUGGING FIGURE HELPER FUNCTIONS
+
+
+def start_draw_and_finish_sofast_setup_figure(
+    figure_title: str,
+    view_spec: dict,
+    camera: Camera,
+    orientation: SpatialOrientation,
+    dist_optic_screen: float,
+    debug: DebugOpticsGeometry,
+    v_screen_object_screen: Vxyz = None,
+    r_object_screen: Rotation = None,
+    view_az_el_roll_deg: float = None,
+) -> None:
+    """Sets up and draws a figure showing SOFAST component origins, etc."""
+    fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=view_spec, equal=True, grid=True)
+
+    # Set view direction, if desired.
+    if view_az_el_roll_deg is not None:
+        if not fig_rec.view.is_3d():
+            lt.error_and_raise(
+                ValueError,
+                "In start_draw_and_finish_sofast_setup_figure(), asked to set view direction for a non-3d plot.",
+            )
+        azimuth_deg = view_az_el_roll_deg[0]
+        elevation_deg = view_az_el_roll_deg[1]
+        roll_deg = view_az_el_roll_deg[2]
+        lt.info(
+            'In start_draw_and_finish_sofast_setup_figure(), setting view (azimuth, elevation, roll) to '
+            + str((azimuth_deg, elevation_deg, roll_deg))
+            + ' degrees.'
+        )
+        fig_rec.view.axis.view_init(azim=azimuth_deg, elev=elevation_deg, roll=roll_deg)
+
+    # Source - https://stackoverflow.com/a/36229671
+    # Posted by jthomas
+    # Retrieved 2026-02-26, License - CC BY-SA 3.0
+    import matplotlib.ticker as ticker
+
+    if fig_rec.view.is_3d():
+        tick_spacing = 0.5  # &&&& DELETE-SCAFFOLDING -- CONTROL OR PASS THIS IN
+    else:
+        tick_spacing = 0.1  # &&&& DELETE-SCAFFOLDING -- CONTROL OR PASS THIS IN
+    fig_rec.view.axis.xaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
+    fig_rec.view.axis.yaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
+    if fig_rec.view.is_3d():
+        fig_rec.view.axis.zaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
+
+    # Draw SOFAST setup.
+    # Import here, to avoid circular import.
+    import opencsp.app.sofast.lib.SofastConfiguration as sfcfg
+
+    sfcfg.visualize_sofast_setup(
+        view=fig_rec.view,
+        sofast_is_fringe=True,
+        sofast_is_fixed=False,
+        camera=camera,
+        display=debug.display,  # Used only for diagnostic rendering.
+        orientation=orientation,
+        dot_locations=None,
+        length_z_axis_cam=dist_optic_screen,
+        axes_length=0.0625,
+        min_axis_length_screen=0.03125,
+        v_screen_object_screen=None,
+        r_object_screen=None,
+    )
+    # fig_rec.view.show()  # Uncomment to rotate view.
+    sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)

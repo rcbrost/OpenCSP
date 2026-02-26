@@ -7,11 +7,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+from opencsp.app.sofast.lib.DisplayShape import DisplayShape as Display
+from opencsp.app.sofast.lib.DotLocationsFixedPattern import DotLocationsFixedPattern
 from opencsp.app.sofast.lib.ProcessSofastFixed import ProcessSofastFixed
 from opencsp.app.sofast.lib.ProcessSofastFringe import ProcessSofastFringe
+from opencsp.app.sofast.lib.SpatialOrientation import SpatialOrientation
 from opencsp.common.lib.deflectometry.Surface2DParabolic import Surface2DParabolic
+from opencsp.common.lib.camera.Camera import Camera
 from opencsp.common.lib.geometry.Vxy import Vxy
 from opencsp.common.lib.geometry.Vxyz import Vxyz
+from opencsp.common.lib.render.View3d import View3d
+import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
+import opencsp.common.lib.render_control.RenderControlText as rctxt
 import opencsp.common.lib.tool.log_tools as lt
 
 
@@ -112,10 +119,11 @@ class SofastConfiguration:
 
     def visualize_setup(
         self,
+        ax: plt.Axes | None = None,
+        title: str | None = "SOFAST Physical Setup\n(Screen Coordinates)",
         length_z_axis_cam: float = 8,
         axes_length: float = 2,
         min_axis_length_screen: float = 2,
-        ax: plt.Axes | None = None,
         v_screen_object_screen: Vxyz = None,
         r_object_screen: Rotation = None,
     ) -> None:
@@ -123,14 +131,14 @@ class SofastConfiguration:
 
         Parameters
         ----------
+        ax : plt.Axes | None, optional
+            3d matplotlib axes, if None, creates new axes, by default None
         length_z_axis_cam : float, optional
             Length of camera z axis to draw (m), by default 8
         axes_length : float, optional
             Length of all other axes to draw (m), by default 2
         min_axis_length_screen : float, optional
             Minimum length of axes to draw (m), by default 2
-        ax : plt.Axes | None, optional
-            3d matplotlib axes, if None, creates new axes, by default None
         v_screen_object_screen : Vxyz, optional
             Vector (m), screen to object in screen reference frame, by default None.
             If None, the object reference frame is not plotted.
@@ -138,144 +146,274 @@ class SofastConfiguration:
             Rotation, object to screen reference frames, by default None.
             Only used if v_screen_object_screen is not None
         """
-        orientation = self.data_sofast_object.orientation
-        camera = self.data_sofast_object.camera
-
-        # Get axes
-        if ax is None:
-            ax = plt.figure().add_subplot(projection="3d")
-        ax.view_init(-15, 135, roll=180, vertical_axis="y")
-
-        # Calculate camera position
-        v_screen_cam_screen = -orientation.v_cam_screen_screen
-
-        # Calculate camera FOV
-        x = camera.image_shape_xy[0]
-        y = camera.image_shape_xy[1]
-        v_cam_fov_screen = (
-            camera.vector_from_pixel(Vxy(([0, 0, x, x, 0], [0, y, y, 0, 0]))).as_Vxyz() * length_z_axis_cam
-        )
-        v_cam_fov_screen.rotate_in_place(orientation.r_cam_screen)
-        v_cam_fov_screen += v_screen_cam_screen
-
-        # Calculate camera X/Y axes
-        v_cam_x_screen = Vxyz(([0, axes_length], [0, 0], [0, 0])).rotate(orientation.r_cam_screen) + v_screen_cam_screen
-        v_cam_y_screen = Vxyz(([0, 0], [0, axes_length], [0, 0])).rotate(orientation.r_cam_screen) + v_screen_cam_screen
-        v_cam_z_screen = (
-            Vxyz(([0, 0], [0, 0], [0, length_z_axis_cam])).rotate(orientation.r_cam_screen) + v_screen_cam_screen
-        )
-
-        # Calculate object axes
-        if v_screen_object_screen is not None:
-            v_obj_x_screen = Vxyz(([0, axes_length], [0, 0], [0, 0])).rotate(r_object_screen) + v_screen_object_screen
-            v_obj_y_screen = Vxyz(([0, 0], [0, axes_length], [0, 0])).rotate(r_object_screen) + v_screen_object_screen
-            v_obj_z_screen = Vxyz(([0, 0], [0, 0], [0, axes_length])).rotate(r_object_screen) + v_screen_object_screen
-
-        # Calculate screen outline and center
+        # Call the stand-alone function.
+        # Provide different display data depending on fringe or fixed.
         if self._is_fringe:
             display = self.data_sofast_object.display
-            p_screen_outline = display.interp_func(Vxy(([0, 0.95, 0.95, 0, 0], [0, 0, 0.95, 0.95, 0])))
-            p_screen_cent = display.interp_func(Vxy((0.5, 0.5)))
+            dot_locations = None
         elif self._is_fixed:
-            locs = self.data_sofast_object.fixed_pattern_dot_locs.xyz_dot_loc
-            p_screen_outline = Vxyz((locs[..., 0], locs[..., 1], locs[..., 2]))
-            p_screen_cent = self.data_sofast_object.fixed_pattern_dot_locs.xy_indices_to_screen_coordinates(
-                Vxy([0, 0], dtype=int)
-            )
-
-        # Define positive xyz screen axes extent
-        if v_screen_object_screen is None:
-            obj_x = [np.nan]
-            obj_y = [np.nan]
-            obj_z = [np.nan]
-        else:
-            obj_x = v_screen_object_screen.x
-            obj_y = v_screen_object_screen.y
-            obj_z = v_screen_object_screen.z
-        lx1 = max(
-            np.nanmax(np.concatenate((v_screen_cam_screen.x, v_cam_fov_screen.x, p_screen_outline.x, obj_x))),
-            min_axis_length_screen,
+            display = None
+            dot_locations = self.data_sofast_object.fixed_pattern_dot_dot_locs
+        # Call
+        visualize_sofast_setup(
+            sofast_is_fringe=self._is_fringe,
+            sofast_is_fixed=self._is_fixed,
+            camera=self.data_sofast_object.camera,
+            display=display,
+            orientation=self.data_sofast_object.orientation,
+            dot_locations=dot_locations,
+            ax=ax,
+            title=title,
+            length_z_axis_cam=length_z_axis_cam,
+            axes_length=axes_length,
+            min_axis_length_screen=min_axis_length_screen,
+            v_screen_object_screen=v_screen_object_screen,
+            r_object_screen=r_object_screen,
         )
-        ly1 = max(
-            np.nanmax(np.concatenate((v_screen_cam_screen.y, v_cam_fov_screen.y, p_screen_outline.y, obj_y))),
-            min_axis_length_screen,
-        )
-        lz1 = max(
-            np.nanmax(np.concatenate((v_screen_cam_screen.z, v_cam_fov_screen.z, p_screen_outline.z, obj_z))),
-            min_axis_length_screen,
-        )
-        # Define negative xyz screen axes extent
-        lx2 = min(
-            np.nanmin(np.concatenate((v_screen_cam_screen.x, v_cam_fov_screen.x, p_screen_outline.x, obj_x))),
-            -min_axis_length_screen,
-        )
-        ly2 = min(
-            np.nanmin(np.concatenate((v_screen_cam_screen.y, v_cam_fov_screen.y, p_screen_outline.y, obj_y))),
-            -min_axis_length_screen,
-        )
-        lz2 = min(
-            np.nanmin(np.concatenate((v_screen_cam_screen.z, v_cam_fov_screen.z, p_screen_outline.z, obj_z))),
-            -min_axis_length_screen,
-        )
-        # Add screen axes
-        x = p_screen_cent.x[0]
-        y = p_screen_cent.y[0]
-        z = p_screen_cent.z[0]
-        # Screen X axis
-        ax.plot([x, x + lx1], [y, y], [z, z], color="red")
-        ax.plot([x, x + lx2], [y, y], [z, z], color="black")
-        ax.text(x + lx1, y, z, "x")
-        # Screen Y axis
-        ax.plot([x, x], [y, y + ly1], [z, z], color="green")
-        ax.plot([x, x], [y, y + ly2], [z, z], color="black")
-        ax.text(x, y + ly1, z, "y")
-        # Screen Z axis
-        ax.plot([x, x], [y, y], [z, z + lz1], color="blue")
-        ax.plot([x, x], [y, y], [z, z + lz2], color="black")
-        ax.text(x, y, z + lz1, "z")
-
-        if self._is_fixed:
-            # Add screen points
-            ax.scatter(*p_screen_outline.data, marker=".", alpha=0.5, color="blue", label="Screen Points")
-        else:
-            # Add screen outline
-            ax.plot(*p_screen_outline.data, color="red", label="Screen Outline")
-
-        # Add camera position origin
-        ax.scatter(*v_screen_cam_screen.data, color="black")
-        ax.text(*v_screen_cam_screen.data.squeeze(), "camera")
-
-        # Add camera XYZ axes
-        ax.plot(*v_cam_x_screen.data, color="red")
-        ax.text(*v_cam_x_screen[1].data.squeeze(), "x", color="blue")
-        ax.plot(*v_cam_y_screen.data, color="green")
-        ax.text(*v_cam_y_screen[1].data.squeeze(), "y", color="blue")
-        ax.plot(*v_cam_z_screen.data, color="blue")
-        ax.text(*v_cam_z_screen[1].data.squeeze(), "z", color="blue")
-
-        # Add camera FOV bounding box
-        ax.plot(*v_cam_fov_screen.data)
-
-        if v_screen_object_screen is not None:
-            # Add object position origin
-            ax.scatter(*v_screen_object_screen.data, color="black")
-            ax.text(*v_screen_object_screen.data.squeeze(), "object")
-
-            # Add object XYZ axes
-            ax.plot(*v_obj_x_screen.data, color="red")
-            ax.text(*v_obj_x_screen[1].data.squeeze(), "x", color="blue")
-            ax.plot(*v_obj_y_screen.data, color="green")
-            ax.text(*v_obj_y_screen[1].data.squeeze(), "y", color="blue")
-            ax.plot(*v_obj_z_screen.data, color="blue")
-            ax.text(*v_obj_z_screen[1].data.squeeze(), "z", color="blue")
-
-        # Format and show
-        plt.title("SOFAST Physical Setup\n(Screen Coordinates)")
-        ax.set_xlabel("X (meters)")
-        ax.set_ylabel("Y (meters)")
-        ax.set_zlabel("Z (meters)")
-        plt.axis("equal")
 
     def _check_sofast_object_loaded(self) -> bool:
         if self.data_sofast_object is None:
             lt.error_and_raise(ValueError, "ProcessSofast object not loaded. Use self.load_sofast_object() first.")
+
+
+# HELPER FUNCTIONS
+
+
+def visualize_sofast_setup(
+    view: View3d,
+    sofast_is_fringe: bool,
+    sofast_is_fixed: bool,
+    camera: Camera,
+    display: Display,
+    orientation: SpatialOrientation,
+    dot_locations: DotLocationsFixedPattern | None,
+    title: str = None,
+    length_z_axis_cam: float = 8,
+    axes_length: float = 2,
+    min_axis_length_screen: float = 2,
+    v_screen_object_screen: Vxyz = None,
+    r_object_screen: Rotation = None,
+    show: bool = True,  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
+) -> None:
+    """
+    Draws the given SOFAST setup components on a 3d axis.
+
+    This version is not a member of the SofastConfiguration class, which means that it
+    can be called at any time, including from within a SOFAST member function in the
+    midst of primary SOFAST setup analysis.
+
+    (The SofastConfiguration class contains a SOFAST object as a data member, and is
+    designed to mostly operate after the SOFAST setup is complete.)
+
+    Parameters
+    ----------
+    view: View3d,
+        View to to draw on.
+    sofast_is_fringe: bool
+        True if this is a SOFAST fringe setup.  Displays a screen rectangle.
+    sofast_is_fixed: bool,
+        True if this is a SOFAST fixed setup.  Displays a screen dot pattern.
+    camera: Camera
+        SOFAST camera model.
+    display: Display
+        SOFAST display model, modeling relationship between screen
+        coordinates and 3-d coordinates.
+    orientation: SpatialOrientation
+        SOFAST spatial orientation, defining the transforms (rotations and translations)
+        between key SOFAST coordinate systems (CSYS): Camera CSYS, Screen CSYS, Mirror CSYS
+    dot_locations: DotLocationsFixedPattern | None
+        For SOFAST Fixed setups, thisis thepattern of dots on the screen.
+    title: str = None
+        Title to write a thte top of the plot.  If handled by calling code, pass in None.
+    length_z_axis_cam : float, optional
+        Length of camera z axis to draw (m), by default 8
+    axes_length : float, optional
+        Length of all other axes to draw (m), by default 2
+    min_axis_length_screen : float, optional
+        Minimum length of axes to draw (m), by default 2
+    ax : plt.Axes | None, optional
+        3d matplotlib axes, if None, creates new axes, by default None
+    v_screen_object_screen : Vxyz, optional
+        Vector (m), screen to object in screen reference frame, by default None.
+        If None, the object reference frame is not plotted.
+    r_object_screen : Rotation, optional
+        Rotation, object to screen reference frames, by default None.
+        Only used if v_screen_object_screen is not None
+    """
+    # Get axes
+    # if ax.name == '3d':
+    #     ax.view_init(-15, 135, roll=180, vertical_axis="y")
+
+    # Calculate camera position
+    v_screen_cam_screen = -orientation.v_cam_screen_screen
+
+    # Calculate camera FOV
+    x = camera.image_shape_xy[0]
+    y = camera.image_shape_xy[1]
+    v_cam_fov_screen = camera.vector_from_pixel(Vxy(([0, 0, x, x, 0], [0, y, y, 0, 0]))).as_Vxyz() * length_z_axis_cam
+    v_cam_fov_screen.rotate_in_place(orientation.r_cam_screen)
+    v_cam_fov_screen += v_screen_cam_screen
+
+    # Calculate camera X/Y axes
+    v_cam_x_screen = Vxyz(([0, axes_length], [0, 0], [0, 0])).rotate(orientation.r_cam_screen) + v_screen_cam_screen
+    v_cam_y_screen = Vxyz(([0, 0], [0, axes_length], [0, 0])).rotate(orientation.r_cam_screen) + v_screen_cam_screen
+    v_cam_z_screen = (
+        Vxyz(([0, 0], [0, 0], [0, length_z_axis_cam])).rotate(orientation.r_cam_screen) + v_screen_cam_screen
+    )
+
+    # Calculate object axes
+    if v_screen_object_screen is not None:
+        v_obj_x_screen = Vxyz(([0, axes_length], [0, 0], [0, 0])).rotate(r_object_screen) + v_screen_object_screen
+        v_obj_y_screen = Vxyz(([0, 0], [0, axes_length], [0, 0])).rotate(r_object_screen) + v_screen_object_screen
+        v_obj_z_screen = Vxyz(([0, 0], [0, 0], [0, axes_length])).rotate(r_object_screen) + v_screen_object_screen
+
+    # Calculate screen outline and center
+    if sofast_is_fringe:
+        p_screen_outline = display.interp_func(Vxy(([0, 0.95, 0.95, 0, 0], [0, 0, 0.95, 0.95, 0])))
+        p_screen_cent = display.interp_func(Vxy((0.5, 0.5)))
+    elif sofast_is_fixed:
+        dot_loc_array = dot_locations.xyz_dot_loc
+        p_screen_outline = Vxyz((dot_loc_array[..., 0], dot_loc_array[..., 1], dot_loc_array[..., 2]))
+        p_screen_cent = dot_locations.xy_indices_to_screen_coordinates(Vxy([0, 0], dtype=int))
+
+    # Define positive xyz screen axes extent
+    lx1 = 0.05
+    ly1 = 0.05
+    lz1 = 0.05
+    # if v_screen_object_screen is None:
+    #     obj_x = [np.nan]
+    #     obj_y = [np.nan]
+    #     obj_z = [np.nan]
+    # else:
+    #     obj_x = v_screen_object_screen.x
+    #     obj_y = v_screen_object_screen.y
+    #     obj_z = v_screen_object_screen.z
+    # lx1 = max(
+    #     np.nanmax(np.concatenate((v_screen_cam_screen.x, v_cam_fov_screen.x, p_screen_outline.x, obj_x))),
+    #     min_axis_length_screen,
+    # )
+    # ly1 = max(
+    #     np.nanmax(np.concatenate((v_screen_cam_screen.y, v_cam_fov_screen.y, p_screen_outline.y, obj_y))),
+    #     min_axis_length_screen,
+    # )
+    # lz1 = max(
+    #     np.nanmax(np.concatenate((v_screen_cam_screen.z, v_cam_fov_screen.z, p_screen_outline.z, obj_z))),
+    #     min_axis_length_screen,
+    # )
+    # # Define negative xyz screen axes extent
+    # lx2 = min(
+    #     np.nanmin(np.concatenate((v_screen_cam_screen.x, v_cam_fov_screen.x, p_screen_outline.x, obj_x))),
+    #     -min_axis_length_screen,
+    # )
+    # ly2 = min(
+    #     np.nanmin(np.concatenate((v_screen_cam_screen.y, v_cam_fov_screen.y, p_screen_outline.y, obj_y))),
+    #     -min_axis_length_screen,
+    # )
+    # lz2 = min(
+    #     np.nanmin(np.concatenate((v_screen_cam_screen.z, v_cam_fov_screen.z, p_screen_outline.z, obj_z))),
+    #     -min_axis_length_screen,
+    # )
+
+    # Add screen axes
+    x = p_screen_cent.x[0]
+    y = p_screen_cent.y[0]
+    z = p_screen_cent.z[0]
+    # Screen origin
+    Vxyz([x, y, z]).draw_line(view, style=rcps.marker(color="black"))
+    view.draw_xyz_text([x, y, z], "S", style=rctxt.default(color="black"))
+    # Screen X axis
+    Vxyz([[x, x + lx1], [y, y], [z, z]]).draw_line(view, style=rcps.outline(color="red"))
+    # Vxyz([[x, x + lx2], [y, y], [z, z]]).draw_line(view, style=rcps.outline(color="black"))
+    view.draw_xyz_text([x + lx1, y, z], "xs", style=rctxt.default())
+    # Screen Y axis
+    Vxyz([[x, x], [y, y + ly1], [z, z]]).draw_line(view, style=rcps.outline(color="green"))
+    # Vxyz([[x, x], [y, y + ly2], [z, z]]).draw_line(view, style=rcps.outline(color="black"))
+    view.draw_xyz_text([x, y + ly1, z], "ys", style=rctxt.default())
+    # Screen Z axis
+    Vxyz([[x, x], [y, y], [z, z + lz1]]).draw_line(view, style=rcps.outline(color="blue"))
+    # Vxyz([[x, x], [y, y], [z, z + lz2]]).draw_line(view, style=rcps.outline(color="black"))
+    view.draw_xyz_text([x, y, z + lz1], "zs", style=rctxt.default())
+    # # Screen X axis
+    # ax.plot([x, x + lx1], [y, y], [z, z], color="red")
+    # ax.plot([x, x + lx2], [y, y], [z, z], color="black")
+    # ax.text(x + lx1, y, z, "x")
+    # # Screen Y axis
+    # ax.plot([x, x], [y, y + ly1], [z, z], color="green")
+    # ax.plot([x, x], [y, y + ly2], [z, z], color="black")
+    # ax.text(x, y + ly1, z, "y")
+    # # Screen Z axis
+    # ax.plot([x, x], [y, y], [z, z + lz1], color="blue")
+    # ax.plot([x, x], [y, y], [z, z + lz2], color="black")
+    # ax.text(x, y, z + lz1, "z")
+
+    if sofast_is_fixed:
+        # Add screen points
+        p_screen_outline.draw_line(view, style=rcps.marker(color="blue"), label="Screen Points")
+    else:
+        # Add screen outline
+        # ax.plot(*p_screen_outline.data, color="red", label="Screen Outline")
+        p_screen_outline.draw_line(view, style=rcps.outline(color="red"), label="Screen Outline")
+
+    # # Add camera position origin
+    # ax.scatter(*v_screen_cam_screen.data, color="black")
+    # ax.text(*v_screen_cam_screen.data.squeeze(), "camera")
+
+    # # Add camera XYZ axes
+    # ax.plot(*v_cam_x_screen.data, color="red")
+    # ax.text(*v_cam_x_screen[1].data.squeeze(), "x", color="blue")
+    # ax.plot(*v_cam_y_screen.data, color="green")
+    # ax.text(*v_cam_y_screen[1].data.squeeze(), "y", color="blue")
+    # ax.plot(*v_cam_z_screen.data, color="blue")
+    # ax.text(*v_cam_z_screen[1].data.squeeze(), "z", color="blue")
+
+    # # Add camera FOV bounding box
+    # camera_to_FOV_color = 'grey'
+    # ax.plot(*v_cam_fov_screen.data, color=camera_to_FOV_color)
+
+    # # Add lines connecting camera origin and camera FOV corners.
+    # v_cam_to_cam_fov_0_screen = v_screen_cam_screen.concatenate(Vxyz(v_cam_fov_screen.data[:, 0]))
+    # ax.plot(*v_cam_to_cam_fov_0_screen.data, color=camera_to_FOV_color)
+    # v_cam_to_cam_fov_1_screen = v_screen_cam_screen.concatenate(Vxyz(v_cam_fov_screen.data[:, 1]))
+    # ax.plot(*v_cam_to_cam_fov_1_screen.data, color=camera_to_FOV_color)
+    # v_cam_to_cam_fov_2_screen = v_screen_cam_screen.concatenate(Vxyz(v_cam_fov_screen.data[:, 2]))
+    # ax.plot(*v_cam_to_cam_fov_2_screen.data, color=camera_to_FOV_color)
+    # v_cam_to_cam_fov_3_screen = v_screen_cam_screen.concatenate(Vxyz(v_cam_fov_screen.data[:, 3]))
+    # ax.plot(*v_cam_to_cam_fov_3_screen.data, color=camera_to_FOV_color)
+
+    # if v_screen_object_screen is not None:
+    #     # Add object position origin
+    #     ax.scatter(*v_screen_object_screen.data, color="black")
+    #     ax.text(*v_screen_object_screen.data.squeeze(), "object")
+
+    #     # Add object XYZ axes
+    #     ax.plot(*v_obj_x_screen.data, color="red")
+    #     ax.text(*v_obj_x_screen[1].data.squeeze(), "x", color="blue")
+    #     ax.plot(*v_obj_y_screen.data, color="green")
+    #     ax.text(*v_obj_y_screen[1].data.squeeze(), "y", color="blue")
+    #     ax.plot(*v_obj_z_screen.data, color="blue")
+    #     ax.text(*v_obj_z_screen[1].data.squeeze(), "z", color="blue")
+
+    # # Format and show
+    # if title is not None:
+    #     plt.title("SOFAST Physical Setup\n(Screen Coordinates)")
+    # ax.set_xlabel("X (meters)")
+    # ax.set_ylabel("Y (meters)")
+    # ax.set_zlabel("Z (meters)")
+    # plt.axis("equal")
+
+    # Set view axes to match the extent of the system.
+    # Also set equal axes to prevent z exaggeration.
+    system_x_min = -1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
+    system_x_max = 1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
+    system_y_min = -1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
+    system_y_max = 1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
+    limit_xy = max(abs(system_x_min), abs(system_x_max), abs(system_y_min), abs(system_y_max))
+    x_limits = [-limit_xy, limit_xy]
+    y_limits = [-limit_xy, limit_xy]
+    z_limits = [0, 2 * limit_xy]
+    if view.is_3d():
+        view.show(
+            equal=True, x_limits=x_limits, y_limits=y_limits, z_limits=z_limits, show=show, grid=True, legend=False
+        )
+    else:
+        view.show(equal=True, show=show, grid=True, legend=True)

@@ -5,6 +5,7 @@ import os.path
 
 import cv2 as cv
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 from numpy import ndarray
 from scipy.spatial.transform import Rotation
@@ -130,18 +131,17 @@ def process_singlefacet_geometry(
             (vs.view_spec_xz(), None),
             (vs.view_spec_yz(), None),
             (vs.view_spec_3d(), (20, 20, 0)),
+            (vs.view_spec_3d(), (-15, 135, 180)),
         ]
         for view_spec_az_el_roll in view_spec_az_el_roll_list:
             view_spec = view_spec_az_el_roll[0]
             az_el_roll_deg = view_spec_az_el_roll[1]
+            if az_el_roll_deg is None:
+                this_title = figure_title
+            else:
+                this_title = figure_title + ' (Az,El,Roll)=' + str(az_el_roll_deg)
             start_draw_and_finish_sofast_setup_figure(
-                figure_title,
-                view_spec,
-                camera,
-                orientation,
-                dist_optic_screen,
-                debug,
-                view_az_el_roll_deg=az_el_roll_deg,
+                this_title, view_spec, camera, orientation, dist_optic_screen, debug, view_az_el_roll_deg=az_el_roll_deg
             )
 
         # start_draw_and_finish_sofast_setup_figure(
@@ -1264,7 +1264,12 @@ def start_draw_and_finish_sofast_setup_figure(
     view_az_el_roll_deg: float = None,
 ) -> None:
     """Sets up and draws a figure showing SOFAST component origins, etc."""
-    fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=view_spec, equal=True, grid=True)
+    # Since SOFAST layout are complex and include multiple features and labels
+    # in close proximity, we make the figure larger, which has the effect of
+    # making the default asix linewidths, fonts, etc effectively smaller.
+    # fig_size = (12.8, 9.6)  # Inch.  Normal is (6.4, 4.8).
+    fig_size = (9.6, 7.2)  # Inch.  Normal is (6.4, 4.8).
+    fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=view_spec, equal=True, grid=True, figsize=fig_size)
 
     # Set view direction, if desired.
     if view_az_el_roll_deg is not None:
@@ -1283,11 +1288,11 @@ def start_draw_and_finish_sofast_setup_figure(
         )
         fig_rec.view.axis.view_init(azim=azimuth_deg, elev=elevation_deg, roll=roll_deg)
 
+    # Set the same tick mark interval for all axes, while still allowing automatic axis limits.
     # Source - https://stackoverflow.com/a/36229671
     # Posted by jthomas
     # Retrieved 2026-02-26, License - CC BY-SA 3.0
-    import matplotlib.ticker as ticker
-
+    #    import matplotlib.ticker as ticker
     if fig_rec.view.is_3d():
         tick_spacing = 0.5  # &&&& DELETE-SCAFFOLDING -- CONTROL OR PASS THIS IN
     else:
@@ -1310,7 +1315,7 @@ def start_draw_and_finish_sofast_setup_figure(
         orientation=orientation,
         dot_locations=None,
         length_z_axis_cam=dist_optic_screen,
-        axes_length=0.0625,
+        axis_length=0.0625,
         min_axis_length_screen=0.03125,
         v_screen_object_screen=None,
         r_object_screen=None,

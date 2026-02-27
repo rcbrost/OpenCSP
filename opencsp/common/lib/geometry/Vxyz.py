@@ -133,6 +133,10 @@ class Vxyz:
         """
         return self
 
+    def as_xyz_list(self) -> list[tuple]:
+        """Returns a list [(x1,y1,z1), (x2,y2,z2),...], where each (xi,yi,zi) is a tuple."""
+        return [(x, y, z) for x, y, z in zip(self.x, self.y, self.z)]
+
     @classmethod
     def _from_data(cls, data, dtype=None) -> "Vxyz":
         """
@@ -150,7 +154,7 @@ class Vxyz:
 
     @classmethod
     def from_list(cls, vals: list[Union["Vxyz", tuple]]):
-        """Builds a single Vxyz instance from a list of Vxyz or (x,y) instances."""
+        """Builds a single Vxyz instance from a list of Vxyz or (x,y,z) instances."""
         xs, ys, zs = [], [], []
         for val in vals:
             if isinstance(val, Vxyz):

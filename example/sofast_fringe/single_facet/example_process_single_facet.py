@@ -218,7 +218,7 @@ def process_single_facet(
     debug_figure_idx = 0
 
     # Draw reference mirror, to enable review of what is requested.
-    if True:  # False:  # draw_reference_mirror_overview:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    if False:  # draw_reference_mirror_overview:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         debug_figure_idx = draw_and_save_views_of_reference_mirror(
             mirror_reference=mirror_reference,
             facet_data=facet_data,
@@ -259,76 +259,47 @@ def process_single_facet(
     # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 1
 
     # Draw SOFAST setup, wthout a mirror.
-    # if sofast.params.debug_geometry.debug_active:
-    #     # 3-d
-    #     figure_title = "SOFAST Setup, Without Mirror, Before Process"
-    #     fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_3d())
-    #     # Version: SofastConfiguration class object.
-    #     config_for_plots = sfcfg.SofastConfiguration()
-    #     config_for_plots.load_sofast_object(sofast)
-    #     # Provide different display data depending on fringe or fixed.
-    #     config_for_plots.visualize_setup(
-    #         ax=fig_rec.view.axis,
-    #         title=None,
-    #         length_z_axis_cam=0.25,
-    #         axes_length=0.0625,
-    #         min_axis_length_screen=0.03125,
-    #         v_screen_object_screen=None,
-    #         r_object_screen=None,
-    #     )
-    #     # # Version: Stand-alone.
-    #     # sfcfg.visualize_sofast_setup(
-    #     #     sofast_is_fringe=True,
-    #     #     sofast_is_fixed=False,
-    #     #     camera=camera,
-    #     #     display=display,
-    #     #     orientation=orientation,
-    #     #     dot_locations=None,
-    #     #     ax=fig_rec.view.axis,
-    #     #     length_z_axis_cam=0.25,
-    #     #     axes_length=0.0625,
-    #     #     min_axis_length_screen=0.03125,
-    #     #     v_screen_object_screen=None,
-    #     #     r_object_screen=None,
-    #     # )
-    #     fig_rec.view.show()
-    #     sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
-    # # xy
-    # figure_title = "SOFAST Setup, Without Mirror"
-    # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_xy())
-    # config_for_plots = SofastConfiguration()
-    # config_for_plots.load_sofast_object(sofast)
-    # config_for_plots.visualize_setup(ax=fig_rec.view.axis)
-    # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
-    # # xz
-    # figure_title = "SOFAST Setup, Without Mirror"
-    # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_xz())
-    # config_for_plots = SofastConfiguration()
-    # config_for_plots.load_sofast_object(sofast)
-    # config_for_plots.visualize_setup(ax=fig_rec.view.axis)
-    # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
+    if sofast.params.debug_geometry.debug_active:
+        # 3-d
+        figure_title = "SOFAST Setup, Without Mirror, Before Process"
+        fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_3d())
+        # Version: SofastConfiguration class object.
+        config_for_plots = sfcfg.SofastConfiguration()
+        config_for_plots.load_sofast_object(sofast)
+        # Provide different display data depending on fringe or fixed.
+        config_for_plots.visualize_setup(
+            fig_rec.view,
+            title=None,
+            length_z_axis_cam=0.25,
+            axis_length=0.0625,
+            min_axis_length_screen=0.03125,
+            v_screen_object_screen=None,
+            r_object_screen=None,
+        )
+        fig_rec.view.show()
+        sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
 
     # Process SOFAST
-    # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 2
-    try:
-        # Process
-        sofast.process_optic_singlefacet(facet_data, fit_surface)
-        # Get measurement statistics
-        config = SofastConfiguration()
-        config.load_sofast_object(sofast)
-        measurement_stats = config.get_measurement_stats()
-    except ValueError:
-        # Save all debug figures
-        save_all_debug_figures(dir_save_cur, sofast)
-        return
-    # &&&& DELETE-SCAFFOLDING -- MIDDLE PASS-THROUGH HACK 2
-    # # Process
-    # sofast.process_optic_singlefacet(facet_data, fit_surface)
-    # # Get measurement statistics
-    # config = SofastConfiguration()
-    # config.load_sofast_object(sofast)
-    # measurement_stats = config.get_measurement_stats()
-    # # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 2
+    # # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 2
+    # try:
+    #     # Process
+    #     sofast.process_optic_singlefacet(facet_data, fit_surface)
+    #     # Get measurement statistics
+    #     config = SofastConfiguration()
+    #     config.load_sofast_object(sofast)
+    #     measurement_stats = config.get_measurement_stats()
+    # except ValueError:
+    #     # Save all debug figures
+    #     save_all_debug_figures(dir_save_cur, sofast)
+    #     return
+    # # &&&& DELETE-SCAFFOLDING -- MIDDLE PASS-THROUGH HACK 2
+    # Process
+    sofast.process_optic_singlefacet(facet_data, fit_surface)
+    # Get measurement statistics
+    config = SofastConfiguration()
+    config.load_sofast_object(sofast)
+    measurement_stats = config.get_measurement_stats()
+    # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 2
 
     # Save all debug figures
     save_all_debug_figures(dir_save_cur, sofast)

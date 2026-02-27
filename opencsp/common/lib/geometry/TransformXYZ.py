@@ -215,7 +215,7 @@ class TransformXYZ:
     def apply(self, V: Vxyz) -> Vxyz:
         """
         Applies 3D spatial transform to input vector by rotating then
-        translating. Returns a rotated copy of the input vector.
+        translating. Returns a rotated and translated copy of the input vector.
 
         Parameters
         ----------

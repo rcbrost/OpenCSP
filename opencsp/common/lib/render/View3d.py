@@ -773,7 +773,10 @@ class View3d(aph.AbstractPlotHandler):
             The style with which to draw the text, or None for rctxt.default(). By default None
         """
         if len(xyz) != 3:
-            lt.error_and_raise(ValueError, "ERROR: In draw_xyz_text(), len(xyz)=", len(xyz), " is not equal to 3.")
+            lt.error_and_raise(
+                ValueError,
+                "ERROR: In draw_xyz_text(), len(xyz)=" + str(len(xyz)) + " is not equal to 3 for xyz: " + str(xyz),
+            )
 
         if self.view_spec["type"] == "3d":
             self.axis.text(

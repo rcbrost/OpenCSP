@@ -50,11 +50,11 @@ def finish_debug_image_figure(
 
 
 def start_debug_3d_figure(
-    figure_title: str, view_spec: dict = vs.view_spec_3d(), equal: bool = True, grid=True
+    figure_title: str, view_spec: dict = vs.view_spec_3d(), equal: bool = True, grid=True, figsize=(6.4, 4.8)  # Inch
 ) -> rcfg.RenderControlFigure:
     """Begins a debug figure setup to show data in a 3-d space."""
     fig_rec = fm.setup_figure_for_3d_data(
-        figure_control=rcfg.RenderControlFigure(tile=False),
+        figure_control=rcfg.RenderControlFigure(tile=False, figsize=figsize),
         axis_control=rca.meters(grid=grid),
         view_spec=view_spec,
         equal=equal,

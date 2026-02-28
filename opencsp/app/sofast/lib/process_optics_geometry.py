@@ -141,7 +141,17 @@ def process_singlefacet_geometry(
             else:
                 this_title = figure_title + ' (Az,El,Roll)=' + str(az_el_roll_deg)
             start_draw_and_finish_sofast_setup_figure(
-                this_title, view_spec, camera, orientation, dist_optic_screen, debug, view_az_el_roll_deg=az_el_roll_deg
+                this_title,
+                view_spec,
+                camera,
+                facet_data,
+                orientation,
+                dist_optic_screen,
+                debug,
+                view_az_el_roll_deg=az_el_roll_deg,
+                grid=debug.draw_sofast_setup_axis_grid,
+                draw_embedding_mirror=debug.draw_sofast_setup_embedding_mirror,
+                draw_mirror_projection=debug.draw_sofast_setup_mirror_projection,
             )
 
         # start_draw_and_finish_sofast_setup_figure(
@@ -1256,12 +1266,16 @@ def start_draw_and_finish_sofast_setup_figure(
     figure_title: str,
     view_spec: dict,
     camera: Camera,
+    facet_data: DefinitionFacet,
     orientation: SpatialOrientation,
     dist_optic_screen: float,
     debug: DebugOpticsGeometry,
     v_screen_object_screen: Vxyz = None,
     r_object_screen: Rotation = None,
     view_az_el_roll_deg: float = None,
+    grid: bool = True,
+    draw_embedding_mirror: bool = True,
+    draw_mirror_projection: bool = True,
 ) -> None:
     """Sets up and draws a figure showing SOFAST component origins, etc."""
     # Since SOFAST layout are complex and include multiple features and labels
@@ -1269,7 +1283,7 @@ def start_draw_and_finish_sofast_setup_figure(
     # making the default asix linewidths, fonts, etc effectively smaller.
     # fig_size = (12.8, 9.6)  # Inch.  Normal is (6.4, 4.8).
     fig_size = (9.6, 7.2)  # Inch.  Normal is (6.4, 4.8).
-    fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=view_spec, equal=True, grid=True, figsize=fig_size)
+    fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=view_spec, equal=True, grid=grid, figsize=fig_size)
 
     # Set view direction, if desired.
     if view_az_el_roll_deg is not None:
@@ -1312,8 +1326,12 @@ def start_draw_and_finish_sofast_setup_figure(
         sofast_is_fixed=False,
         camera=camera,
         display=debug.display,  # Used only for diagnostic rendering.
-        orientation=orientation,
+        mirror=debug.mirror,  # Used only for diagnostic rendering.
+        facet_data=facet_data,
         dot_locations=None,
+        orientation=orientation,
+        draw_embedding_mirror=draw_embedding_mirror,
+        draw_mirror_projection=draw_mirror_projection,
         length_z_axis_cam=dist_optic_screen,
         axis_length=0.0625,
         min_axis_length_screen=0.03125,

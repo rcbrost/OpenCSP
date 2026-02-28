@@ -16,9 +16,12 @@ class RenderControlMirrorProjected:
 
     def __init__(
         self,
+        draw_lifted: bool = True,
         lifted_line_style: RenderControlPointSeq = None,
         lifted_vertex_style: RenderControlPointSeq = None,
+        draw_projected: bool = True,
         projected_style: RenderControlPointSeq = None,
+        draw_connection: bool = True,
         connection_style: RenderControlPointSeq = None,
         slice_n_vertices: int = 9,
         slice_fine_n_vertices: int = 41,
@@ -28,15 +31,24 @@ class RenderControlMirrorProjected:
 
         Parameters
         ----------
+        draw_lifted : bool, optional
+            Whether to draw the lifted boundary.
+            Default True.
         lifted_line_style : RenderControlPointSeq | None, optional
             Style to draw the contour of the lifted slice.
             Default None.
         lifted_vertex_style : RenderControlPointSeq | None, optional
             Style to draw the coarse vertices of the lifted slice.
             Default None.
+        draw_projected : bool, optional
+            Whether to draw the projected boundary.
+            Default True.
         projected_style: RenderControlPointSeq | None, optional
             Style to draw the projected slice.
             Default None.
+        draw_connection : bool, optional
+            Whether to draw the connection_lines.
+            Default True.
         connection_style: RenderControlPointSeq | None, optional
             Style to draw the connection line between the projected and lifted slices.
             Default None.
@@ -45,9 +57,12 @@ class RenderControlMirrorProjected:
         slice_fine_n_vertices:int, optional
             Default 41.
         """
+        self.draw_lifted = draw_lifted
         self.lifted_line_style = lifted_line_style
         self.lifted_vertex_style = lifted_vertex_style
+        self.draw_projected = draw_projected
         self.projected_style = projected_style
+        self.draw_connection = draw_connection
         self.connection_style = connection_style
         self.slice_n_vertices = slice_n_vertices
         self.slice_fine_n_vertices = slice_fine_n_vertices
@@ -81,4 +96,25 @@ def mirror_boundary(boundary_color: str = 'red', projected_color: str = 'blue') 
         lifted_vertex_style=rcps.marker(color=boundary_color, markersize=2),
         projected_style=rcps.outline(color=projected_color),
         connection_style=rcps.outline(color=projected_color, linewidth=0.6),
+    )
+
+
+def mirror_lifted(boundary_color: str = 'red') -> RenderControlMirrorProjected:
+    """Style for drawing the projection of a mirror XyRegion up to the embedding surface."""
+    return RenderControlMirrorProjected(
+        draw_lifted=True,
+        lifted_line_style=rcps.outline(color=boundary_color),
+        lifted_vertex_style=rcps.marker(color=boundary_color, markersize=2),
+        draw_projected=False,
+        draw_connection=False,
+    )
+
+
+def mirror_projected(projected_color: str = 'red') -> RenderControlMirrorProjected:
+    """Style for drawing the projection of a mirror XyRegion up to the embedding surface."""
+    return RenderControlMirrorProjected(
+        draw_lifted=False,
+        draw_projected=True,
+        projected_style=rcps.outline(color=projected_color),
+        draw_connection=False,
     )

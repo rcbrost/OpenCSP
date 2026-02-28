@@ -15,3 +15,11 @@ class DebugOpticsGeometry:
         """Incrementing figure index, so figures appear in order created."""
         self.display = None
         """Used for diagnostic output showing SOFAST setup."""
+        self.mirror = None
+        """Used for diagnostic output showing SOFAST setup."""
+        self.draw_sofast_setup_axis_grid = True
+        """Used for diagnostic output showing SOFAST setup."""
+        self.draw_sofast_setup_embedding_mirror = True
+        """Used for diagnostic output showing SOFAST setup."""
+        self.draw_sofast_setup_mirror_projection = True
+        """Used for diagnostic output showing SOFAST setup."""

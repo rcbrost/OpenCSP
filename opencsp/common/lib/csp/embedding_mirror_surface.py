@@ -120,6 +120,7 @@ def draw_mirror_and_embedding_mirror(
     exaggerate_z=False,
     exaggerated_zlim: float | None = None,
     mirror_style: rcm.RenderControlMirror = None,
+    draw_embedding: bool = True,
     draw_projection: bool = True,
     projected_style: rcmp.RenderControlMirrorProjected = None,
     embedding_style: rcme.RenderControlMirrorEmbedded = None,
@@ -138,6 +139,9 @@ def draw_mirror_and_embedding_mirror(
         View to display the mirror.
     mirror_style : RenderControlMirror, optional
         Attributes for drawing mirror features.  Default None.
+    draw_embedding : bool, optional
+        Whether to draw the embedding mirror surface.
+        Default True.
     draw_projection : bool, optional
         Whether to draw the projection of the mirror boundary onto the (x,y) plane.
         Default True.
@@ -172,24 +176,25 @@ def draw_mirror_and_embedding_mirror(
             z_limits = [0, 2.0 * embedding_z_max]
     view.show(x_limits=x_limits, y_limits=y_limits, z_limits=z_limits, show=show)
 
-    # Draw second mirror showing embedding surface.
-    embedding_mirror.draw(view=view, mirror_style=mirror_style, draw_projection=False, transform=transform)
+    if draw_embedding:
+        # Draw second mirror showing embedding surface.
+        embedding_mirror.draw(view=view, mirror_style=mirror_style, draw_projection=False, transform=transform)
 
-    # Draw slices of embedding surface.
-    embedding_mirror.draw_surface_mesh(
-        view,
-        n_slices_x=embedding_style.n_slices_x,
-        project_slices_x=embedding_style.project_slices_x,
-        draw_special_origin_slice_x=embedding_style.draw_special_origin_slice_x,
-        project_origin_slice_x=embedding_style.project_origin_slice_x,
-        n_slices_y=embedding_style.n_slices_y,
-        project_slices_y=embedding_style.project_slices_y,
-        draw_special_origin_slice_y=embedding_style.draw_special_origin_slice_y,
-        project_origin_slice_y=embedding_style.project_origin_slice_y,
-        slice_style=embedding_style.slice_style,
-        origin_slice_style=embedding_style.origin_slice_style,
-        transform=transform,
-    )
+        # Draw slices of embedding surface.
+        embedding_mirror.draw_surface_mesh(
+            view,
+            n_slices_x=embedding_style.n_slices_x,
+            project_slices_x=embedding_style.project_slices_x,
+            draw_special_origin_slice_x=embedding_style.draw_special_origin_slice_x,
+            project_origin_slice_x=embedding_style.project_origin_slice_x,
+            n_slices_y=embedding_style.n_slices_y,
+            project_slices_y=embedding_style.project_slices_y,
+            draw_special_origin_slice_y=embedding_style.draw_special_origin_slice_y,
+            project_origin_slice_y=embedding_style.project_origin_slice_y,
+            slice_style=embedding_style.slice_style,
+            origin_slice_style=embedding_style.origin_slice_style,
+            transform=transform,
+        )
 
     # Draw primary mirror.
     input_mirror.draw(

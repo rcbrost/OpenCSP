@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+from opencsp.app.sofast.lib.DefinitionFacet import DefinitionFacet
 from opencsp.app.sofast.lib.DisplayShape import DisplayShape as Display
 from opencsp.app.sofast.lib.DotLocationsFixedPattern import DotLocationsFixedPattern
 from opencsp.app.sofast.lib.ProcessSofastFixed import ProcessSofastFixed
@@ -14,10 +15,15 @@ from opencsp.app.sofast.lib.ProcessSofastFringe import ProcessSofastFringe
 from opencsp.app.sofast.lib.SpatialOrientation import SpatialOrientation
 from opencsp.common.lib.deflectometry.Surface2DParabolic import Surface2DParabolic
 from opencsp.common.lib.camera.Camera import Camera
+import opencsp.common.lib.csp.embedding_mirror_surface as ems
+from opencsp.common.lib.csp.MirrorParametric import MirrorParametric
 import opencsp.common.lib.geometry.TransformXYZ as txyz
 from opencsp.common.lib.geometry.Vxy import Vxy
 from opencsp.common.lib.geometry.Vxyz import Vxyz
 from opencsp.common.lib.render.View3d import View3d
+import opencsp.common.lib.render_control.RenderControlMirror as rcm
+import opencsp.common.lib.render_control.RenderControlMirrorEmbedded as rcme
+import opencsp.common.lib.render_control.RenderControlMirrorProjected as rcmp
 import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
 import opencsp.common.lib.render_control.RenderControlText as rctxt
 import opencsp.common.lib.tool.log_tools as lt
@@ -166,8 +172,12 @@ class SofastConfiguration:
             camera=self.data_sofast_object.camera,
             display=display_local,
             dot_locations=dot_locations_local,
+            mirror=mirror,
+            facet_data=facet_data,
             orientation=self.data_sofast_object.orientation,
             title=title,
+            draw_embedding_mirror=draw_embedding_mirror,
+            draw_mirror_projection=draw_mirror_projection,
             length_z_axis_cam=length_z_axis_cam,
             axis_length=axis_length,
             min_axis_length_screen=min_axis_length_screen,
@@ -190,8 +200,12 @@ def visualize_sofast_setup(
     camera: Camera,
     display: Display,
     dot_locations: DotLocationsFixedPattern | None,
+    mirror: MirrorParametric,
+    facet_data: DefinitionFacet,
     orientation: SpatialOrientation,
     title: str = None,
+    draw_embedding_mirror: bool = True,
+    draw_mirror_projection: bool = True,
     length_z_axis_cam: float = 8,
     axis_length: float = 0.1,
     min_axis_length_screen: float = 2,
@@ -227,6 +241,12 @@ def visualize_sofast_setup(
         between key SOFAST coordinate systems (CSYS): Camera CSYS, Screen CSYS, Mirror CSYS
     dot_locations: DotLocationsFixedPattern | None
         For SOFAST Fixed setups, thisis thepattern of dots on the screen.
+    mirror: MirrorParametric
+        Model of nominal mirror to be measured in the setup.
+    facet_data: DefinitionFacet
+        Additional mirror information, including centroid, normal at centroid, and vertex list.
+    orientation: SpatialOrientation
+        Data structure containing spatial relationships between primary SOFAST components.
     title: str = None
         Title to write a thte top of the plot.  If handled by calling code, pass in None.
     length_z_axis_cam : float, optional
@@ -395,7 +415,13 @@ def visualize_sofast_setup(
     camera_rotation = Rotation.from_euler('zx', [60.0, -15.0], degrees=True)
     # camera_rotation = Rotation.from_euler('zx', [130.0, -75.0], degrees=True)
     camera_translation = Vxyz([-0.125, 0.25, 0.375])
-    camera_and_mirror_transform = txyz.TransformXYZ.from_R_V(R=camera_rotation, V=camera_translation)
+    camera_transform = txyz.TransformXYZ.from_R_V(R=camera_rotation, V=camera_translation)
+
+    # Mirror pose.
+    mirror_rotation = Rotation.from_euler('zx', [-30.0, 45.0], degrees=True)
+    mirror_translation = Vxyz([0.25, -0.325, 0.1])
+    mirror_transform = txyz.TransformXYZ.from_R_V(R=mirror_rotation, V=mirror_translation)
+    # mirror_transform = None
 
     # Draw screen.
     transformed_screen_origin = draw_screen(
@@ -407,6 +433,7 @@ def visualize_sofast_setup(
         transform=screen_transform,
         axis_length=axis_length,
     )
+
     # Draw camera
     z_axis_fov_distance = 0.6  # m
     transformed_camera_origin = draw_camera(
@@ -414,36 +441,28 @@ def visualize_sofast_setup(
         camera,
         z_axis_fov_distance=z_axis_fov_distance,
         show_fov_lens_distortion=False,
-        transform=camera_and_mirror_transform,
+        transform=camera_transform,
         axis_length=axis_length,
     )
 
-    # Add mirror axes
-    mirror_short_name = 'M'
-    mirror_long_name = 'Mirror'
-    mirror_origin_color = (1, 0, 1)  # Magenta
-    mirror_label_color = (0.8, 0, 0.8)  # Dark magenta, for contrast with origin dot
-    mirror_origin = Vxyz([-0.11, -0.22, 0.33])
-    draw_csys(
+    # Draw mirror
+    transformed_mirror_origin = draw_mirror(
         view,
-        origin=mirror_origin,
-        transform=camera_and_mirror_transform,
-        origin_color=mirror_origin_color,
-        draw_origin_label=True,
-        draw_axis_labels=False,
-        label_color=mirror_label_color,
-        short_name=mirror_short_name,
-        long_name=mirror_long_name,
+        mirror,
+        facet_data,
+        draw_embedding=draw_embedding_mirror,
+        draw_projection=draw_mirror_projection,
+        transform=mirror_transform,
         axis_length=axis_length,
     )
 
     # Add a vector from camera to mirror
     v_camera_to_mirror_color = 'green'
-    v_camera_to_mirror_in_camera_coordinates = mirror_origin
+    v_camera_to_mirror_in_camera_coordinates = transformed_mirror_origin
     draw_annotated_vector_from_origin(
         view=view,
         vector=v_camera_to_mirror_in_camera_coordinates,
-        transform=camera_and_mirror_transform,
+        transform=camera_transform,
         line_style=annotated_vector_line_style(color=v_camera_to_mirror_color),
         draw_base=True,
         base_style=annotated_vector_base_style(color=v_camera_to_mirror_color),
@@ -452,27 +471,6 @@ def visualize_sofast_setup(
         short_name='C->M',
         long_name='Camera to Mirror',
     )
-
-    # if v_screen_object_screen is not None:
-    #     # Add object position origin
-    #     ax.scatter(*v_screen_object_screen.data, color="black")
-    #     ax.text(*v_screen_object_screen.data.squeeze(), "object")
-
-    #     # Add object XYZ axes
-    #     ax.plot(*v_obj_x_screen.data, color="red")
-    #     ax.text(*v_obj_x_screen[1].data.squeeze(), "x", color="blue")
-    #     ax.plot(*v_obj_y_screen.data, color="green")
-    #     ax.text(*v_obj_y_screen[1].data.squeeze(), "y", color="blue")
-    #     ax.plot(*v_obj_z_screen.data, color="blue")
-    #     ax.text(*v_obj_z_screen[1].data.squeeze(), "z", color="blue")
-
-    # # Format and show
-    # if title is not None:
-    #     plt.title("SOFAST Physical Setup\n(Screen Coordinates)")
-    # ax.set_xlabel("X (meters)")
-    # ax.set_ylabel("Y (meters)")
-    # ax.set_zlabel("Z (meters)")
-    # plt.axis("equal")
 
     # Set view axes to match the extent of the system.
     # Also set equal axes to prevent z exaggeration.
@@ -485,11 +483,9 @@ def visualize_sofast_setup(
     y_limits = [-limit_xy, limit_xy]
     z_limits = [0, 2 * limit_xy]
     if view.is_3d():
-        view.show(
-            equal=True, x_limits=x_limits, y_limits=y_limits, z_limits=z_limits, show=show, grid=True, legend=False
-        )
+        view.show(equal=True, x_limits=x_limits, y_limits=y_limits, z_limits=z_limits, show=show, legend=False)
     else:
-        view.show(equal=True, show=show, grid=True, legend=True)
+        view.show(equal=True, show=show, legend=True)
 
     # Provide handle to a breakpoint to search the stack for this routine in the debugger.
     return
@@ -993,6 +989,82 @@ def draw_screen(
     # Draw center point.
     center_style = rcps.marker(marker="+", color=color, markersize=15)
     transformed_screen_center.draw_points(view, style=center_style, labels=['Screen Center'])
+
+    # Draw coordinate system.
+    transformed_origin = draw_csys(
+        view,
+        origin=Vxyz([0, 0, 0]),
+        transform=transform,
+        origin_color=color,
+        draw_origin_label=True,
+        draw_axis_labels=False,
+        label_color=label_color,
+        short_name=short_name,
+        long_name=long_name,
+        axis_length=axis_length,
+    )
+
+    # Return.
+    return transformed_origin
+
+
+def draw_mirror(
+    view: View3d,
+    mirror: MirrorParametric,
+    facet_data: DefinitionFacet,
+    transform: txyz.TransformXYZ = None,
+    color: str | tuple[float, float, float] = 'magenta',
+    mirror_style: rcm.RenderControlMirror = rcm.RenderControlMirror(),
+    needle_length: float = 0.1,  # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
+    draw_embedding: bool = True,
+    draw_projection: bool = True,
+    projected_style: rcmp.RenderControlMirrorProjected = rcmp.mirror_boundary(),
+    embedding_style: rcme.RenderControlMirrorEmbedded = rcme.standard_embedding_mirror(),
+    short_name: str = 'M',
+    long_name: str = 'Mirror',
+    axis_length: float = 0.1,
+) -> Vxyz:
+    # Ensure that a transform is available.
+    if transform is None:
+        transform = txyz.identity_transform()
+
+    # Example colors to use if a contrasting label is desired.
+    #     color = (1, 0, 1)  # Magenta
+    #     label_color = (0.8, 0, 0.8)  # Dark magenta, for contrast with origin dot
+    label_color = color
+
+    # Draw the mirror and its embedding surface.
+    mirror_style = rcm.RenderControlMirror()
+    embedding_style = rcme.RenderControlMirrorEmbedded(margin=0.01, round_to=0.25)
+    # We have to draw the projection to get the lifted boundary.
+    # So we interpret "draw_projection" as whether to draw the
+    # projected boundary and conneciton lines.
+    if draw_projection:
+        projected_style = rcmp.mirror_boundary(boundary_color=color)  # Let projected color default.
+    else:
+        projected_style = rcmp.mirror_lifted(boundary_color=color)
+    ems.draw_mirror_and_embedding_mirror(
+        mirror,
+        view=view,
+        mirror_style=mirror_style,
+        draw_embedding=draw_embedding,
+        draw_projection=True,  # See above.
+        projected_style=projected_style,
+        embedding_style=embedding_style,
+        transform=transform,
+    )
+
+    # Draw the mirror centroid defined by the facet definition file.
+    # Apply transform
+    transformed_v_facet_centroid = transform.apply(facet_data.v_facet_centroid)
+    transformed_u_facet_centroid_normal = transform.apply(facet_data.u_facet_centroid_normal)
+    # Draw centroid
+    transformed_v_facet_centroid.draw_points(view, style=rcps.marker(color=color))
+    # Surface normal at facet centroid
+    needle_base = transformed_v_facet_centroid
+    needle_tip = needle_base + (transformed_u_facet_centroid_normal.as_Vxyz() * needle_length)
+    needle = Vxyz.from_list((needle_base, needle_tip))
+    needle.draw_line(view, style=rcps.outline(color=color))
 
     # Draw coordinate system.
     transformed_origin = draw_csys(

@@ -490,9 +490,12 @@ class MirrorAbstract(RayTraceable, VisualizeOrthorectifiedSlopeAbstract, OpticOr
         if draw_projection:
             if projected_style is None:
                 projected_style = rcmp.RenderControlMirrorProjected(
+                    draw_lifted=True,
                     lifted_line_style=rcps.outline(color='red'),
                     lifted_vertex_style=rcps.marker(color='red', markersize=2),
+                    draw_projected=True,
                     projected_style=rcps.outline(color='blue'),
+                    draw_connection=True,
                     connection_style=rcps.outline(color='blue', linewidth=0.6),
                 )
             # Draw defining region.
@@ -503,22 +506,22 @@ class MirrorAbstract(RayTraceable, VisualizeOrthorectifiedSlopeAbstract, OpticOr
             # Fine-resolution lifted boundary, showing edge curvature.
             fine_projected_boundary_xy = Vxy.merge([loop.edge_sample(20) for loop in self.region.loops])
             fine_lifted_boundary_xyz = self.lift_xy(fine_projected_boundary_xy)
-            if projected_style.projected_style is not None:
+            if projected_style.draw_projected and (projected_style.projected_style is not None):
                 # Draw projected boundary.
                 transform.apply(projected_boundary_xyz).draw_line(
                     view, close=True, style=projected_style.projected_style
                 )
-            if projected_style.connection_style is not None:
+            if projected_style.draw_connection and (projected_style.connection_style is not None):
                 # Draw lines connecting projected boundary vertices to lifted boundary vertices.
                 projected_to_lifted_boundary_lines_xyz = connection_lines(projected_boundary_xyz, lifted_boundary_xyz)
                 for line_xyz in projected_to_lifted_boundary_lines_xyz:
                     transform.apply(line_xyz).draw_line(view, close=False, style=projected_style.connection_style)
-            if projected_style.lifted_line_style is not None:
+            if projected_style.draw_lifted and (projected_style.lifted_line_style is not None):
                 # Draw lifted boundary.
                 transform.apply(fine_lifted_boundary_xyz).draw_line(
                     view, close=True, style=projected_style.lifted_line_style
                 )
-            if projected_style.lifted_vertex_style is not None:
+            if projected_style.draw_lifted and (projected_style.lifted_vertex_style is not None):
                 # Draw lifted vertices last.
                 transform.apply(lifted_boundary_xyz).draw_line(
                     view, close=True, style=projected_style.lifted_vertex_style

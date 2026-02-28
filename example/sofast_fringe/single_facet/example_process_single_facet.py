@@ -248,18 +248,22 @@ def process_single_facet(
     # Turn on debug mode
     # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 1
     # if verbose:
-    if True:
+    if True:  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_geometry.debug_active = False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_geometry.save_dir = dir_save_cur
         sofast.params.debug_geometry.figure_idx = debug_figure_idx
         sofast.params.debug_geometry.display = display  # Used only for diagnostic rendering.
+        sofast.params.debug_geometry.mirror = mirror_reference  # Used only for diagnostic rendering.
+        sofast.params.debug_geometry.draw_sofast_setup_axis_grid = True  # Used only for diagnostic rendering.
+        sofast.params.debug_geometry.draw_sofast_setup_embedding_mirror = False  # Used only for diagnostic rendering.
+        sofast.params.debug_geometry.draw_sofast_setup_mirror_projection = False  # Used only for diagnostic rendering.
         sofast.params.debug_slope_solver.debug_active = False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_slope_solver.save_dir = dir_save_cur
         sofast.params.debug_slope_solver.figure_idx = 100
     # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 1
 
     # Draw SOFAST setup, wthout a mirror.
-    if sofast.params.debug_geometry.debug_active:
+    if sofast.params.debug_geometry.debug_active:  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         # 3-d
         figure_title = "SOFAST Setup, Without Mirror, Before Process"
         fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_3d())

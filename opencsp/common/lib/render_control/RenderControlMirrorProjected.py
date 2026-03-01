@@ -90,7 +90,10 @@ def mirror_origin_contour(slice_n_vertices: int = 5) -> RenderControlMirrorProje
 
 
 def mirror_boundary(boundary_color: str = 'red', projected_color: str = 'blue') -> RenderControlMirrorProjected:
-    """Style for drawing the projection of a mirror XyRegion up to the embedding surface."""
+    """
+    Style for drawing both the RegionXY curve on the (x,y) plane and the lifted boundary
+    on the embedding surface, as well as the connection lines between them.
+    """
     return RenderControlMirrorProjected(
         lifted_line_style=rcps.outline(color=boundary_color),
         lifted_vertex_style=rcps.marker(color=boundary_color, markersize=2),
@@ -100,7 +103,7 @@ def mirror_boundary(boundary_color: str = 'red', projected_color: str = 'blue') 
 
 
 def mirror_lifted(boundary_color: str = 'red') -> RenderControlMirrorProjected:
-    """Style for drawing the projection of a mirror XyRegion up to the embedding surface."""
+    """Style for drawing the mirror boundary resulting from lifting the RegionXY up to the embedding surface."""
     return RenderControlMirrorProjected(
         draw_lifted=True,
         lifted_line_style=rcps.outline(color=boundary_color),
@@ -111,7 +114,7 @@ def mirror_lifted(boundary_color: str = 'red') -> RenderControlMirrorProjected:
 
 
 def mirror_projected(projected_color: str = 'red') -> RenderControlMirrorProjected:
-    """Style for drawing the projection of a mirror XyRegion up to the embedding surface."""
+    """Style for drawing the RegionXY curve on the (x,y) plane that will be lifted to the embedding surface."""
     return RenderControlMirrorProjected(
         draw_lifted=False,
         draw_projected=True,

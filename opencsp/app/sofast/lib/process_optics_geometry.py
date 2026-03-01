@@ -29,7 +29,12 @@ import opencsp.common.lib.render.figure_management as fm
 import opencsp.common.lib.render.view_spec as vs
 import opencsp.common.lib.render_control.RenderControlAxis as rca
 import opencsp.common.lib.render_control.RenderControlFigure as rcfg
+import opencsp.common.lib.render_control.RenderControlMirror as rcm
+import opencsp.common.lib.render_control.RenderControlMirrorProjected as rcmp
+import opencsp.common.lib.render_control.RenderControlMirrorEmbedded as rcme
 import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
+import opencsp.common.lib.render_control.RenderControlSofastSetup as rcss
+
 import opencsp.common.lib.tool.log_tools as lt
 
 
@@ -1326,17 +1331,17 @@ def start_draw_and_finish_sofast_setup_figure(
         sofast_is_fixed=False,
         camera=camera,
         display=debug.display,  # Used only for diagnostic rendering.
+        dot_locations=None,  # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
         mirror=debug.mirror,  # Used only for diagnostic rendering.
         facet_data=facet_data,
-        dot_locations=None,
         orientation=orientation,
-        draw_embedding_mirror=draw_embedding_mirror,
-        draw_mirror_projection=draw_mirror_projection,
-        length_z_axis_cam=dist_optic_screen,
-        axis_length=0.0625,
-        min_axis_length_screen=0.03125,
+        sofast_setup_style=rcss.RenderControlSofastSetup(),
+        mirror_needle_length=0.1,
+        axis_length=0.1,
         v_screen_object_screen=None,
         r_object_screen=None,
+        show=True,  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
     )
+
     # fig_rec.view.show()  # Uncomment to rotate view.
     sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)

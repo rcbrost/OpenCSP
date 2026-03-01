@@ -25,6 +25,11 @@ import opencsp.common.lib.render_control.RenderControlMirror as rcm
 import opencsp.common.lib.render_control.RenderControlMirrorEmbedded as rcme
 import opencsp.common.lib.render_control.RenderControlMirrorProjected as rcmp
 import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
+import opencsp.common.lib.render_control.RenderControlSofastWorld as rcsw
+import opencsp.common.lib.render_control.RenderControlSofastScreen as rcss
+import opencsp.common.lib.render_control.RenderControlSofastSetup as rcssp
+import opencsp.common.lib.render_control.RenderControlSofastCamera as rcsc
+import opencsp.common.lib.render_control.RenderControlSofastMirror as rcsm
 import opencsp.common.lib.render_control.RenderControlText as rctxt
 import opencsp.common.lib.tool.log_tools as lt
 
@@ -203,12 +208,10 @@ def visualize_sofast_setup(
     mirror: MirrorParametric,
     facet_data: DefinitionFacet,
     orientation: SpatialOrientation,
-    title: str = None,
-    draw_embedding_mirror: bool = True,
-    draw_mirror_projection: bool = True,
-    length_z_axis_cam: float = 8,
-    axis_length: float = 0.1,
-    min_axis_length_screen: float = 2,
+    sofast_setup_style: rcssp.RenderControlSofastSetup = rcssp.RenderControlSofastSetup(),
+    z_axis_fov_distance: float = 0.6,  # m
+    mirror_needle_length=0.1,  # m
+    axis_length: float = 0.1,  # m
     v_screen_object_screen: Vxyz = None,
     r_object_screen: Rotation = None,
     show: bool = True,  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
@@ -229,7 +232,7 @@ def visualize_sofast_setup(
         View to to draw on.
     sofast_is_fringe: bool
         True if this is a SOFAST fringe setup.  Displays a screen rectangle.
-    sofast_is_fixed: bool,
+    sofast_is_fixed: bool
         True if this is a SOFAST fixed setup.  Displays a screen dot pattern.
     camera: Camera
         SOFAST camera model.
@@ -247,19 +250,19 @@ def visualize_sofast_setup(
         Additional mirror information, including centroid, normal at centroid, and vertex list.
     orientation: SpatialOrientation
         Data structure containing spatial relationships between primary SOFAST components.
-    title: str = None
-        Title to write a thte top of the plot.  If handled by calling code, pass in None.
-    length_z_axis_cam : float, optional
-        Length of camera z axis to draw (m), by default 8
+    sofast_setup_style: RenderControlSofastSetup, optional
+        Rendering control parameters for the SOFAST setup and its components.
+    z_axis_fov_distance : float
+        Distance from camera front nodal point (origin) to draw the
+        field of view (FOV) boundary.  A good choice is to set this
+        to the distance from the camera to the observed mirror.
+    mirror_needle_length, float
+        Length to draw surface normal needles at the mirror centroid and vertices.
     axis_length : float, optional
         Length to draw individual coordinate system x, y, and z axes.
         This should be chosen to ensure legibility given the size of
         the SOFAST layout, which can vary widely.
         Default 0.1.
-    min_axis_length_screen : float, optional
-        Minimum length of axes to draw (m), by default 2
-    ax : plt.Axes | None, optional
-        3d matplotlib axes, if None, creates new axes, by default None
     v_screen_object_screen : Vxyz, optional
         Vector (m), screen to object in screen reference frame, by default None.
         If None, the object reference frame is not plotted.
@@ -273,6 +276,9 @@ def visualize_sofast_setup(
 
     # Calculate camera position
     v_screen_cam_screen = -orientation.v_cam_screen_screen
+
+    # Choose length of camera z axis.
+    length_z_axis_cam = 12  # m
 
     # Calculate camera FOV
     x = camera.image_shape_xy[0]
@@ -303,108 +309,15 @@ def visualize_sofast_setup(
         p_screen_outline = Vxyz((dot_loc_array[..., 0], dot_loc_array[..., 1], dot_loc_array[..., 2]))
         p_screen_cent = dot_locations.xy_indices_to_screen_coordinates(Vxy([0, 0], dtype=int))
 
-    # # Define positive xyz screen axes extent
-    # lx1 = 0.05
-    # ly1 = 0.05
-    # lz1 = 0.05
-    # # if v_screen_object_screen is None:
-    # #     obj_x = [np.nan]
-    # #     obj_y = [np.nan]
-    # #     obj_z = [np.nan]
-    # # else:
-    # #     obj_x = v_screen_object_screen.x
-    # #     obj_y = v_screen_object_screen.y
-    # #     obj_z = v_screen_object_screen.z
-    # # lx1 = max(
-    # #     np.nanmax(np.concatenate((v_screen_cam_screen.x, v_cam_fov_screen.x, p_screen_outline.x, obj_x))),
-    # #     min_axis_length_screen,
-    # # )
-    # # ly1 = max(
-    # #     np.nanmax(np.concatenate((v_screen_cam_screen.y, v_cam_fov_screen.y, p_screen_outline.y, obj_y))),
-    # #     min_axis_length_screen,
-    # # )
-    # # lz1 = max(
-    # #     np.nanmax(np.concatenate((v_screen_cam_screen.z, v_cam_fov_screen.z, p_screen_outline.z, obj_z))),
-    # #     min_axis_length_screen,
-    # # )
-    # # # Define negative xyz screen axes extent
-    # # lx2 = min(
-    # #     np.nanmin(np.concatenate((v_screen_cam_screen.x, v_cam_fov_screen.x, p_screen_outline.x, obj_x))),
-    # #     -min_axis_length_screen,
-    # # )
-    # # ly2 = min(
-    # #     np.nanmin(np.concatenate((v_screen_cam_screen.y, v_cam_fov_screen.y, p_screen_outline.y, obj_y))),
-    # #     -min_axis_length_screen,
-    # # )
-    # # lz2 = min(
-    # #     np.nanmin(np.concatenate((v_screen_cam_screen.z, v_cam_fov_screen.z, p_screen_outline.z, obj_z))),
-    # #     -min_axis_length_screen,
-    # # )
+    # World box.
+    world_x_limits = (-1.0, 1.0)
+    world_y_limits = (-1.0, 1.0)
+    world_z_limits = (0.0, 2.0)
 
-    # # Add screen axes
-    # x = p_screen_cent.x[0]
-    # y = p_screen_cent.y[0]
-    # z = p_screen_cent.z[0]
-    # # Screen origin
-    # Vxyz([x, y, z]).draw_line(view, style=rcps.marker(color="black"))
-    # view.draw_xyz_text([x, y, z], "S", style=rctxt.default(color="black"))
-    # # Screen X axis
-    # Vxyz([[x, x + lx1], [y, y], [z, z]]).draw_line(view, style=rcps.outline(color="red"))
-    # # Vxyz([[x, x + lx2], [y, y], [z, z]]).draw_line(view, style=rcps.outline(color="black"))
-    # view.draw_xyz_text([x + lx1, y, z], "xs", style=rctxt.default())
-    # # Screen Y axis
-    # Vxyz([[x, x], [y, y + ly1], [z, z]]).draw_line(view, style=rcps.outline(color="green"))
-    # # Vxyz([[x, x], [y, y + ly2], [z, z]]).draw_line(view, style=rcps.outline(color="black"))
-    # view.draw_xyz_text([x, y + ly1, z], "ys", style=rctxt.default())
-    # # Screen Z axis
-    # Vxyz([[x, x], [y, y], [z, z + lz1]]).draw_line(view, style=rcps.outline(color="blue"))
-    # # Vxyz([[x, x], [y, y], [z, z + lz2]]).draw_line(view, style=rcps.outline(color="black"))
-    # view.draw_xyz_text([x, y, z + lz1], "zs", style=rctxt.default())
-    # # # Screen X axis
-    # # ax.plot([x, x + lx1], [y, y], [z, z], color="red")
-    # # ax.plot([x, x + lx2], [y, y], [z, z], color="black")
-    # # ax.text(x + lx1, y, z, "x")
-    # # # Screen Y axis
-    # # ax.plot([x, x], [y, y + ly1], [z, z], color="green")
-    # # ax.plot([x, x], [y, y + ly2], [z, z], color="black")
-    # # ax.text(x, y + ly1, z, "y")
-    # # # Screen Z axis
-    # # ax.plot([x, x], [y, y], [z, z + lz1], color="blue")
-    # # ax.plot([x, x], [y, y], [z, z + lz2], color="black")
-    # # ax.text(x, y, z + lz1, "z")
-
-    # if sofast_is_fixed:
-    #     # Add screen points
-    #     p_screen_outline.draw_line(view, style=rcps.marker(color="blue"), label="Screen Points")
-    # else:
-    #     # Add screen outline
-    #     # ax.plot(*p_screen_outline.data, color="red", label="Screen Outline")
-    #     p_screen_outline.draw_line(view, style=rcps.outline(color="red"), label="Screen Outline")
-
-    # Draw world corners, to stabilize xy, xz, and yz plot limits. While maintining axis equal scale.
-    if False:  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-        # &&&& DELETE-SCAFFOLDING --  KEEP OR ELIMINATE THIS AND SET AXIS LIMITS?
-        world_x_min = -1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-        world_x_max = 1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-        world_y_min = -1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-        world_y_max = 1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-        world_z_min = 0.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-        world_z_max = 2.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-        world_corner_list = [
-            (world_x_min, world_y_min, world_z_min),
-            (world_x_max, world_y_min, world_z_min),
-            (world_x_max, world_y_max, world_z_min),
-            (world_x_min, world_y_max, world_z_min),
-            (world_x_min, world_y_min, world_z_max),
-            (world_x_max, world_y_min, world_z_max),
-            (world_x_max, world_y_max, world_z_max),
-            (world_x_min, world_y_max, world_z_max),
-        ]
-        world_corner_x_list = [xyz[0] for xyz in world_corner_list]
-        world_corner_y_list = [xyz[1] for xyz in world_corner_list]
-        world_corner_z_list = [xyz[2] for xyz in world_corner_list]
-        world_corners = Vxyz([world_corner_x_list, world_corner_y_list, world_corner_z_list])
-        world_corners.draw_points(view, style=rcps.marker(color='black'))
+    # World pose.
+    world_rotation = Rotation.identity()
+    world_translation = Vxyz([0, 0, 0])
+    world_transform = txyz.TransformXYZ.from_R_V(R=world_rotation, V=world_translation)
 
     # Screen pose.
     screen_rotation = Rotation.from_euler('zx', [30.0, 10.0], degrees=True)
@@ -423,53 +336,68 @@ def visualize_sofast_setup(
     mirror_transform = txyz.TransformXYZ.from_R_V(R=mirror_rotation, V=mirror_translation)
     # mirror_transform = None
 
+    # Draw world.
+    if sofast_setup_style.draw_world:
+        transformed_world_origin = draw_world(
+            view,
+            world_x_limits=world_x_limits,
+            world_y_limits=world_y_limits,
+            world_z_limits=world_z_limits,
+            transform=world_transform,
+            sofast_world_style=sofast_setup_style.sofast_world_style,
+            axis_length=axis_length,
+        )
+
     # Draw screen.
-    transformed_screen_origin = draw_screen(
-        view,
-        sofast_is_fringe,
-        sofast_is_fixed,
-        display,
-        dot_locations,
-        transform=screen_transform,
-        axis_length=axis_length,
-    )
+    if sofast_setup_style.draw_screen:
+        transformed_screen_origin = draw_screen(
+            view,
+            sofast_is_fringe,
+            sofast_is_fixed,
+            display,
+            dot_locations,
+            transform=screen_transform,
+            sofast_screen_style=sofast_setup_style.sofast_screen_style,
+            axis_length=axis_length,
+        )
 
-    # Draw camera
-    z_axis_fov_distance = 0.6  # m
-    transformed_camera_origin = draw_camera(
-        view,
-        camera,
-        z_axis_fov_distance=z_axis_fov_distance,
-        show_fov_lens_distortion=False,
-        transform=camera_transform,
-        axis_length=axis_length,
-    )
+    # Draw camera.
+    if sofast_setup_style.draw_camera:
+        transformed_camera_origin = draw_camera(
+            view,
+            camera,
+            transform=camera_transform,
+            sofast_camera_style=sofast_setup_style.sofast_camera_style,
+            z_axis_fov_distance=z_axis_fov_distance,
+            axis_length=axis_length,
+        )
 
-    # Draw mirror
-    transformed_mirror_origin = draw_mirror(
-        view,
-        mirror,
-        facet_data,
-        draw_embedding=draw_embedding_mirror,
-        draw_projection=draw_mirror_projection,
-        transform=mirror_transform,
-        axis_length=axis_length,
-    )
+    # Draw mirror.
+    if sofast_setup_style.draw_mirror:
+        transformed_mirror_origin = draw_mirror(
+            view,
+            mirror,
+            facet_data,
+            transform=mirror_transform,
+            sofast_mirror_style=sofast_setup_style.sofast_mirror_style,
+            needle_length=mirror_needle_length,
+            axis_length=axis_length,
+        )
 
-    # Add a vector from camera to mirror
+    # Add a vector from camera to mirror.
     v_camera_to_mirror_color = 'green'
     v_camera_to_mirror_in_camera_coordinates = transformed_mirror_origin
     draw_annotated_vector_from_origin(
         view=view,
         vector=v_camera_to_mirror_in_camera_coordinates,
         transform=camera_transform,
+        short_name='C->M',
+        long_name='Camera to Mirror',
         line_style=annotated_vector_line_style(color=v_camera_to_mirror_color),
         draw_base=True,
         base_style=annotated_vector_base_style(color=v_camera_to_mirror_color),
         draw_label=True,
         label_style=annotated_vector_label_style(color=v_camera_to_mirror_color),
-        short_name='C->M',
-        long_name='Camera to Mirror',
     )
 
     # Set view axes to match the extent of the system.
@@ -495,13 +423,13 @@ def draw_csys(
     view: View3d,
     origin: Vxyz,
     transform: txyz.TransformXYZ = None,
+    short_name: str = None,
+    long_name: str = None,
     origin_color: str = 'red',
     draw_origin_label=True,
     draw_axis_labels=False,
     label_color: str = 'darkred',
-    short_name: str = None,
-    long_name: str = None,
-    axis_length: float = 0.1,
+    axis_length: float = 0.1,  # m
 ) -> Vxyz:
     """Draws a coordinate system axis at the specified origin."""
     # Prepare geometry.
@@ -576,6 +504,8 @@ def draw_annotated_vector_from_origin(
     view: View3d,
     vector: Vxyz,
     transform: txyz.TransformXYZ = None,
+    short_name: str = None,
+    long_name: str = None,
     line_style=rcps.outline(),
     draw_base=True,
     base_style=rcps.marker(),
@@ -584,8 +514,6 @@ def draw_annotated_vector_from_origin(
     label_style=rctxt.RenderControlText(
         fontsize='small', color='k', horizontalalignment='center', verticalalignment='center'
     ),
-    short_name: str = None,
-    long_name: str = None,
 ) -> Vxyz:
     """
     Draws a vector (origin --> head) in 3-d space, with annotations.
@@ -609,6 +537,15 @@ def draw_annotated_vector_from_origin(
         assumed to emanate from the origin.
     transform : txyz.TransformXYZ, optional
         Transform to apply before drawing.  Default None.
+    short_name : str, optional
+        Very short string to use as vector label.  For example, if the vector
+        points from the camera coordinate origin to the mirror origin, a good
+        choice might be 'C->M'.  Default None.
+    long_name : str, optional
+        Longer string to include in the plot legend, for example 'Camera to Mirror'.
+        If both a short name and long_name are provided, then the legend will
+        contain the translation:  'C->M: Camera to Mirror'.
+        Default None.
     line_style : RenderControlPointSeq, optional
         Style to draw vector line.  Default rcps.outline().
     draw_base : bool, optional
@@ -621,15 +558,6 @@ def draw_annotated_vector_from_origin(
         Fractional distance from the tail to head to draw the vector label.  Default 0.3.
     label_style : RenderControlText, optional
         Style to draw vector label.  Default is black.
-    short_name : str, optional
-        Very short string to use as vector label.  For example, if the vector
-        points from the camera coordinate origin to the mirror origin, a good
-        choice might be 'C->M'.  Default None.
-    long_name : str, optional
-        Longer string to include in the plot legend, for example 'Camera to Mirror'.
-        If both a short name and long_name are provided, then the legend will
-        contain the translation:  'C->M: Camera to Mirror'.
-        Default None.
 
     Returns
     -------
@@ -642,14 +570,14 @@ def draw_annotated_vector_from_origin(
         tail=Vxyz([0, 0, 0]),
         head=vector,
         transform=transform,
+        short_name=short_name,
+        long_name=long_name,
         line_style=line_style,
         draw_base=draw_base,
         base_style=base_style,
         draw_label=draw_label,
         label_frac=label_frac,
         label_style=label_style,
-        short_name=short_name,
-        long_name=long_name,
     )
 
 
@@ -658,6 +586,8 @@ def draw_annotated_vector(
     tail: Vxyz,
     head: Vxyz,
     transform: txyz.TransformXYZ = None,
+    short_name: str = None,
+    long_name: str = None,
     line_style=rcps.outline(),
     draw_base=True,
     base_style=rcps.marker(),
@@ -666,8 +596,6 @@ def draw_annotated_vector(
     label_style=rctxt.RenderControlText(
         fontsize='small', color='k', horizontalalignment='center', verticalalignment='center'
     ),
-    short_name: str = None,
-    long_name: str = None,
 ) -> Vxyz:
     """
     Draws a vector (tail --> head) in 3-d space, with annotations.
@@ -682,6 +610,15 @@ def draw_annotated_vector(
         Coordinates of vector head.
     transform : txyz.TransformXYZ, optional
         Transform to apply before drawing.  Default None.
+    short_name : str, optional
+        Very short string to use as vector label.  For example, if the vector
+        points from the camera coordinate origin to the mirror origin, a good
+        choice might be 'C->M'.  Default None.
+    long_name : str, optional
+        Longer string to include in the plot legend, for example 'Camera to Mirror'.
+        If both a short name and long_name are provided, then the legend will
+        contain the translation:  'C->M: Camera to Mirror'.
+        Default None.
     line_style : RenderControlPointSeq, optional
         Style to draw vector line.  Default rcps.outline().
     draw_base : bool, optional
@@ -694,15 +631,6 @@ def draw_annotated_vector(
         Fractional distance from the tail to head to draw the vector label.  Default 0.3.
     label_style : RenderControlText, optional
         Style to draw vector label.  Default is black.
-    short_name : str, optional
-        Very short string to use as vector label.  For example, if the vector
-        points from the camera coordinate origin to the mirror origin, a good
-        choice might be 'C->M'.  Default None.
-    long_name : str, optional
-        Longer string to include in the plot legend, for example 'Camera to Mirror'.
-        If both a short name and long_name are provided, then the legend will
-        contain the translation:  'C->M: Camera to Mirror'.
-        Default None.
 
     Returns
     -------
@@ -772,16 +700,299 @@ def annotated_vector_label_style(color: str = 'blue') -> rctxt.RenderControlText
     )
 
 
+def draw_world(
+    view: View3d,
+    world_x_limits: tuple[float, float] = (-1.0, 1.0),
+    world_y_limits: tuple[float, float] = (-1.0, 1.0),
+    world_z_limits: tuple[float, float] = (0.0, 2.0),
+    transform: txyz.TransformXYZ = None,
+    short_name: str = 'W',
+    long_name: str = 'World',
+    sofast_world_style: rcsw.RenderControlSofastWorld = rcsw.RenderControlSofastWorld(),
+    axis_length: float = 0.1,  # m
+) -> Vxyz:
+    """
+    Draws a box defining the conceptual world boundaries, and also the
+    world coordinate system origin.
+
+    The boundaries are not enforced by graphics clipping or other checks;
+    they are merely for visual reference and orientation.
+
+    Parameters
+    ----------
+    view : View3d
+        View to draw in.
+    world_x_limits : tuple[float, float], optional
+        (x_min, x_max) box boundary to draw.  Default (-1.0, 1.0).
+    world_y_limits : tuple[float, float], optional
+        (y_min, y_max) box boundary to draw.  Default (-1.0, 1.0).
+    world_z_limits : tuple[float, float], optional
+        (z_min, z_max) box boundary to draw.  Default (-1.0, 1.0).
+    transform : txyz.TransformXYZ, optional
+        Transform to apply before drawing.  Default None.
+    short_name : str, optional
+        Very short string to use as an origin label.  Default 'W'.
+    long_name : str, optional
+        Longer string to include in the plot legend.  Default 'World'.
+        If both short_name and long_name are provided, then the legend
+        will contain the translation:  'W = World'.
+        Default None.
+    sofast_world_style: RenderControlSofastWorld, optional
+        Rendering control parameters.
+    axis_length : float, optional
+        Length to draw individual coordinate system x, y, and z axes.
+        This should be chosen to ensure legibility given the size of
+        the SOFAST layout, which can vary widely.
+        Default 0.1.
+
+    Returns
+    -------
+    Vxyz
+        The world origin, after applying the input transform.
+    """
+    # Draw world corners, to stabilize xy, xz, and yz plot limits. While maintining axis equal scale.
+    # Range limits for each axis.
+    world_x_min = world_x_limits[0]
+    world_x_max = world_x_limits[1]
+    world_y_min = world_y_limits[0]
+    world_y_max = world_y_limits[1]
+    world_z_min = world_z_limits[0]
+    world_z_max = world_z_limits[1]
+    # Corner points.
+    w_nnn = Vxyz([world_x_min, world_y_min, world_z_min])
+    w_xnn = Vxyz([world_x_max, world_y_min, world_z_min])
+    w_xxn = Vxyz([world_x_max, world_y_max, world_z_min])
+    w_nxn = Vxyz([world_x_min, world_y_max, world_z_min])
+    w_nnx = Vxyz([world_x_min, world_y_min, world_z_max])
+    w_xnx = Vxyz([world_x_max, world_y_min, world_z_max])
+    w_xxx = Vxyz([world_x_max, world_y_max, world_z_max])
+    w_nxx = Vxyz([world_x_min, world_y_max, world_z_max])
+
+    # Ensure that a transform is available.
+    if transform is None:
+        transform = txyz.identity_transform()
+
+    # Corner points.
+    w_nnn = Vxyz([world_x_min, world_y_min, world_z_min])
+    w_xnn = Vxyz([world_x_max, world_y_min, world_z_min])
+    w_xxn = Vxyz([world_x_max, world_y_max, world_z_min])
+    w_nxn = Vxyz([world_x_min, world_y_max, world_z_min])
+    w_nnx = Vxyz([world_x_min, world_y_min, world_z_max])
+    w_xnx = Vxyz([world_x_max, world_y_min, world_z_max])
+    w_xxx = Vxyz([world_x_max, world_y_max, world_z_max])
+    w_nxx = Vxyz([world_x_min, world_y_max, world_z_max])
+
+    # Transformed corner points.
+    transformed_w_nnn = transform.apply(w_nnn)
+    transformed_w_xnn = transform.apply(w_xnn)
+    transformed_w_xxn = transform.apply(w_xxn)
+    transformed_w_nxn = transform.apply(w_nxn)
+    transformed_w_nnx = transform.apply(w_nnx)
+    transformed_w_xnx = transform.apply(w_xnx)
+    transformed_w_xxx = transform.apply(w_xxx)
+    transformed_w_nxx = transform.apply(w_nxx)
+
+    # Assemble list of corners for plotting.
+    transformed_corner_list = [
+        transformed_w_nnn,
+        transformed_w_xnn,
+        transformed_w_xxn,
+        transformed_w_nxn,
+        transformed_w_nnx,
+        transformed_w_xnx,
+        transformed_w_xxx,
+        transformed_w_nxx,
+    ]
+
+    # Draw corners.
+    if sofast_world_style.draw_corners:
+        for transformed_corner in transformed_corner_list:
+            transformed_corner.draw_points(view, style=rcps.marker(color=sofast_world_style.color))
+
+    # Draw edges.
+    if sofast_world_style.draw_edges:
+        # Bottom
+        transformed_w_nnn.concatenate(transformed_w_xnn).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        transformed_w_nxn.concatenate(transformed_w_xxn).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        transformed_w_nnn.concatenate(transformed_w_nxn).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        transformed_w_xnn.concatenate(transformed_w_xxn).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        # Top
+        transformed_w_nnx.concatenate(transformed_w_xnx).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        transformed_w_nxx.concatenate(transformed_w_xxx).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        transformed_w_nnx.concatenate(transformed_w_nxx).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        transformed_w_xnx.concatenate(transformed_w_xxx).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        # Vertical
+        transformed_w_nnn.concatenate(transformed_w_nnx).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        transformed_w_nxn.concatenate(transformed_w_nxx).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        transformed_w_xnn.concatenate(transformed_w_xnx).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+        transformed_w_xxn.concatenate(transformed_w_xxx).draw_line(
+            view, style=rcps.outline(color=sofast_world_style.color)
+        )
+
+    # Draw coordinate system.
+    transformed_origin = draw_csys(
+        view,
+        origin=Vxyz([0, 0, 0]),
+        transform=transform,
+        short_name=short_name,
+        long_name=long_name,
+        origin_color=sofast_world_style.color,
+        draw_origin_label=True,
+        draw_axis_labels=False,
+        label_color=sofast_world_style.color,
+        axis_length=axis_length,
+    )
+
+    # Return.
+    return transformed_origin
+
+
+def draw_screen(
+    view: View3d,
+    sofast_is_fringe: bool,
+    sofast_is_fixed: bool,
+    display: Display,
+    dot_locations: DotLocationsFixedPattern | None,
+    transform: txyz.TransformXYZ = None,
+    short_name: str = 'S',
+    long_name: str = 'Screen',
+    sofast_screen_style: rcss.RenderControlSofastScreen = rcss.RenderControlSofastScreen(),
+    axis_length: float = 0.1,  # m
+) -> Vxyz:
+    """
+    Draws the screen coordinate system and border in the specified pose.
+
+    Parameters
+    ----------
+    view : View3d
+        View to draw in.
+    sofast_is_fringe : bool
+        Whether this SOFAST configuration supports fringe measurement.
+    sofast_is_fixed : bool
+        Whether this SOFAST configuration supports fixed measurement.
+    display : Display
+        Data structure representing the extent of the SOFAST optical
+        target, which we refer to as a screen.
+    dot_locations : DotLocationsFixedPattern | None
+        Data structure representing the pattern of dots on the screen
+        for SOFAST Fixed measurement.
+    transform : txyz.TransformXYZ, optional
+        Transform to apply before drawing.  Default None.
+    short_name : str, optional
+        Very short string to use as an origin label.  Default 'S'.
+    long_name : str, optional
+        Longer string to include in the plot legend.  Default 'Screen'.
+        If both short_name and long_name are provided, then the legend
+        will contain the translation:  'S = Screen'.
+        Default None.
+    sofast_screen_style: RenderControlSofastScreen
+        Rendering control parameters.
+    axis_length : float, optional
+        Length to draw individual coordinate system x, y, and z axes.
+        This should be chosen to ensure legibility given the size of
+        the SOFAST layout, which can vary widely.
+        Default 0.1.
+
+    Returns
+    -------
+    Vxyz
+        The screen origin, after applying the input transform.
+    """
+    # Calculate screen features and center
+    if sofast_is_fringe:
+        frac = 0.95  # &&&& DELETE-SCAFFOLDING -- WHY THIS VALUE?  MAYBE 1.0 INSTEAD?
+        screen_outline = display.interp_func(Vxy(([0, frac, frac, 0, 0], [0, 0, frac, frac, 0])))
+        screen_dots = None
+        screen_center = display.interp_func(Vxy((0.5, 0.5)))
+    elif sofast_is_fixed:
+        lt.error_and_raise(
+            ValueError,
+            'In draw_screen(), rendering dots and dot bounding box not developed yet, due to lack of test data.',
+        )
+        dot_loc_array = dot_locations.xyz_dot_loc
+        screen_outline = Vxyz((dot_loc_array[..., 0], dot_loc_array[..., 1], dot_loc_array[..., 2]))
+        screen_dots = Vxyz((dot_loc_array[..., 0], dot_loc_array[..., 1], dot_loc_array[..., 2]))
+        screen_center = dot_locations.xy_indices_to_screen_coordinates(Vxy([0, 0], dtype=int))
+
+    # Ensure that a transform is available.
+    if transform is None:
+        transform = txyz.identity_transform()
+
+    # Example colors to use if a contrasting label is desired.
+    #     color = (0, 1.0, 0),  # Green
+    #     label_color = (0, 0.8, 0),  # Dark green, for contrast with origin dot
+    label_color = sofast_screen_style.color
+
+    # Transform the screen dots, outline, and center point.
+    transformed_screen_outline = transform.apply(screen_outline)
+    transformed_screen_center = transform.apply(screen_center)
+
+    # Draw screen dots.
+    if sofast_is_fixed and (screen_dots is not None):
+        transformed_screen_dots = transform.apply(screen_dots)
+        transformed_screen_dots.draw_points(
+            view, style=rcps.marker(color=sofast_screen_style.color), label="Screen Points"
+        )
+
+    # Draw screen outline.
+    # ax.plot(*screen_outline.data, color="red", label="Screen Outline")
+    transformed_screen_outline.draw_line(
+        view, style=rcps.outline(color=sofast_screen_style.color), label="Screen Outline"
+    )
+
+    # Draw center point.
+    center_style = rcps.marker(marker="+", color=sofast_screen_style.color, markersize=15)
+    transformed_screen_center.draw_points(view, style=center_style, labels=['Screen Center'])
+
+    # Draw coordinate system.
+    transformed_origin = draw_csys(
+        view,
+        origin=Vxyz([0, 0, 0]),
+        transform=transform,
+        short_name=short_name,
+        long_name=long_name,
+        origin_color=sofast_screen_style.color,
+        draw_origin_label=True,
+        draw_axis_labels=False,
+        label_color=label_color,
+        axis_length=axis_length,
+    )
+
+    # Return.
+    return transformed_origin
+
+
 def draw_camera(
     view: View3d,
     camera: Camera,
-    z_axis_fov_distance: float,
-    show_fov_lens_distortion: bool = True,
     transform: txyz.TransformXYZ = None,
-    color: str | tuple[float, float, float] = 'cyan',
     short_name: str = 'C',
     long_name: str = 'Camera',
-    axis_length: float = 0.1,
+    sofast_camera_style: rcsc.RenderControlSofastCamera = rcsc.RenderControlSofastCamera(),
+    z_axis_fov_distance: float = 0.6,  # m
+    axis_length: float = 0.1,  # m
 ) -> Vxyz:
     """
     Draws the camera coordinate system and field of view in the specified pose.
@@ -792,19 +1003,8 @@ def draw_camera(
         View to draw in.
     camera : Camera
         Camera model, including image size, focal length, distortion, etc.
-    z_axis_fov_distance : float
-        Distance from camera front nodal point (origin) to draw the
-        field of view (FOV) boundary.  A good choice is to set this
-        to the distance from the camera to the observed mirror.
-    show_fov_lens_distortion : bool, optional
-        Whether to draw adition field of view vertices so that the
-        field of view shown the effect of lens distortion.  This is
-        informative, but at the penalty of additional lines cluttering
-        the view.  Default True.
     transform : txyz.TransformXYZ, optional
         Transform to apply before drawing.  Default None.
-    color : str | tuple[float, float, float], optional
-        The color to draw all camera elements.  Default 'cyan'.
     short_name : str, optional
         Very short string to use as an origin label.  Default 'C'.
     long_name : str, optional
@@ -812,6 +1012,12 @@ def draw_camera(
         If both short_name and long_name are provided, then the legend
         will contain the translation:  'C = Camera'.
         Default None.
+    sofast_camera_style: RenderControlSofastCamera
+        Rendering control parameters.
+    z_axis_fov_distance : float
+        Distance from camera front nodal point (origin) to draw the
+        field of view (FOV) boundary.  A good choice is to set this
+        to the distance from the camera to the observed mirror.
     axis_length : float, optional
         Length to draw individual coordinate system x, y, and z axes.
         This should be chosen to ensure legibility given the size of
@@ -826,7 +1032,7 @@ def draw_camera(
     # Calculate camera field of view (FOV), in camera coordinates.
     x = camera.image_shape_xy[0]
     y = camera.image_shape_xy[1]
-    if show_fov_lens_distortion:
+    if sofast_camera_style.show_fov_lens_distortion:
         # Include points along the straight image edges, so the effect of
         # lens distortion will be evident in the field of view.
         # Note that distortion effects are inverted.  For example, barrel
@@ -866,19 +1072,19 @@ def draw_camera(
     # Example colors to use if a contrasting label is desired.
     #     color = (0, 1.0, 1.0),  # Cyan
     #     label_color = (0, 0.8, 0.8),  # Dark cyan, for contrast with origin dot
-    label_color = color
+    label_color = sofast_camera_style.color
 
     # Draw coordinate system.
     transformed_origin = draw_csys(
         view,
         origin=Vxyz([0, 0, 0]),
         transform=transform,
-        origin_color=color,
+        short_name=short_name,
+        long_name=long_name,
+        origin_color=sofast_camera_style.color,
         draw_origin_label=True,
         draw_axis_labels=False,
         label_color=label_color,
-        short_name=short_name,
-        long_name=long_name,
         axis_length=axis_length,
     )
 
@@ -886,123 +1092,12 @@ def draw_camera(
     transformed_fov = transform.apply(fov)
 
     # Draw camera FOV polygon.
-    transformed_fov.draw_line(view, close=True, style=rcps.data_curve(color=color))
+    transformed_fov.draw_line(view, close=True, style=rcps.data_curve(color=sofast_camera_style.color))
 
     # Add lines connecting camera origin and camera FOV corners.
     for idx in range(n_fov_corners):
         transformed_v_cam_to_fov = transformed_origin.concatenate(Vxyz(transformed_fov.data[:, idx]))
-        transformed_v_cam_to_fov.draw_line(view, close=False, style=rcps.outline(color=color))
-
-    # Return.
-    return transformed_origin
-
-
-def draw_screen(
-    view: View3d,
-    sofast_is_fringe: bool,
-    sofast_is_fixed: bool,
-    display: Display,
-    dot_locations: DotLocationsFixedPattern | None,
-    transform: txyz.TransformXYZ = None,
-    color: str | tuple[float, float, float] = 'green',
-    short_name: str = 'S',
-    long_name: str = 'Screen',
-    axis_length: float = 0.1,
-) -> Vxyz:
-    """
-    Draws the screen coordinate system and border in the specified pose.
-
-    Parameters
-    ----------
-    view : View3d
-        View to draw in.
-    sofast_is_fringe : bool
-        Whether this SOFAST configuration supports fringe measurement.
-    sofast_is_fixed : bool
-        Whether this SOFAST configuration supports fixed measurement.
-    display : Display
-        Data structure representing the extent of the SOFAST optical
-        target, which we refer to as a screen.
-    dot_locations : DotLocationsFixedPattern | None
-        Data structure representing the pattern of dots on the screen
-        for SOFAST Fixed measurement.
-    transform : txyz.TransformXYZ, optional
-        Transform to apply before drawing.  Default None.
-    color : str | tuple[float, float, float], optional
-        The color to draw all screen elements.  Default 'green'.
-    short_name : str, optional
-        Very short string to use as an origin label.  Default 'S'.
-    long_name : str, optional
-        Longer string to include in the plot legend.  Default 'Screen'.
-        If both short_name and long_name are provided, then the legend
-        will contain the translation:  'S = Screen'.
-        Default None.
-    axis_length : float, optional
-        Length to draw individual coordinate system x, y, and z axes.
-        This should be chosen to ensure legibility given the size of
-        the SOFAST layout, which can vary widely.
-        Default 0.1.
-
-    Returns
-    -------
-    Vxyz
-        The screen origin, after applying the input transform.
-    """
-    # Calculate screen features and center
-    if sofast_is_fringe:
-        frac = 0.95  # &&&& DELETE-SCAFFOLDING -- WHY THIS VALUE?  MAYBE 1.0 INSTEAD?
-        screen_outline = display.interp_func(Vxy(([0, frac, frac, 0, 0], [0, 0, frac, frac, 0])))
-        screen_dots = None
-        screen_center = display.interp_func(Vxy((0.5, 0.5)))
-    elif sofast_is_fixed:
-        lt.error_and_raise(
-            ValueError,
-            'In draw_screen(), rendering dots and dot bounding box not developed yet, due to lack of test data.',
-        )
-        dot_loc_array = dot_locations.xyz_dot_loc
-        screen_outline = Vxyz((dot_loc_array[..., 0], dot_loc_array[..., 1], dot_loc_array[..., 2]))
-        screen_dots = Vxyz((dot_loc_array[..., 0], dot_loc_array[..., 1], dot_loc_array[..., 2]))
-        screen_center = dot_locations.xy_indices_to_screen_coordinates(Vxy([0, 0], dtype=int))
-
-    # Ensure that a transform is available.
-    if transform is None:
-        transform = txyz.identity_transform()
-
-    # Example colors to use if a contrasting label is desired.
-    #     color = (0, 1.0, 0),  # Green
-    #     label_color = (0, 0.8, 0),  # Dark green, for contrast with origin dot
-    label_color = color
-
-    # Transform the screen dots, outline, and center point.
-    transformed_screen_outline = transform.apply(screen_outline)
-    transformed_screen_center = transform.apply(screen_center)
-
-    # Draw screen dots.
-    if sofast_is_fixed and (screen_dots is not None):
-        transformed_screen_dots = transform.apply(screen_dots)
-        transformed_screen_dots.draw_points(view, style=rcps.marker(color=color), label="Screen Points")
-
-    # Draw screen outline.
-    # ax.plot(*screen_outline.data, color="red", label="Screen Outline")
-    transformed_screen_outline.draw_line(view, style=rcps.outline(color=color), label="Screen Outline")
-
-    # Draw center point.
-    center_style = rcps.marker(marker="+", color=color, markersize=15)
-    transformed_screen_center.draw_points(view, style=center_style, labels=['Screen Center'])
-
-    # Draw coordinate system.
-    transformed_origin = draw_csys(
-        view,
-        origin=Vxyz([0, 0, 0]),
-        transform=transform,
-        origin_color=color,
-        draw_origin_label=True,
-        draw_axis_labels=False,
-        label_color=label_color,
-        short_name=short_name,
-        long_name=long_name,
-        axis_length=axis_length,
-    )
+        transformed_v_cam_to_fov.draw_line(view, close=False, style=rcps.outline(color=sofast_camera_style.color))
 
     # Return.
     return transformed_origin
@@ -1013,17 +1108,49 @@ def draw_mirror(
     mirror: MirrorParametric,
     facet_data: DefinitionFacet,
     transform: txyz.TransformXYZ = None,
-    color: str | tuple[float, float, float] = 'magenta',
-    mirror_style: rcm.RenderControlMirror = rcm.RenderControlMirror(),
-    needle_length: float = 0.1,  # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
-    draw_embedding: bool = True,
-    draw_projection: bool = True,
-    projected_style: rcmp.RenderControlMirrorProjected = rcmp.mirror_boundary(),
-    embedding_style: rcme.RenderControlMirrorEmbedded = rcme.standard_embedding_mirror(),
     short_name: str = 'M',
     long_name: str = 'Mirror',
-    axis_length: float = 0.1,
+    sofast_mirror_style: rcsm.RenderControlSofastMirror = rcsm.RenderControlSofastMirror(),
+    needle_length: float = 0.1,
+    axis_length: float = 0.1,  # m
 ) -> Vxyz:
+    """
+    Draws the mirror to be measured, with annotations.
+
+    Parameters
+    ----------
+    view : View3d
+        View to draw in.
+    mirror : MirrorParametric
+        The mirror to draw.  A parametric mirror enables drawing the
+        mirror embedded surface, lifted edges, etc.
+    facet_data : DefinitionFacet
+        Definition of the facet boundary and surface normals.
+    transform : txyz.TransformXYZ, optional
+        Transform to apply before drawing.  Default None.
+    short_name : str, optional
+        Very short string to use as an origin label.  Default 'M'.
+    long_name : str, optional
+        Longer string to include in the plot legend.  Default 'Mirror'.
+        If both short_name and long_name are provided, then the legend
+        will contain the translation:  'M = Mirror'.
+        Default None.
+    sofast_mirror_style: RenderControlSofastMirror
+        Rendering control parameters.
+    needle_length : float, optional
+        Length to draw surface normals at mirror centroid and vertices.
+        Default 0.1.
+    axis_length : float, optional
+        Length to draw individual coordinate system x, y, and z axes.
+        This should be chosen to ensure legibility given the size of
+        the SOFAST layout, which can vary widely.
+        Default 0.1.
+
+    Returns
+    -------
+    Vxyz
+        The mirror origin, after applying the input transform.
+    """
     # Ensure that a transform is available.
     if transform is None:
         transform = txyz.identity_transform()
@@ -1031,26 +1158,18 @@ def draw_mirror(
     # Example colors to use if a contrasting label is desired.
     #     color = (1, 0, 1)  # Magenta
     #     label_color = (0.8, 0, 0.8)  # Dark magenta, for contrast with origin dot
-    label_color = color
+    label_color = sofast_mirror_style.color
 
     # Draw the mirror and its embedding surface.
     mirror_style = rcm.RenderControlMirror()
-    embedding_style = rcme.RenderControlMirrorEmbedded(margin=0.01, round_to=0.25)
-    # We have to draw the projection to get the lifted boundary.
-    # So we interpret "draw_projection" as whether to draw the
-    # projected boundary and conneciton lines.
-    if draw_projection:
-        projected_style = rcmp.mirror_boundary(boundary_color=color)  # Let projected color default.
-    else:
-        projected_style = rcmp.mirror_lifted(boundary_color=color)
     ems.draw_mirror_and_embedding_mirror(
         mirror,
         view=view,
         mirror_style=mirror_style,
-        draw_embedding=draw_embedding,
+        draw_embedding=sofast_mirror_style.draw_embedding_mirror,
         draw_projection=True,  # See above.
-        projected_style=projected_style,
-        embedding_style=embedding_style,
+        projected_style=sofast_mirror_style.mirror_projected_style,
+        embedding_style=sofast_mirror_style.embedding_mirror_style,
         transform=transform,
     )
 
@@ -1059,26 +1178,29 @@ def draw_mirror(
     transformed_v_facet_centroid = transform.apply(facet_data.v_facet_centroid)
     transformed_u_facet_centroid_normal = transform.apply(facet_data.u_facet_centroid_normal)
     # Draw centroid
-    transformed_v_facet_centroid.draw_points(view, style=rcps.marker(color=color))
+    transformed_v_facet_centroid.draw_points(view, style=rcps.marker(color=sofast_mirror_style.color))
     # Surface normal at facet centroid
     needle_base = transformed_v_facet_centroid
     needle_tip = needle_base + (transformed_u_facet_centroid_normal.as_Vxyz() * needle_length)
     needle = Vxyz.from_list((needle_base, needle_tip))
-    needle.draw_line(view, style=rcps.outline(color=color))
+    needle.draw_line(view, style=rcps.outline(color=sofast_mirror_style.color))
 
     # Draw coordinate system.
     transformed_origin = draw_csys(
         view,
         origin=Vxyz([0, 0, 0]),
         transform=transform,
-        origin_color=color,
+        short_name=short_name,
+        long_name=long_name,
+        origin_color=sofast_mirror_style.color,
         draw_origin_label=True,
         draw_axis_labels=False,
         label_color=label_color,
-        short_name=short_name,
-        long_name=long_name,
         axis_length=axis_length,
     )
 
     # Return.
     return transformed_origin
+
+
+# def draw_sofast_setup():

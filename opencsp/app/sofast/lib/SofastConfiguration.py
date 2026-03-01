@@ -170,7 +170,7 @@ class SofastConfiguration:
             display_local = None
             dot_locations_local = self.data_sofast_object.fixed_pattern_dot_dot_locs
         # Call
-        visualize_sofast_setup(
+        draw_sofast_setup(
             view=view,
             sofast_is_fringe=self._is_fringe,
             sofast_is_fixed=self._is_fixed,
@@ -180,12 +180,8 @@ class SofastConfiguration:
             mirror=mirror,
             facet_data=facet_data,
             orientation=self.data_sofast_object.orientation,
-            title=title,
-            draw_embedding_mirror=draw_embedding_mirror,
-            draw_mirror_projection=draw_mirror_projection,
-            length_z_axis_cam=length_z_axis_cam,
+            sofast_setup_style=rcss.RenderControlSofastSetup(),
             axis_length=axis_length,
-            min_axis_length_screen=min_axis_length_screen,
             v_screen_object_screen=v_screen_object_screen,
             r_object_screen=r_object_screen,
         )
@@ -198,8 +194,10 @@ class SofastConfiguration:
 # HELPER FUNCTIONS
 
 
-def visualize_sofast_setup(
+def draw_sofast_setup(
+    # Where to draw
     view: View3d,
+    # Objects
     sofast_is_fringe: bool,
     sofast_is_fixed: bool,
     camera: Camera,
@@ -207,13 +205,21 @@ def visualize_sofast_setup(
     dot_locations: DotLocationsFixedPattern | None,
     mirror: MirrorParametric,
     facet_data: DefinitionFacet,
-    orientation: SpatialOrientation,
+    # orientation=orientation,
+    # Extent
+    world_x_limits: tuple[float, float] = (-1.0, 1.0),
+    world_y_limits: tuple[float, float] = (-1.0, 1.0),
+    world_z_limits: tuple[float, float] = (0.0, 1.25),
+    # Locations
+    world_transform: txyz.TransformXYZ | None = None,
+    screen_transform: txyz.TransformXYZ | None = None,
+    camera_transform: txyz.TransformXYZ | None = None,
+    mirror_transform: txyz.TransformXYZ | None = None,
+    # Render control
     sofast_setup_style: rcssp.RenderControlSofastSetup = rcssp.RenderControlSofastSetup(),
     z_axis_fov_distance: float = 0.6,  # m
     mirror_needle_length=0.1,  # m
     axis_length: float = 0.1,  # m
-    v_screen_object_screen: Vxyz = None,
-    r_object_screen: Rotation = None,
     show: bool = True,  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
 ) -> None:
     """
@@ -239,17 +245,22 @@ def visualize_sofast_setup(
     display: Display
         SOFAST display model, modeling relationship between screen
         coordinates and 3-d coordinates.
-    orientation: SpatialOrientation
-        SOFAST spatial orientation, defining the transforms (rotations and translations)
-        between key SOFAST coordinate systems (CSYS): Camera CSYS, Screen CSYS, Mirror CSYS
     dot_locations: DotLocationsFixedPattern | None
         For SOFAST Fixed setups, thisis thepattern of dots on the screen.
     mirror: MirrorParametric
         Model of nominal mirror to be measured in the setup.
     facet_data: DefinitionFacet
         Additional mirror information, including centroid, normal at centroid, and vertex list.
-    orientation: SpatialOrientation
-        Data structure containing spatial relationships between primary SOFAST components.
+    world_x_limits: tuple[float, float]
+    world_y_limits: tuple[float, float]
+    world_z_limits: tuple[float, float]
+        Coordinates defining extent of the world to plot.
+    world_transform: txyz.TransformXYZ | None
+    screen_transform: txyz.TransformXYZ | None
+    camera_transform: txyz.TransformXYZ | None
+    mirror_transform: txyz.TransformXYZ | None
+        Transforms describing the position of the world, screen, camera, and
+        mirror relative to the base coordinate system.
     sofast_setup_style: RenderControlSofastSetup, optional
         Rendering control parameters for the SOFAST setup and its components.
     z_axis_fov_distance : float
@@ -263,78 +274,7 @@ def visualize_sofast_setup(
         This should be chosen to ensure legibility given the size of
         the SOFAST layout, which can vary widely.
         Default 0.1.
-    v_screen_object_screen : Vxyz, optional
-        Vector (m), screen to object in screen reference frame, by default None.
-        If None, the object reference frame is not plotted.
-    r_object_screen : Rotation, optional
-        Rotation, object to screen reference frames, by default None.
-        Only used if v_screen_object_screen is not None
     """
-    # Get axes
-    # if ax.name == '3d':
-    #     ax.view_init(-15, 135, roll=180, vertical_axis="y")
-
-    # Calculate camera position
-    v_screen_cam_screen = -orientation.v_cam_screen_screen
-
-    # Choose length of camera z axis.
-    length_z_axis_cam = 12  # m
-
-    # Calculate camera FOV
-    x = camera.image_shape_xy[0]
-    y = camera.image_shape_xy[1]
-    v_cam_fov_screen = camera.vector_from_pixel(Vxy(([0, 0, x, x, 0], [0, y, y, 0, 0]))).as_Vxyz() * length_z_axis_cam
-    v_cam_fov_screen.rotate_in_place(orientation.r_cam_screen)
-    v_cam_fov_screen += v_screen_cam_screen
-
-    # Calculate camera X/Y axes
-    v_cam_x_screen = Vxyz(([0, axis_length], [0, 0], [0, 0])).rotate(orientation.r_cam_screen) + v_screen_cam_screen
-    v_cam_y_screen = Vxyz(([0, 0], [0, axis_length], [0, 0])).rotate(orientation.r_cam_screen) + v_screen_cam_screen
-    v_cam_z_screen = (
-        Vxyz(([0, 0], [0, 0], [0, length_z_axis_cam])).rotate(orientation.r_cam_screen) + v_screen_cam_screen
-    )
-
-    # Calculate object axes
-    if v_screen_object_screen is not None:
-        v_obj_x_screen = Vxyz(([0, axis_length], [0, 0], [0, 0])).rotate(r_object_screen) + v_screen_object_screen
-        v_obj_y_screen = Vxyz(([0, 0], [0, axis_length], [0, 0])).rotate(r_object_screen) + v_screen_object_screen
-        v_obj_z_screen = Vxyz(([0, 0], [0, 0], [0, axis_length])).rotate(r_object_screen) + v_screen_object_screen
-
-    # Calculate screen outline and center
-    if sofast_is_fringe:
-        p_screen_outline = display.interp_func(Vxy(([0, 0.95, 0.95, 0, 0], [0, 0, 0.95, 0.95, 0])))
-        p_screen_cent = display.interp_func(Vxy((0.5, 0.5)))
-    elif sofast_is_fixed:
-        dot_loc_array = dot_locations.xyz_dot_loc
-        p_screen_outline = Vxyz((dot_loc_array[..., 0], dot_loc_array[..., 1], dot_loc_array[..., 2]))
-        p_screen_cent = dot_locations.xy_indices_to_screen_coordinates(Vxy([0, 0], dtype=int))
-
-    # World box.
-    world_x_limits = (-1.0, 1.0)
-    world_y_limits = (-1.0, 1.0)
-    world_z_limits = (0.0, 2.0)
-
-    # World pose.
-    world_rotation = Rotation.identity()
-    world_translation = Vxyz([0, 0, 0])
-    world_transform = txyz.TransformXYZ.from_R_V(R=world_rotation, V=world_translation)
-
-    # Screen pose.
-    screen_rotation = Rotation.from_euler('zx', [30.0, 10.0], degrees=True)
-    screen_translation = Vxyz([-0.1, 0.2, 0.3])
-    screen_transform = txyz.TransformXYZ.from_R_V(R=screen_rotation, V=screen_translation)
-
-    # Camera pose.
-    camera_rotation = Rotation.from_euler('zx', [60.0, -15.0], degrees=True)
-    # camera_rotation = Rotation.from_euler('zx', [130.0, -75.0], degrees=True)
-    camera_translation = Vxyz([-0.125, 0.25, 0.375])
-    camera_transform = txyz.TransformXYZ.from_R_V(R=camera_rotation, V=camera_translation)
-
-    # Mirror pose.
-    mirror_rotation = Rotation.from_euler('zx', [-30.0, 45.0], degrees=True)
-    mirror_translation = Vxyz([0.25, -0.325, 0.1])
-    mirror_transform = txyz.TransformXYZ.from_R_V(R=mirror_rotation, V=mirror_translation)
-    # mirror_transform = None
 
     # Draw world.
     if sofast_setup_style.draw_world:
@@ -347,6 +287,8 @@ def visualize_sofast_setup(
             sofast_world_style=sofast_setup_style.sofast_world_style,
             axis_length=axis_length,
         )
+    else:
+        transformed_world_origin = None
 
     # Draw screen.
     if sofast_setup_style.draw_screen:
@@ -360,6 +302,8 @@ def visualize_sofast_setup(
             sofast_screen_style=sofast_setup_style.sofast_screen_style,
             axis_length=axis_length,
         )
+    else:
+        transformed_screen_origin = None
 
     # Draw camera.
     if sofast_setup_style.draw_camera:
@@ -371,6 +315,8 @@ def visualize_sofast_setup(
             z_axis_fov_distance=z_axis_fov_distance,
             axis_length=axis_length,
         )
+    else:
+        transformed_camera_origin = None
 
     # Draw mirror.
     if sofast_setup_style.draw_mirror:
@@ -383,40 +329,25 @@ def visualize_sofast_setup(
             needle_length=mirror_needle_length,
             axis_length=axis_length,
         )
-
-    # Add a vector from camera to mirror.
-    v_camera_to_mirror_color = 'green'
-    v_camera_to_mirror_in_camera_coordinates = transformed_mirror_origin
-    draw_annotated_vector_from_origin(
-        view=view,
-        vector=v_camera_to_mirror_in_camera_coordinates,
-        transform=camera_transform,
-        short_name='C->M',
-        long_name='Camera to Mirror',
-        line_style=annotated_vector_line_style(color=v_camera_to_mirror_color),
-        draw_base=True,
-        base_style=annotated_vector_base_style(color=v_camera_to_mirror_color),
-        draw_label=True,
-        label_style=annotated_vector_label_style(color=v_camera_to_mirror_color),
-    )
+    else:
+        transformed_mirror_origin = None
 
     # Set view axes to match the extent of the system.
     # Also set equal axes to prevent z exaggeration.
-    system_x_min = -1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-    system_x_max = 1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-    system_y_min = -1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-    system_y_max = 1.0  # &&&& DELETE-SCAFFOLDING --  FIGURE OUT HOW TO SET OR PASS IN PROPERLY
-    limit_xy = max(abs(system_x_min), abs(system_x_max), abs(system_y_min), abs(system_y_max))
-    x_limits = [-limit_xy, limit_xy]
-    y_limits = [-limit_xy, limit_xy]
-    z_limits = [0, 2 * limit_xy]
     if view.is_3d():
-        view.show(equal=True, x_limits=x_limits, y_limits=y_limits, z_limits=z_limits, show=show, legend=False)
+        view.show(
+            equal=True,
+            x_limits=world_x_limits,
+            y_limits=world_y_limits,
+            z_limits=world_z_limits,
+            show=show,
+            legend=False,
+        )
     else:
         view.show(equal=True, show=show, legend=True)
 
     # Provide handle to a breakpoint to search the stack for this routine in the debugger.
-    return
+    return transformed_world_origin, transformed_screen_origin, transformed_camera_origin, transformed_mirror_origin
 
 
 def draw_csys(
@@ -963,7 +894,7 @@ def draw_screen(
     )
 
     # Draw center point.
-    center_style = rcps.marker(marker="+", color=sofast_screen_style.color, markersize=15)
+    center_style = rcps.marker(marker="+", color=sofast_screen_style.color, markersize=6)
     transformed_screen_center.draw_points(view, style=center_style, labels=['Screen Center'])
 
     # Draw coordinate system.

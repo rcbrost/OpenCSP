@@ -22,6 +22,7 @@ import opencsp.app.sofast.lib.image_processing as ip
 from opencsp.app.sofast.lib.SpatialOrientation import SpatialOrientation
 import opencsp.app.sofast.lib.spatial_processing as sp
 from opencsp.common.lib.geometry.LoopXY import LoopXY
+import opencsp.common.lib.geometry.TransformXYZ as txyz
 from opencsp.common.lib.geometry.Uxyz import Uxyz
 from opencsp.common.lib.geometry.Vxy import Vxy
 from opencsp.common.lib.geometry.Vxyz import Vxyz
@@ -1321,27 +1322,127 @@ def start_draw_and_finish_sofast_setup_figure(
     if fig_rec.view.is_3d():
         fig_rec.view.axis.zaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
 
+    # &&&& DELETE-SCAFFOLDING -- BEGIN MANUAL TRANSFORM CREATION
+
+    # World box.
+    world_x_limits = (-1.0, 1.0)
+    world_y_limits = (-1.0, 1.0)
+    world_z_limits = (0.0, 2.0)
+
+    # World pose.
+    world_rotation = Rotation.identity()
+    world_translation = Vxyz([0, 0, 0])
+    world_transform = txyz.TransformXYZ.from_R_V(R=world_rotation, V=world_translation)
+    world_transform = None
+
+    # Screen pose.
+    # screen_rotation = Rotation.from_euler('zx', [30.0, 10.0], degrees=True)
+    # screen_translation = Vxyz([-0.1, 0.2, 0.3])
+    screen_rotation = Rotation.from_euler('ZX', [180.0, -90.0], degrees=True)
+    screen_translation = Vxyz([0.0, 1.0, 1.0])
+    screen_transform = txyz.TransformXYZ.from_R_V(R=screen_rotation, V=screen_translation)
+    # screen_transform = None
+
+    # Camera pose.
+    # camera_rotation = Rotation.from_euler('zx', [60.0, -15.0], degrees=True)
+    # # camera_rotation = Rotation.from_euler('zx', [130.0, -75.0], degrees=True)
+    # camera_translation = Vxyz([-0.125, 0.25, 0.375])
+    camera_rotation = Rotation.from_euler('ZX', [180.0, -90.0], degrees=True)
+    camera_translation = Vxyz([0.0, 1.0, 1.2])
+    camera_transform = txyz.TransformXYZ.from_R_V(R=camera_rotation, V=camera_translation)
+    # camera_transform = None
+
+    # Mirror pose.
+    # mirror_rotation = Rotation.from_euler('zx', [-30.0, 45.0], degrees=True)
+    # mirror_translation = Vxyz([0.25, -0.325, 0.1])
+    mirror_rotation = Rotation.from_euler('zxz', [180.0, -75.0, -20.0], degrees=True)
+    mirror_translation = Vxyz([-0.45, 0.0, 1.0])
+    mirror_transform = txyz.TransformXYZ.from_R_V(R=mirror_rotation, V=mirror_translation)
+    # mirror_transform = None
+
+    # """
+    # orientation: SpatialOrientation
+    #     SOFAST spatial orientation, defining the transforms (rotations and translations)
+    #     between key SOFAST coordinate systems (CSYS): Camera CSYS, Screen CSYS, Mirror CSYS
+    # """
+    # # Also:
+    # """
+    # v_screen_object_screen : Vxyz, optional
+    #     Vector (m), screen to object in screen reference frame, by default None.
+    #     If None, the object reference frame is not plotted.
+    # r_object_screen : Rotation, optional
+    #     Rotation, object to screen reference frames, by default None.
+    #     Only used if v_screen_object_screen is not None
+    # """
+
+    # &&&& DELETE-SCAFFOLDING -- END MANUAL TRANSFORM CREATION
+
     # Draw SOFAST setup.
     # Import here, to avoid circular import.
     import opencsp.app.sofast.lib.SofastConfiguration as sfcfg
 
-    sfcfg.visualize_sofast_setup(
-        view=fig_rec.view,
-        sofast_is_fringe=True,
-        sofast_is_fixed=False,
-        camera=camera,
-        display=debug.display,  # Used only for diagnostic rendering.
-        dot_locations=None,  # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
-        mirror=debug.mirror,  # Used only for diagnostic rendering.
-        facet_data=facet_data,
-        orientation=orientation,
-        sofast_setup_style=rcss.RenderControlSofastSetup(),
-        mirror_needle_length=0.1,
-        axis_length=0.1,
-        v_screen_object_screen=None,
-        r_object_screen=None,
-        show=True,  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
+    transformed_world_origin, transformed_screen_origin, transformed_camera_origin, transformed_mirror_origin = (
+        sfcfg.draw_sofast_setup(
+            # Where to draw
+            view=fig_rec.view,
+            # Objects
+            sofast_is_fringe=True,
+            sofast_is_fixed=False,
+            camera=camera,
+            display=debug.display,  # Used only for diagnostic rendering.
+            dot_locations=None,  # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
+            mirror=debug.mirror,  # Used only for diagnostic rendering.
+            facet_data=facet_data,
+            # orientation=orientation,
+            # Extent
+            world_x_limits=world_x_limits,
+            world_y_limits=world_y_limits,
+            world_z_limits=world_z_limits,
+            # Locations
+            world_transform=world_transform,
+            screen_transform=screen_transform,
+            camera_transform=camera_transform,
+            mirror_transform=mirror_transform,
+            # Render control
+            sofast_setup_style=rcss.RenderControlSofastSetup(),
+            z_axis_fov_distance=0.6,  # m
+            mirror_needle_length=0.1,
+            axis_length=0.1,
+            show=True,  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
+        )
     )
+
+    # Add a vector from camera to mirror.
+    v_camera_to_mirror_color = 'pink'
+    sfcfg.draw_annotated_vector(
+        view=fig_rec.view,
+        tail=transformed_camera_origin,
+        head=transformed_mirror_origin,
+        transform=None,
+        short_name='C->M',
+        long_name='Camera to Mirror',
+        line_style=sfcfg.annotated_vector_line_style(color=v_camera_to_mirror_color),
+        draw_base=True,
+        base_style=sfcfg.annotated_vector_base_style(color=v_camera_to_mirror_color),
+        draw_label=True,
+        label_style=sfcfg.annotated_vector_label_style(color=v_camera_to_mirror_color),
+    )
+
+    # # Add a vector from camera to mirror.
+    # v_camera_to_mirror_color = 'pink'
+    # v_camera_to_mirror_in_camera_coordinates = transformed_mirror_origin
+    # sfcfg.draw_annotated_vector_from_origin(
+    #     view=fig_rec.view,
+    #     vector=v_camera_to_mirror_in_camera_coordinates,
+    #     transform=camera_transform,
+    #     short_name='C->M',
+    #     long_name='Camera to Mirror',
+    #     line_style=sfcfg.annotated_vector_line_style(color=v_camera_to_mirror_color),
+    #     draw_base=True,
+    #     base_style=sfcfg.annotated_vector_base_style(color=v_camera_to_mirror_color),
+    #     draw_label=True,
+    #     label_style=sfcfg.annotated_vector_label_style(color=v_camera_to_mirror_color),
+    # )
 
     # fig_rec.view.show()  # Uncomment to rotate view.
     sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)

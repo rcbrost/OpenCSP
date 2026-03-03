@@ -1107,12 +1107,15 @@ def draw_mirror(
     # Draw the mirror centroid defined by the facet definition file.
     # Apply transform
     transformed_v_facet_centroid = transform.apply(facet_data.v_facet_centroid)
-    transformed_u_facet_centroid_normal = transform.apply(facet_data.u_facet_centroid_normal)
     # Draw centroid
     transformed_v_facet_centroid.draw_points(view, style=rcps.marker(color=sofast_mirror_style.color))
-    # Surface normal at facet centroid
+
+    # Draw the surface normal at the mirror centroid, also defined in the facet definition file.
+    # Rotate the surface normal vector, without translation.
+    rotated_u_facet_centroid_normal = facet_data.u_facet_centroid_normal.rotate(transform.R)
+    # Draw surface normal at facet centroid
     needle_base = transformed_v_facet_centroid
-    needle_tip = needle_base + (transformed_u_facet_centroid_normal.as_Vxyz() * needle_length)
+    needle_tip = needle_base + (rotated_u_facet_centroid_normal.as_Vxyz() * needle_length)
     needle = Vxyz.from_list((needle_base, needle_tip))
     needle.draw_line(view, style=rcps.outline(color=sofast_mirror_style.color))
 

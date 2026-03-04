@@ -205,11 +205,8 @@ def draw_sofast_setup(
     dot_locations: DotLocationsFixedPattern | None,
     mirror: MirrorParametric,
     facet_data: DefinitionFacet,
-    # orientation=orientation,
     # Extent
-    world_x_limits: tuple[float, float] = (-1.0, 1.0),
-    world_y_limits: tuple[float, float] = (-1.0, 1.0),
-    world_z_limits: tuple[float, float] = (0.0, 1.25),
+    world_box: tuple[tuple[float, float], tuple[float, float], tuple[float, float]] = ((-1, 1), (-1, 1), (0, 0.125)),
     # Locations
     world_transform: txyz.TransformXYZ | None = None,
     screen_transform: txyz.TransformXYZ | None = None,
@@ -220,7 +217,6 @@ def draw_sofast_setup(
     z_axis_fov_distance: float = 0.6,  # m
     mirror_needle_length=0.1,  # m
     axis_length: float = 0.1,  # m
-    show: bool = True,  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
 ) -> None:
     """
     Draws the given SOFAST setup components on a 3d axis.
@@ -251,10 +247,10 @@ def draw_sofast_setup(
         Model of nominal mirror to be measured in the setup.
     facet_data: DefinitionFacet
         Additional mirror information, including centroid, normal at centroid, and vertex list.
-    world_x_limits: tuple[float, float]
-    world_y_limits: tuple[float, float]
-    world_z_limits: tuple[float, float]
-        Coordinates defining extent of the world to plot.
+    world_box : tuple[tuple[float, float], tuple[float, float], tuple[float, float]], optional
+        Box boundary to draw.
+        Form:    ((x_min, x_max), (y_min, y_max), (z_min, z_max))
+        Default: ((-1,1), (-1,1), (0,2))
     world_transform: txyz.TransformXYZ | None
     screen_transform: txyz.TransformXYZ | None
     camera_transform: txyz.TransformXYZ | None
@@ -280,9 +276,7 @@ def draw_sofast_setup(
     if sofast_setup_style.draw_world:
         transformed_world_origin = draw_world(
             view,
-            world_x_limits=world_x_limits,
-            world_y_limits=world_y_limits,
-            world_z_limits=world_z_limits,
+            world_box=world_box,
             transform=world_transform,
             sofast_world_style=sofast_setup_style.sofast_world_style,
             axis_length=axis_length,
@@ -331,20 +325,6 @@ def draw_sofast_setup(
         )
     else:
         transformed_mirror_origin = None
-
-    # Set view axes to match the extent of the system.
-    # Also set equal axes to prevent z exaggeration.
-    if view.is_3d():
-        view.show(
-            equal=True,
-            x_limits=world_x_limits,
-            y_limits=world_y_limits,
-            z_limits=world_z_limits,
-            show=show,
-            legend=False,
-        )
-    else:
-        view.show(equal=True, show=show, legend=True)
 
     # Provide handle to a breakpoint to search the stack for this routine in the debugger.
     return transformed_world_origin, transformed_screen_origin, transformed_camera_origin, transformed_mirror_origin
@@ -633,9 +613,7 @@ def annotated_vector_label_style(color: str = 'blue') -> rctxt.RenderControlText
 
 def draw_world(
     view: View3d,
-    world_x_limits: tuple[float, float] = (-1.0, 1.0),
-    world_y_limits: tuple[float, float] = (-1.0, 1.0),
-    world_z_limits: tuple[float, float] = (0.0, 2.0),
+    world_box: tuple[tuple[float, float], tuple[float, float], tuple[float, float]] = ((-1, 1), (-1, 1), (0, 2.0)),
     transform: txyz.TransformXYZ = None,
     short_name: str = 'W',
     long_name: str = 'World',
@@ -653,12 +631,10 @@ def draw_world(
     ----------
     view : View3d
         View to draw in.
-    world_x_limits : tuple[float, float], optional
-        (x_min, x_max) box boundary to draw.  Default (-1.0, 1.0).
-    world_y_limits : tuple[float, float], optional
-        (y_min, y_max) box boundary to draw.  Default (-1.0, 1.0).
-    world_z_limits : tuple[float, float], optional
-        (z_min, z_max) box boundary to draw.  Default (-1.0, 1.0).
+    world_box : tuple[tuple[float, float], tuple[float, float], tuple[float, float]], optional
+        Box boundary to draw.
+        Form:    ((x_min, x_max), (y_min, y_max), (z_min, z_max))
+        Default: ((-1,1), (-1,1), (0,2))
     transform : txyz.TransformXYZ, optional
         Transform to apply before drawing.  Default None.
     short_name : str, optional
@@ -683,6 +659,9 @@ def draw_world(
     """
     # Draw world corners, to stabilize xy, xz, and yz plot limits. While maintining axis equal scale.
     # Range limits for each axis.
+    world_x_limits = world_box[0]
+    world_y_limits = world_box[1]
+    world_z_limits = world_box[2]
     world_x_min = world_x_limits[0]
     world_x_max = world_x_limits[1]
     world_y_min = world_y_limits[0]
@@ -974,7 +953,12 @@ def draw_camera(
         # the FOV looks like a pincushion.  And vice versa for pincushion
         # distortion.
         fov_directions_uxyz = camera.vector_from_pixel(
-            Vxy(([0, 0, 0, x / 2, x, x, x, x / 2], [0, y / 2, y, y, y, y / 2, 0, 0]))
+            Vxy(
+                (
+                    [0, 0, 0, 0, 0, 0, x / 4, x / 2, (3 * x) / 4, x, x, x, x, x, (3 * x / 4), x / 2, x / 4],
+                    [0, y / 4, y / 2, y, (3 * y / 4), y, y, y, y, y, (3 * y / 4), y / 2, y / 4, 0, 0, 0, 0],
+                )
+            )
         )
     else:
         # Just draw the four corners.

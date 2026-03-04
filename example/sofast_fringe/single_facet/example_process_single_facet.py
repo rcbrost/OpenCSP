@@ -36,6 +36,7 @@ import imageio.v3 as imageio
 
 import numpy as np
 
+from scipy.spatial.transform import Rotation
 
 from opencsp.app.sofast.lib.DisplayShape import DisplayShape as Display
 from opencsp.app.sofast.lib.DefinitionFacet import DefinitionFacet
@@ -51,10 +52,11 @@ import opencsp.common.lib.csp.embedding_mirror_surface as ems
 from opencsp.common.lib.csp.LightSourceSun import LightSourceSun
 from opencsp.common.lib.csp.MirrorParametric import MirrorParametric, SYMMETRIC_PARABOLOID, ASTIGMATIC_PARABOLOID, PLANO
 from opencsp.common.lib.csp.MirrorPoint import NEAREST_INTERPOLATION
-from opencsp.common.lib.geometry.RegionXY import RegionXY
 from opencsp.common.lib.csp.StandardPlotOutput import StandardPlotOutput
 from opencsp.common.lib.deflectometry.Surface2DParabolic import Surface2DParabolic
 from opencsp.common.lib.deflectometry.Surface2DPlano import Surface2DPlano
+from opencsp.common.lib.geometry.RegionXY import RegionXY
+import opencsp.common.lib.geometry.TransformXYZ as txyz
 from opencsp.common.lib.geometry.Uxyz import Uxyz
 from opencsp.common.lib.geometry.Vxyz import Vxyz
 from opencsp.common.lib.opencsp_path.opencsp_root_path import opencsp_code_dir
@@ -249,9 +251,28 @@ def process_single_facet(
     # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 1
     # if verbose:
     if True:  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        # World extent, for rendering.
+        world_x_limits = (-1.0, 1.0)
+        world_y_limits = (-1.0, 1.0)
+        world_z_limits = (0.0, 2.0)
+        world_box = (world_x_limits, world_y_limits, world_z_limits)
+        # Screen pose in world.
+        screen_rotation = Rotation.from_euler('ZX', [180.0, -90.0], degrees=True)
+        screen_translation = Vxyz([0.0, 1.0, 1.0])
+        trans_screen_world = txyz.TransformXYZ.from_R_V(R=screen_rotation, V=screen_translation)
+        # Length of SOFAST setup features to draw.
+        z_axis_fov_distance = 0.9  # m.  Camera field of view (FOV)
+        mirror_needle_length = 0.1  # m.  Surface normal needles on mirror.
+        axis_length = 0.1  # m.  Coordinate system axes (x=red, y=green, z=blue).
+        # Fill data carrier.
         sofast.params.debug_geometry.debug_active = False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_geometry.save_dir = dir_save_cur
         sofast.params.debug_geometry.figure_idx = debug_figure_idx
+        sofast.params.debug_geometry.world_box = world_box  # Used only for diagnostic rendering.
+        sofast.params.debug_geometry.trans_screen_world = trans_screen_world  # Used only for diagnostic rendering.
+        sofast.params.debug_geometry.z_axis_fov_distance = z_axis_fov_distance  # Used only for diagnostic rendering.
+        sofast.params.debug_geometry.mirror_needle_length = mirror_needle_length  # Used only for diagnostic rendering.
+        sofast.params.debug_geometry.axis_length = axis_length  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.display = display  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.mirror = mirror_reference  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.draw_sofast_setup_axis_grid = True  # Used only for diagnostic rendering.

@@ -34,3 +34,15 @@ class RenderControlSofastSetup:
 
 
 # Common Configurations
+
+
+def NoCameraNoMirror():
+    return RenderControlSofastSetup(draw_camera=False, draw_mirror=False)
+
+
+def NoCamera():
+    return RenderControlSofastSetup(draw_camera=False)
+
+
+def NoMirror():
+    return RenderControlSofastSetup(draw_mirror=False)

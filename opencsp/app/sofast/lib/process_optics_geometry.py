@@ -17,6 +17,7 @@ from opencsp.app.sofast.lib.DefinitionEnsemble import DefinitionEnsemble
 from opencsp.app.sofast.lib.DefinitionFacet import DefinitionFacet
 from opencsp.app.sofast.lib.ParamsOpticGeometry import ParamsOpticGeometry
 from opencsp.app.sofast.lib.ParamsMaskCalculation import ParamsMaskCalculation
+import opencsp.app.sofast.lib.process_optics_geometry_debug_output as pogdo
 import opencsp.app.sofast.lib.sofast_debug_figure_support as sdfs
 import opencsp.app.sofast.lib.image_processing as ip
 from opencsp.app.sofast.lib.SpatialOrientation import SpatialOrientation
@@ -35,7 +36,6 @@ import opencsp.common.lib.render_control.RenderControlMirrorProjected as rcmp
 import opencsp.common.lib.render_control.RenderControlMirrorEmbedded as rcme
 import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
 import opencsp.common.lib.render_control.RenderControlSofastSetup as rcss
-
 import opencsp.common.lib.tool.log_tools as lt
 
 
@@ -86,7 +86,7 @@ def process_singlefacet_geometry(
         List of positional optic geometry calculations specific to each facet. Order is
         same as input facet definitions.
     data_image_processing_facet: list[calculation_data_classes.CalculationImageProcessingFacet]
-        List of image processing calcualtions specific to each facet. Order is same as input facet
+        List of image processing calculations specific to each facet. Order is same as input facet
         definitions.
     data_error: calculation_data_classes.CalculationError
         Geometric/positional errors and reprojection errors associated with solving for facet location.
@@ -127,133 +127,8 @@ def process_singlefacet_geometry(
 
     # Draw SOFAST setup, wthout a mirror.
     if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        # Import here, to avoid circular import.
-        import opencsp.app.sofast.lib.SofastConfiguration as sfcfg
-
         figure_title = "SOFAST Setup, Without Mirror"
-        view_spec_az_el_roll_list = [
-            (vs.view_spec_3d(), None),
-            (vs.view_spec_xy(), None),
-            (vs.view_spec_xz(), None),
-            (vs.view_spec_yz(), None),
-            (vs.view_spec_3d(), (20, 20, 0)),
-            (vs.view_spec_3d(), (-15, 135, 180)),
-        ]
-        for view_spec_az_el_roll in view_spec_az_el_roll_list:
-            view_spec = view_spec_az_el_roll[0]
-            az_el_roll_deg = view_spec_az_el_roll[1]
-            if az_el_roll_deg is None:
-                this_title = figure_title
-            else:
-                this_title = figure_title + ' (Az,El,Roll)=' + str(az_el_roll_deg)
-            start_draw_and_finish_sofast_setup_figure(
-                this_title,
-                view_spec,
-                camera,
-                facet_data,
-                orientation,
-                dist_optic_screen,
-                debug,
-                view_az_el_roll_deg=az_el_roll_deg,
-                grid=debug.draw_sofast_setup_axis_grid,
-                draw_embedding_mirror=debug.draw_sofast_setup_embedding_mirror,
-                draw_mirror_projection=debug.draw_sofast_setup_mirror_projection,
-            )
-
-        # start_draw_and_finish_sofast_setup_figure(
-        #     figure_title, vs.view_spec_3d(), camera, orientation, dist_optic_screen, debug
-        # )
-        # start_draw_and_finish_sofast_setup_figure(
-        #     figure_title, vs.view_spec_xy(), camera, orientation, dist_optic_screen, debug
-        # )
-        # start_draw_and_finish_sofast_setup_figure(
-        #     figure_title, vs.view_spec_xz(), camera, orientation, dist_optic_screen, debug
-        # )
-        # start_draw_and_finish_sofast_setup_figure(
-        #     figure_title, vs.view_spec_yz(), camera, orientation, dist_optic_screen, debug
-        # )
-        # start_draw_and_finish_sofast_setup_figure(
-        #     figure_title,
-        #     vs.view_spec_3d(),
-        #     camera,
-        #     orientation,
-        #     dist_optic_screen,
-        #     debug,
-        #     view_az_el_roll_deg=(45, 60, 0),
-        # )
-
-        # 3-d
-        # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_3d())
-        # sfcfg.visualize_sofast_setup(
-        #     sofast_is_fringe=True,
-        #     sofast_is_fixed=False,
-        #     camera=camera,
-        #     display=debug.display,  # Used only for diagnostic rendering.
-        #     orientation=orientation,
-        #     dot_locations=None,
-        #     ax=fig_rec.view.axis,
-        #     length_z_axis_cam=dist_optic_screen,
-        #     axes_length=0.0625,
-        #     min_axis_length_screen=0.03125,
-        #     v_screen_object_screen=None,
-        #     r_object_screen=None,
-        # )
-        # fig_rec.view.show()  # Uncomment to rotate view.
-        # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)
-        # xy
-        # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_xy())
-        # sfcfg.visualize_sofast_setup(
-        #     sofast_is_fringe=True,
-        #     sofast_is_fixed=False,
-        #     camera=camera,
-        #     display=debug.display,  # Used only for diagnostic rendering.
-        #     orientation=orientation,
-        #     dot_locations=None,
-        #     ax=fig_rec.view.axis,
-        #     length_z_axis_cam=dist_optic_screen,
-        #     axes_length=0.0625,
-        #     min_axis_length_screen=0.03125,
-        #     v_screen_object_screen=None,
-        #     r_object_screen=None,
-        # )
-        # # fig_rec.view.show()  # Uncomment to rotate view.
-        # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)
-        # # xz
-        # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_xz())
-        # sfcfg.visualize_sofast_setup(
-        #     sofast_is_fringe=True,
-        #     sofast_is_fixed=False,
-        #     camera=camera,
-        #     display=debug.display,  # Used only for diagnostic rendering.
-        #     orientation=orientation,
-        #     dot_locations=None,
-        #     ax=fig_rec.view.axis,
-        #     length_z_axis_cam=dist_optic_screen,
-        #     axes_length=0.0625,
-        #     min_axis_length_screen=0.03125,
-        #     v_screen_object_screen=None,
-        #     r_object_screen=None,
-        # )
-        # # fig_rec.view.show()  # Uncomment to rotate view.
-        # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)
-        # # yz
-        # fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_yz())
-        # sfcfg.visualize_sofast_setup(
-        #     sofast_is_fringe=True,
-        #     sofast_is_fixed=False,
-        #     camera=camera,
-        #     display=debug.display,  # Used only for diagnostic rendering.
-        #     orientation=orientation,
-        #     dot_locations=None,
-        #     ax=fig_rec.view.axis,
-        #     length_z_axis_cam=dist_optic_screen,
-        #     axes_length=0.0625,
-        #     min_axis_length_screen=0.03125,
-        #     v_screen_object_screen=None,
-        #     r_object_screen=None,
-        # )
-        # # fig_rec.view.show()  # Uncomment to rotate view.
-        # sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)
+        pogdo.figure_sofast_setup_without_mirror(figure_title, camera, facet_data, orientation, debug)
 
     # Save mask raw
     data_image_processing_general.mask_raw = mask_raw
@@ -431,6 +306,11 @@ def process_singlefacet_geometry(
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red')
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
+    # Plot mirror pose before translation fit.
+    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        figure_title = "Mirror Location, Before Translation or Rotation"
+        pogdo.figure_setup_before_mirror_translation_fit(figure_title, camera, facet_data, orientation, debug)
+
     # Plot optic corners, before translation or rotation.
     if debug.debug_active:
         v_optic_corners_image_0 = camera.project(v_facet_corners, Rotation.identity(), Vxyz([0, 0, 0]))
@@ -441,6 +321,7 @@ def process_singlefacet_geometry(
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Find expected 3-d position of optic centroid, in camera coordinates.
+    # &&&& DELETE-SCAFFOLDING -- RENAME "v_cam_optic_centroid_cam_exp" TO "v_cam_optic_origin_cam_exp"
     v_cam_optic_centroid_cam_exp = sp.t_from_distance(
         v_mask_centroid_image, dist_optic_screen, camera, ori.v_cam_screen_cam
     )
@@ -457,7 +338,14 @@ def process_singlefacet_geometry(
         fig_rec.view.axis.legend()
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
-    # Plot optic corners, before rotation.
+    # Plot mirror pose with translation only fit.
+    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        figure_title = "Mirror Location, Translated Only, No Rotation"
+        pogdo.figure_setup_mirror_translation_only_fit(
+            figure_title, camera, facet_data, orientation, debug, v_cam_optic_centroid_cam_exp, v_facet_centroid
+        )
+
+    # Plot optic corners, with translation only fit.
     if debug.debug_active:
         figure_title = "Expected Optic Corners, Translated Only, No Rotation"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
@@ -503,6 +391,13 @@ def process_singlefacet_geometry(
     # Find expected orientation of optic, assuming that reflection at centroid shows the cross-hair center during alignment.
     # This produces the rotation for the optic centroid, not the optic coordinate system.
     r_cam_optic_exp_A = sp.r_from_position(v_cam_optic_centroid_cam_exp, ori.v_cam_screen_cam)
+
+    # Plot mirror pose with translation and rotation considered, but not centroid surface normal.
+    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        figure_title = "Mirror Location, Translated and Rotated, without Centroid Normal"
+        pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
+            figure_title, camera, facet_data, orientation, debug
+        )
 
     # Plot optic corners, rotated but without consideration of surface normal at centroid.
     if debug.debug_active:
@@ -1263,186 +1158,3 @@ def process_multifacet_geometry(
         data_image_processing_facet,
         data_error,
     )
-
-
-# DEBUGGING FIGURE HELPER FUNCTIONS
-
-
-def start_draw_and_finish_sofast_setup_figure(
-    figure_title: str,
-    view_spec: dict,
-    camera: Camera,
-    facet_data: DefinitionFacet,
-    orientation: SpatialOrientation,
-    dist_optic_screen: float,
-    debug: DebugOpticsGeometry,
-    v_screen_object_screen: Vxyz = None,
-    r_object_screen: Rotation = None,
-    view_az_el_roll_deg: float = None,
-    grid: bool = True,
-    draw_embedding_mirror: bool = True,
-    draw_mirror_projection: bool = True,
-) -> None:
-    """Sets up and draws a figure showing SOFAST component origins, etc."""
-    # Since SOFAST layout are complex and include multiple features and labels
-    # in close proximity, we make the figure larger, which has the effect of
-    # making the default asix linewidths, fonts, etc effectively smaller.
-    # fig_size = (12.8, 9.6)  # Inch.  Normal is (6.4, 4.8).
-    fig_size = (9.6, 7.2)  # Inch.  Normal is (6.4, 4.8).
-    fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=view_spec, equal=True, grid=grid, figsize=fig_size)
-
-    # Set view direction, if desired.
-    if view_az_el_roll_deg is not None:
-        if not fig_rec.view.is_3d():
-            lt.error_and_raise(
-                ValueError,
-                "In start_draw_and_finish_sofast_setup_figure(), asked to set view direction for a non-3d plot.",
-            )
-        azimuth_deg = view_az_el_roll_deg[0]
-        elevation_deg = view_az_el_roll_deg[1]
-        roll_deg = view_az_el_roll_deg[2]
-        lt.info(
-            'In start_draw_and_finish_sofast_setup_figure(), setting view (azimuth, elevation, roll) to '
-            + str((azimuth_deg, elevation_deg, roll_deg))
-            + ' degrees.'
-        )
-        fig_rec.view.axis.view_init(azim=azimuth_deg, elev=elevation_deg, roll=roll_deg)
-
-    # Set the same tick mark interval for all axes, while still allowing automatic axis limits.
-    # Source - https://stackoverflow.com/a/36229671
-    # Posted by jthomas
-    # Retrieved 2026-02-26, License - CC BY-SA 3.0
-    #    import matplotlib.ticker as ticker
-    if fig_rec.view.is_3d():
-        tick_spacing = 0.5  # &&&& DELETE-SCAFFOLDING -- CONTROL OR PASS THIS IN
-    else:
-        tick_spacing = 0.1  # &&&& DELETE-SCAFFOLDING -- CONTROL OR PASS THIS IN
-    fig_rec.view.axis.xaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
-    fig_rec.view.axis.yaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
-    if fig_rec.view.is_3d():
-        fig_rec.view.axis.zaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
-
-    # &&&& DELETE-SCAFFOLDING -- BEGIN MANUAL TRANSFORM CREATION
-
-    # World box.
-    world_x_limits = (-1.0, 1.0)
-    world_y_limits = (-1.0, 1.0)
-    world_z_limits = (0.0, 2.0)
-
-    # World pose.
-    world_rotation = Rotation.identity()
-    world_translation = Vxyz([0, 0, 0])
-    world_transform = txyz.TransformXYZ.from_R_V(R=world_rotation, V=world_translation)
-    world_transform = None
-
-    # Screen pose.
-    # screen_rotation = Rotation.from_euler('zx', [30.0, 10.0], degrees=True)
-    # screen_translation = Vxyz([-0.1, 0.2, 0.3])
-    screen_rotation = Rotation.from_euler('ZX', [180.0, -90.0], degrees=True)
-    screen_translation = Vxyz([0.0, 1.0, 1.0])
-    screen_transform = txyz.TransformXYZ.from_R_V(R=screen_rotation, V=screen_translation)
-    # screen_transform = None
-
-    # Camera pose.
-    # camera_rotation = Rotation.from_euler('zx', [60.0, -15.0], degrees=True)
-    # # camera_rotation = Rotation.from_euler('zx', [130.0, -75.0], degrees=True)
-    # camera_translation = Vxyz([-0.125, 0.25, 0.375])
-    camera_rotation = Rotation.from_euler('ZX', [180.0, -90.0], degrees=True)
-    camera_translation = Vxyz([0.0, 1.0, 1.2])
-    camera_transform = txyz.TransformXYZ.from_R_V(R=camera_rotation, V=camera_translation)
-    # camera_transform = None
-
-    # Mirror pose.
-    # mirror_rotation = Rotation.from_euler('zx', [-30.0, 45.0], degrees=True)
-    # mirror_translation = Vxyz([0.25, -0.325, 0.1])
-    mirror_rotation = Rotation.from_euler('zxz', [180.0, -75.0, -20.0], degrees=True)
-    mirror_translation = Vxyz([-0.45, 0.0, 1.0])
-    mirror_transform = txyz.TransformXYZ.from_R_V(R=mirror_rotation, V=mirror_translation)
-    # mirror_transform = None
-
-    # """
-    # orientation: SpatialOrientation
-    #     SOFAST spatial orientation, defining the transforms (rotations and translations)
-    #     between key SOFAST coordinate systems (CSYS): Camera CSYS, Screen CSYS, Mirror CSYS
-    # """
-    # # Also:
-    # """
-    # v_screen_object_screen : Vxyz, optional
-    #     Vector (m), screen to object in screen reference frame, by default None.
-    #     If None, the object reference frame is not plotted.
-    # r_object_screen : Rotation, optional
-    #     Rotation, object to screen reference frames, by default None.
-    #     Only used if v_screen_object_screen is not None
-    # """
-
-    # &&&& DELETE-SCAFFOLDING -- END MANUAL TRANSFORM CREATION
-
-    # Draw SOFAST setup.
-    # Import here, to avoid circular import.
-    import opencsp.app.sofast.lib.SofastConfiguration as sfcfg
-
-    transformed_world_origin, transformed_screen_origin, transformed_camera_origin, transformed_mirror_origin = (
-        sfcfg.draw_sofast_setup(
-            # Where to draw
-            view=fig_rec.view,
-            # Objects
-            sofast_is_fringe=True,
-            sofast_is_fixed=False,
-            camera=camera,
-            display=debug.display,  # Used only for diagnostic rendering.
-            dot_locations=None,  # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
-            mirror=debug.mirror,  # Used only for diagnostic rendering.
-            facet_data=facet_data,
-            # orientation=orientation,
-            # Extent
-            world_x_limits=world_x_limits,
-            world_y_limits=world_y_limits,
-            world_z_limits=world_z_limits,
-            # Locations
-            world_transform=world_transform,
-            screen_transform=screen_transform,
-            camera_transform=camera_transform,
-            mirror_transform=mirror_transform,
-            # Render control
-            sofast_setup_style=rcss.RenderControlSofastSetup(),
-            z_axis_fov_distance=0.6,  # m
-            mirror_needle_length=0.1,
-            axis_length=0.1,
-            show=True,  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
-        )
-    )
-
-    # Add a vector from camera to mirror.
-    v_camera_to_mirror_color = 'pink'
-    sfcfg.draw_annotated_vector(
-        view=fig_rec.view,
-        tail=transformed_camera_origin,
-        head=transformed_mirror_origin,
-        transform=None,
-        short_name='C->M',
-        long_name='Camera to Mirror',
-        line_style=sfcfg.annotated_vector_line_style(color=v_camera_to_mirror_color),
-        draw_base=True,
-        base_style=sfcfg.annotated_vector_base_style(color=v_camera_to_mirror_color),
-        draw_label=True,
-        label_style=sfcfg.annotated_vector_label_style(color=v_camera_to_mirror_color),
-    )
-
-    # # Add a vector from camera to mirror.
-    # v_camera_to_mirror_color = 'pink'
-    # v_camera_to_mirror_in_camera_coordinates = transformed_mirror_origin
-    # sfcfg.draw_annotated_vector_from_origin(
-    #     view=fig_rec.view,
-    #     vector=v_camera_to_mirror_in_camera_coordinates,
-    #     transform=camera_transform,
-    #     short_name='C->M',
-    #     long_name='Camera to Mirror',
-    #     line_style=sfcfg.annotated_vector_line_style(color=v_camera_to_mirror_color),
-    #     draw_base=True,
-    #     base_style=sfcfg.annotated_vector_base_style(color=v_camera_to_mirror_color),
-    #     draw_label=True,
-    #     label_style=sfcfg.annotated_vector_label_style(color=v_camera_to_mirror_color),
-    # )
-
-    # fig_rec.view.show()  # Uncomment to rotate view.
-    sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, debug)

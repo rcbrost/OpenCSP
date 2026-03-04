@@ -7,8 +7,16 @@ class RenderControlAxis:
     """
 
     def __init__(
-        self, x_label='x', y_label='y', z_label='z', p_label='p', q_label='q', w_label='w', draw_axes=True, grid=True
-    ):
+        self,
+        x_label: str = 'x',
+        y_label: str = 'y',
+        z_label: str = 'z',
+        p_label: str = 'p',
+        q_label: str = 'q',
+        w_label: str = 'w',
+        draw_axes: bool = True,
+        grid: bool = True,
+    ) -> None:
         super(RenderControlAxis, self).__init__()
 
         # Axis control.
@@ -22,23 +30,31 @@ class RenderControlAxis:
         self.grid = grid
 
 
-def meters(draw_axes=True, grid=True):
+def meters(draw_axes: bool = True, grid: bool = True, axis_prefix: str = None) -> RenderControlAxis:
     """
     Labels indicating units of meters.
+
+    axis_prefix should include a separator character.
+    For example, if the goal is to have an axis label of "World x (m)",
+    then axis_prefix should be "World ".
     """
+    if axis_prefix == None:
+        axis_prefix_str = ''
+    else:
+        axis_prefix_str = axis_prefix
     return RenderControlAxis(
-        x_label='x (m)',
-        y_label='y (m)',
-        z_label='z (m)',
-        p_label='p (m)',
-        q_label='q (m)',
-        w_label='w (m)',
+        x_label=(axis_prefix_str + 'x (m)'),
+        y_label=(axis_prefix_str + 'y (m)'),
+        z_label=(axis_prefix_str + 'z (m)'),
+        p_label=(axis_prefix_str + 'p (m)'),
+        q_label=(axis_prefix_str + 'q (m)'),
+        w_label=(axis_prefix_str + 'w (m)'),
         draw_axes=draw_axes,
         grid=grid,
     )
 
 
-def latlon(decimal_t_degminsecs_f=True, draw_axes=True, grid=True):
+def latlon(decimal_t_degminsecs_f: bool = True, draw_axes: bool = True, grid: bool = True) -> RenderControlAxis:
     """
     Labels indicating units of latitude and longitude.
     """
@@ -55,7 +71,7 @@ def latlon(decimal_t_degminsecs_f=True, draw_axes=True, grid=True):
     )
 
 
-def image(draw_axes=True, grid=True):
+def image(draw_axes: bool = True, grid: bool = True) -> RenderControlAxis:
     """
     Labels indicating image.
     """

@@ -265,7 +265,7 @@ def process_single_facet(
         mirror_needle_length = 0.1  # m.  Surface normal needles on mirror.
         axis_length = 0.1  # m.  Coordinate system axes (x=red, y=green, z=blue).
         # Fill data carrier.
-        sofast.params.debug_geometry.debug_active = False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        sofast.params.debug_geometry.debug_active = True  # False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_geometry.save_dir = dir_save_cur
         sofast.params.debug_geometry.figure_idx = debug_figure_idx
         sofast.params.debug_geometry.world_box = world_box  # Used only for diagnostic rendering.
@@ -283,26 +283,27 @@ def process_single_facet(
         sofast.params.debug_slope_solver.figure_idx = 100
     # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 1
 
-    # Draw SOFAST setup, wthout a mirror.
-    if sofast.params.debug_geometry.debug_active:  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        # 3-d
-        figure_title = "SOFAST Setup, Without Mirror, Before Process"
-        fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_3d())
-        # Version: SofastConfiguration class object.
-        config_for_plots = sfcfg.SofastConfiguration()
-        config_for_plots.load_sofast_object(sofast)
-        # Provide different display data depending on fringe or fixed.
-        config_for_plots.visualize_setup(
-            fig_rec.view,
-            title=None,
-            length_z_axis_cam=0.25,
-            axis_length=0.0625,
-            min_axis_length_screen=0.03125,
-            v_screen_object_screen=None,
-            r_object_screen=None,
-        )
-        fig_rec.view.show()
-        sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
+    # # &&&& DELETE-SCAFFOLDING -- UNCOMMENT THE BELOW AND GET IT WORKING
+    # # Draw SOFAST setup, wthout a mirror.
+    # if sofast.params.debug_geometry.debug_active:  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    #     # 3-d
+    #     figure_title = "SOFAST Setup, Without Mirror, Before Process"
+    #     fig_rec = sdfs.start_debug_3d_figure(figure_title, view_spec=vs.view_spec_3d())
+    #     # Version: SofastConfiguration class object.
+    #     config_for_plots = sfcfg.SofastConfiguration()
+    #     config_for_plots.load_sofast_object(sofast)
+    #     # Provide different display data depending on fringe or fixed.
+    #     config_for_plots.visualize_setup(
+    #         fig_rec.view,
+    #         title=None,
+    #         length_z_axis_cam=0.25,
+    #         axis_length=0.0625,
+    #         min_axis_length_screen=0.03125,
+    #         v_screen_object_screen=None,
+    #         r_object_screen=None,
+    #     )
+    #     fig_rec.view.show()
+    #     sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
 
     # Process SOFAST
     # # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 2

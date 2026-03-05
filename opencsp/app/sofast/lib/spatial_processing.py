@@ -68,16 +68,16 @@ def r_from_position(v_cam_optic_cam: Vxyz, v_cam_screen_cam: Vxyz) -> Rotation:
     # Calculate the optic normal (assuming crosshairs in the reflection)
     u_optic_screen_cam = -v_screen_optic_cam.normalize()
     u_optic_cam_cam = -v_cam_optic_cam.normalize()
-    u_optic_norm = (u_optic_screen_cam + u_optic_cam_cam).normalize()
+    u_optic_norm_cam = (u_optic_screen_cam + u_optic_cam_cam).normalize()
 
     # Calculate rotation from normal to camera
-    r_align = u_optic_cam_cam.align_to(u_optic_norm)
+    r_align = u_optic_cam_cam.align_to(u_optic_norm_cam)
 
     # Rotate points about approximate center (optic coordinates are flipped 180 about x axis)
     Rx = Rotation.from_rotvec(np.array([np.pi, 0.0, 0.0]))
     r_cam_optic = r_align * Rx
 
-    return r_cam_optic
+    return r_cam_optic, u_optic_norm_cam
 
 
 def refine_v_distance(

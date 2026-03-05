@@ -594,9 +594,9 @@ def draw_annotated_vector(
     return transformed_vec
 
 
-def annotated_vector_line_style(color: str = 'blue') -> rcps.RenderControlPointSeq:
+def annotated_vector_line_style(color: str = 'blue', linewidth=1) -> rcps.RenderControlPointSeq:
     """Line style for annotated vectors."""
-    return rcps.outline(color=color)
+    return rcps.outline(color=color, linewidth=linewidth)
 
 
 def annotated_vector_base_style(marker: str = 'x', color: str = 'blue') -> rcps.RenderControlPointSeq:

@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 from scipy.spatial.transform import Rotation
 
 from opencsp.common.lib.camera.Camera import Camera
+from opencsp.common.lib.geometry.Uxyz import Uxyz
 from opencsp.common.lib.geometry.Vxy import Vxy
 from opencsp.common.lib.geometry.Vxyz import Vxyz
 import opencsp.common.lib.tool.log_tools as lt
@@ -13,6 +14,10 @@ def t_from_distance(Puv_cam: Vxy, dist: float, camera: Camera, v_cam_screen_cam:
     """
     Calculates the 3D point given a 2D camera pixel location and a distance
     from the center of the screen.
+
+    # &&&& DELETE-SCAFFOLDING -- DOCUMENT THIS GEOMETRIC CONSTRUCTION!
+
+    # &&&& DELETE-SCAFFOLDING -- NOTE SOFAST DEBUG/TEST FGURES TO VERIFY!
 
     Parameters
     ----------
@@ -49,6 +54,18 @@ def r_from_position(v_cam_optic_cam: Vxyz, v_cam_screen_cam: Vxyz) -> Rotation:
     Calculates the 3D rotation of a mirror given the relative locations of
     the mirror and screen from the camera.
 
+    This is the original version of the code, before Randy Brost studied it in
+    detail and discuovered a deep bug.  Because the original version is called
+    from multiple places and testing to find and fix the bug was only using
+    one of these, we keep the original version until we can verify that the
+    bug fix is correct for all callers.
+
+    # &&&& DELETE-SCAFFOLDING -- AFTER CERTIFYING, DELETE THIS VERSION
+
+    # &&&& DELETE-SCAFFOLDING -- DOCUMENT THIS GEOMETRIC CONSTRUCTION!
+
+    # &&&& DELETE-SCAFFOLDING -- NOTE SOFAST DEBUG/TEST FGURES TO VERIFY!
+
     Parameters
     ----------
     v_cam_optic_cam : Vxyz
@@ -62,6 +79,12 @@ def r_from_position(v_cam_optic_cam: Vxyz, v_cam_screen_cam: Vxyz) -> Rotation:
         Rotation from camera to optic coordinates.
 
     """
+    lt.warning(
+        "Calling routine r_from_position() in spatial_processing.py."
+        + "\nThis routine is deprecated and contains a bug."
+        + "\nUse new r_from_position_v2() instead, with appropriate testing."
+    )
+
     # Calculate screen to optic vector in camera coordinates
     v_screen_optic_cam = v_cam_optic_cam - v_cam_screen_cam
 
@@ -70,12 +93,80 @@ def r_from_position(v_cam_optic_cam: Vxyz, v_cam_screen_cam: Vxyz) -> Rotation:
     u_optic_cam_cam = -v_cam_optic_cam.normalize()
     u_optic_norm_cam = (u_optic_screen_cam + u_optic_cam_cam).normalize()
 
+    # &&&& DELETE-SCAFFOLDING -- ONCE CERTIFIED, ELIMINATE THIS ORIGINAL VERSION
     # Calculate rotation from normal to camera
+    # &&&& DELETE-SCAFFOLDING -- RCB: I DON'T SEE WHY THIS ALIGNMENT ACHIEVES THE GOAL.
     r_align = u_optic_cam_cam.align_to(u_optic_norm_cam)
 
     # Rotate points about approximate center (optic coordinates are flipped 180 about x axis)
     Rx = Rotation.from_rotvec(np.array([np.pi, 0.0, 0.0]))
     r_cam_optic = r_align * Rx
+
+    return r_cam_optic, u_optic_norm_cam
+
+
+def r_from_position_v2(u_facet_centroid_normal: Uxyz, v_cam_optic_cam: Vxyz, v_cam_screen_cam: Vxyz) -> Rotation:
+    """
+    Calculates the 3D rotation of a mirror given the relative locations of
+    the mirror and screen from the camera.
+
+    # &&&& DELETE-SCAFFOLDING -- DOCUMENT THIS GEOMETRIC CONSTRUCTION!
+
+    # &&&& DELETE-SCAFFOLDING -- NOTE SOFAST DEBUG/TEST FGURES TO VERIFY!
+
+    Parameters
+    ----------
+    u_facet_centroid_normal : Uxyz
+        Surface normal of facet at the point reflecting the crosshair center,
+        in facet definition coordinates.  In cases where the facet is centered
+        on the optical embedding surface, and the crosshairs are seen reflected
+        at the center of the facet, then this would be [0,0,1].
+    v_cam_optic_cam : Vxyz
+        Vector, camera to optic in camera coordinates.
+    v_cam_screen_cam : Vxyz
+        Vector, camera to screen in camera coordinates.
+
+    Returns
+    -------
+    r_cam_optic : Rotation
+    # # # &&&& DELETE-SCAFFOLDING -- ONCE CERTIFIED, REPLACE WITH THE FOLLOWING TEXT IN QUOTES:
+            "Rotation converting points in optic coordinates to the camera coordinate system."
+        Rotation from camera to optic coordinates.
+
+    """
+    # Calculate screen to optic vector in camera coordinates
+    v_screen_optic_cam = v_cam_optic_cam - v_cam_screen_cam
+
+    # Calculate the optic surface normal (assuming crosshairs in the reflection).
+    u_optic_screen_cam = -v_screen_optic_cam.normalize()
+    u_optic_cam_cam = -v_cam_optic_cam.normalize()
+    u_optic_norm_cam = (u_optic_screen_cam + u_optic_cam_cam).normalize()
+
+    # # # &&&& DELETE-SCAFFOLDING -- ONCE CERTIFIED, ELIMINATE THE PREVIOUS VERSION
+    # # Original version of the code.
+    # # Commented out and replaced by Randy Brost on March 5, 2026.
+    # # Calculate rotation from normal to camera
+    # r_align = u_optic_cam_cam.align_to(u_optic_norm_cam)  <-- RCB: I DON'T SEE WHY THIS ALIGNMENT ACHIEVES THE GOAL.
+
+    # # Rotate points about approximate center (optic coordinates are flipped 180 about x axis)
+    # Rx = Rotation.from_rotvec(np.array([np.pi, 0.0, 0.0]))
+    # r_cam_optic = r_align * Rx
+
+    # Rotate optic coordinates 180 about x axis, so that the optic is pointing generally
+    # back toward the camera and screen.
+    Rx = Rotation.from_rotvec(np.array([np.pi, 0.0, 0.0]))
+
+    # Calculate rotation that aligns facet surface normal with reflection surface normal.
+    # r_align = Vxyz([0, 0, -1]).align_to(u_optic_norm_cam)  # Aligns facet z axis with surface normal, for testing.
+    flipped_u_facet_centroid_normal = u_facet_centroid_normal.rotate(Rx)
+    r_align = flipped_u_facet_centroid_normal.align_to(
+        u_optic_norm_cam
+    )  # Aligns facet z axis with surface normal, for testing.
+
+    # Combine the rotations.
+    # # &&&& DELETE-SCAFFOLDING -- RENAME THE FOLLOWING TO r_optic_cam
+    r_cam_optic = r_align * Rx
+    # r_cam_optic = Rx  # &&&& DELETE-SCAFFOLDING -- DELETE ONCE CERTIFIED
 
     return r_cam_optic, u_optic_norm_cam
 

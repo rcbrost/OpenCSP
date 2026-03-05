@@ -337,10 +337,13 @@ def figure_setup_mirror_fit_translation_rotation_but_not_normal_aux(
     # Mirror pose.
     # v_cam_optic_origin_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid
     # &&&& DELETE-SCAFFOLDING -- USED TO BE NOT .INV()
-    # v_cam_optic_origin_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_A)
-    v_cam_optic_origin_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_A.inv())
+    v_cam_optic_origin_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_A)
+    # v_cam_optic_origin_cam_exp = v_cam_optic_centroid_cam_exp  # &&&& DELETE-SCAFFOLDING -- USED TO INCLUDE OFFSET
+
+    # v_cam_optic_origin_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_A.inv())
     v_cam_optic_origin_screen_exp = trans_cam_screen.apply(v_cam_optic_origin_cam_exp)
-    trans_mirror_screen = txyz.TransformXYZ.from_R_V(R=r_cam_optic_exp_A.inv(), V=v_cam_optic_origin_screen_exp)
+    trans_mirror_screen = txyz.TransformXYZ.from_R_V(R=r_cam_optic_exp_A, V=v_cam_optic_origin_screen_exp)
+    # trans_mirror_screen = txyz.TransformXYZ.from_R_V(R=r_cam_optic_exp_A.inv(), V=v_cam_optic_origin_screen_exp)
 
     # # In other words, position of optic origin in 3-d space, in camera coordinates.
     # translation_2 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_A)

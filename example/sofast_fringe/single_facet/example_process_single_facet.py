@@ -262,10 +262,10 @@ def process_single_facet(
         trans_screen_world = txyz.TransformXYZ.from_R_V(R=screen_rotation, V=screen_translation)
         # Length of SOFAST setup features to draw.
         z_axis_fov_distance = 0.9  # m.  Camera field of view (FOV)
-        mirror_needle_length = 0.1  # m.  Surface normal needles on mirror.
+        mirror_needle_length = 0.5  # 0.1  # m.  Surface normal needles on mirror.
         axis_length = 0.1  # m.  Coordinate system axes (x=red, y=green, z=blue).
         # Fill data carrier.
-        sofast.params.debug_geometry.debug_active = True  # False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        sofast.params.debug_geometry.debug_active = True  # False # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_geometry.save_dir = dir_save_cur
         sofast.params.debug_geometry.figure_idx = debug_figure_idx
         sofast.params.debug_geometry.world_box = world_box  # Used only for diagnostic rendering.

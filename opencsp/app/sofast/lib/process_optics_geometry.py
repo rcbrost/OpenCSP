@@ -321,8 +321,17 @@ def process_singlefacet_geometry(
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Find expected 3-d position of optic centroid, in camera coordinates.
+    # Original version.
+    # v_cam_optic_centroid_cam_exp = sp.t_from_distance(
+    #     v_mask_centroid_image, dist_optic_screen, camera, ori.v_cam_screen_cam
+    # )
+    # &&&& DELETE-SCAFFOLDING -- REMOVE THIS HARD-CODED HACK.
+    # &&&& DELETE-SCAFFOLDING -- BUT PROVIDE A TOOL TO EXPLORE THE EFFECT OF SLIGHT DISTANCE CHANGES,
+    # &&&& DELETE-SCAFFOLDING --   WITH INTERACTIVE FEEDBACK, SINCE THIS WILL LIKELY OFTEN BE AN ISSUE.
+    # &&&& DELETE-SCAFFOLDING -- PASS THIS IN?  MAKE PART OF .INI FILE?
+    adjusted_dist_optic_screen = dist_optic_screen * 1.08  # 1.1  # 1.12  # 1.15  # 1.1 # 1.0
     v_cam_optic_centroid_cam_exp = sp.t_from_distance(
-        v_mask_centroid_image, dist_optic_screen, camera, ori.v_cam_screen_cam
+        v_mask_centroid_image, adjusted_dist_optic_screen, camera, ori.v_cam_screen_cam
     )
     data_geometry_general.v_cam_optic_centroid_cam_exp = v_cam_optic_centroid_cam_exp
 
@@ -389,12 +398,81 @@ def process_singlefacet_geometry(
 
     # Find expected orientation of optic, assuming that reflection at centroid shows the cross-hair center during alignment.
     # This produces the rotation for the optic centroid, not the optic coordinate system.
-    r_cam_optic_exp_A, u_reflection_norm_cam = sp.r_from_position(v_cam_optic_centroid_cam_exp, ori.v_cam_screen_cam)
+    # # &&&& DELETE-SCAFFOLDING -- ORIGINAL VERSION WITH BUG, DEPRECATED.
+    # r_cam_optic_exp_A, u_reflection_norm_cam = sp.r_from_position(v_cam_optic_centroid_cam_exp, ori.v_cam_screen_cam)
+    r_cam_optic_exp_A, u_reflection_norm_cam = sp.r_from_position_v2(
+        u_facet_centroid_normal, v_cam_optic_centroid_cam_exp, ori.v_cam_screen_cam
+    )
+
+    # Some tests
+    u_z_optic = Uxyz([0, 0, 1])
+    rotated_u_z_optic = u_z_optic.rotate(r_cam_optic_exp_A)
+    # The above resulted in rotated_u_z_optic = [-0.62, -0.32, -0.70].  Visual study of the
+    # graph confirmed that this is the direction [0,0,1] expressed in both camera and screen
+    # coordinates (since in our current example, these are aligned).
+    # Thus this transform converts a point in mirror coordinates to a point in camera/screen
+    # coordinates.
+    # Thus the name "r_cam_optic_exp_A" seems to need to have its sense reversed.
+    # The new name would be "r_optic_cam_exp_A"
+    trans_cam_screen = ori.trans_screen_cam.inv()
+    # Inspection of the vector v_cam_optic_centroid_cam_exp, comparing its coordinates to the
+    # layout plot, confirms that it is a vector from the camera origin to the facet centroid,
+    # expressed in camera coordinates.  Thus its name is correct.
+    #
+    # The v_facet_centroid vector is a vector from the mirror origin to the mirror centroid,
+    # expresed in mirror coordimates.
+    #
+    # Rotating this vector by r_cam_optic_exp_A then converts this vector from mirror oordinates
+    # to camera coordinates.  The rotation yields a vector from the mirror origin to the facet
+    # centroid, expressed in camera coordinates.  But we want to go from the mirror centroid
+    # to the origin, so we negate this vector when constructing the offset from the centroid.
+    #
+    # This produces v_cam_optic_origin_cam_exp, a vector from the camera origin to the optic
+    # origin, expressed in camera coordinates.  Inspection confirmed that the coordinates match
+    # the plot, so this variable is corectly named, if we interpret it as a vector from camera
+    # to optic origin.
+    # But we can also observe that this is a description of the position of the optic origin,
+    # expressed in camera coordinates.  For that, a name such as "v_optic_origin_cam_exp" would
+    # be better, since it is a description of the position on the optic origin, in camera
+    # coordinates.  See below.
+    v_cam_optic_origin_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_A)
+    # The transform "trans_cam_screen" is intended to transform camera coordinates to screen coordinates.
+    # Visual inspection confirmed that the coordinates of "v_cam_optic_origin_screen_exp" match
+    # the position of the optic origin, expressed in screen coordinates.  Note that it does not
+    # describe the vector from camera to optic origin.
+    # Thus the name "v_optic_origin_screen_exp" would be better.
+    v_cam_optic_origin_screen_exp = trans_cam_screen.apply(v_cam_optic_origin_cam_exp)
+    # The following line computes a transform for convering mirror coordinates to screen coordinates.
+    # After we rename the rotation "r_cam_optic_exp_A" to "r_optic_cam_exp_A" and the vector
+    # "v_cam_optic_origin_screen_exp" to "v_optic_origin_screen_exp", we would have:
+    #
+    #    trans_mirror_screen = txyz.TransformXYZ.from_R_V(R=r_optic_cam_exp_A, V=v_optic_origin_screen_exp)
+    #
+    # This looks almost right, but the rotation is from optic to camera coordinates, not optic to
+    # screen coordinates.  In our current example, this still works, because the camera and screen
+    # happen to have identical orientations.  But in general, we would need to include an addtional
+    # rotation from camera to screen.  If we did that, we would then have:
+    #
+    #    trans_mirror_screen = txyz.TransformXYZ.from_R_V(R=r_optic_screen_exp_A, V=v_optic_origin_screen_exp)
+    #
+    # Now the rotation converts from optic to screen coordinates, and the translation describes the
+    # position of the optic origin in screen coordinates.
+    trans_mirror_screen = txyz.TransformXYZ.from_R_V(R=r_cam_optic_exp_A, V=v_cam_optic_origin_screen_exp)
+    # This is a test of this analysis.  Below we hypothesize a point [0,0,1] in the optic coordinate
+    # system.  This is the tip of the optic csys z axis, which we have rendered in our plot.  Thus
+    # applying the mirror-to-screen transform should convert this [0,0,1] point in mirror coordinates
+    # to the corresponding position in screen coordinates.
+    v_z_optic = Vxyz([0, 0, 1])
+    # For the transformed vector, we should see the tip of the mirror csys z axis, if drawn to
+    # length 1.0 m, at the coordinates shown in the stack view of the debugger.  I verified this,
+    # which confirms that this analysis is correct, and the transform is in fact converting mirror
+    # coordinates to screen coordinates.
+    v_z_screen = trans_mirror_screen.apply(v_z_optic)
 
     # Plot mirror pose with translation and rotation considered, but not centroid surface normal.
     if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
-            "Mirror Location, Translated and Rotated, without Centroid Normal",
+            "Mirror Location, Translated and Rotated New Calculation",
             camera,
             facet_data,
             orientation,
@@ -406,7 +484,7 @@ def process_singlefacet_geometry(
             draw_reflection=False,
         )
         pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
-            "Mirror Translated, Rotated without Centroid Normal, Showing Reflection",
+            "Mirror Translated, Rotated New Calculation, Showing Reflection",
             camera,
             facet_data,
             orientation,
@@ -418,9 +496,9 @@ def process_singlefacet_geometry(
             draw_reflection=True,
         )
 
-    # Plot optic corners, rotated but without consideration of surface normal at centroid.
+    # Plot optic corners, including both translation and rotation.
     if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        figure_title = "Expected Corners, Translated and Rotated, Without Centroid Normal"
+        figure_title = "Expected Corners, Translated and Rotated New Calculation"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_clean, cmap="gray")
         # Centroid measured in image.
@@ -476,174 +554,183 @@ def process_singlefacet_geometry(
         fig_rec.view.axis.legend()
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
-    # Add consideration of surface normal at optic centroid.
-    # Surface normal at facet origin
-    z_axis = Uxyz([0.0, 0.0, 1.0])
-    # &&&& DELETE-SCAFFOLDING -- INITIAL INCORRECT APPROXIMATION
-    rotate_to_surface_normal_B = u_facet_centroid_normal.align_to(z_axis)
-    r_cam_optic_exp_B = r_cam_optic_exp_A * rotate_to_surface_normal_B
-    # &&&& DELETE-SCAFFOLDING -- SHOULD SET LATER, AFTER COMPLETE
-    data_geometry_general.r_optic_cam_exp = r_cam_optic_exp_B.inv()
+    # assert False  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
 
-    # Find expected position of optic origin
-    # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-    # v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B.inv())
-    v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B)
-    data_geometry_general.v_cam_optic_cam_exp = v_cam_optic_cam_exp
+    # # Add consideration of surface normal at optic centroid.
+    # # Surface normal at facet origin
+    # z_axis = Uxyz([0.0, 0.0, 1.0])
+    # # &&&& DELETE-SCAFFOLDING -- INITIAL INCORRECT APPROXIMATION
+    # rotate_to_surface_normal_B = u_facet_centroid_normal.align_to(z_axis)
+    # r_cam_optic_exp_B = r_cam_optic_exp_A * rotate_to_surface_normal_B
+    # # &&&& DELETE-SCAFFOLDING -- SHOULD SET LATER, AFTER COMPLETE
+    # data_geometry_general.r_optic_cam_exp = r_cam_optic_exp_B.inv()
 
-    # Find expected optic vertices
-    # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-    # v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_B.inv(), v_cam_optic_cam_exp)
-    v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_B, v_cam_optic_cam_exp)
+    # # Find expected position of optic origin
+    # # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    # # v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B.inv())
+    # v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B)
+    # data_geometry_general.v_cam_optic_cam_exp = v_cam_optic_cam_exp
 
-    # Plot mirror pose with translation and rotation considered, including the centroid surface normal.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        figure_title = "Mirror Location, Translated and Rotated, Align Centroid Normal with Z Axis"
-        pogdo.figure_setup_mirror_fit_translation_rotation(
-            figure_title,
-            camera,
-            facet_data,
-            orientation,
-            debug,
-            v_facet_centroid,
-            u_facet_centroid_normal,
-            v_cam_optic_centroid_cam_exp,
-            r_cam_optic_exp_B,
-            u_reflection_norm_cam,
-            draw_reflection=True,
-        )
+    # # Find expected optic vertices
+    # # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    # # v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_B.inv(), v_cam_optic_cam_exp)
+    # v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_B, v_cam_optic_cam_exp)
 
-    # Plot expected optic corners, rotated including consideration of surface normal at centroid.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        figure_title = "Expected Corners, Translated and Rotated, Align Centroid Normal with Z Axis"
-        fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_clean, cmap="gray")
-        # Centroid measured in image.
-        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
-        # Original computation of 3-d position of centroid in camera coordinates, projected back into image.
-        expected_centroid = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
-        fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='cyan', s=55, label='Expected Centroid')
+    # # Plot mirror pose with translation and rotation considered, including the centroid surface normal.
+    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    #     figure_title = "Mirror Location, Translated and Rotated, Align Centroid Normal with Z Axis"
+    #     pogdo.figure_setup_mirror_fit_translation_rotation(
+    #         figure_title,
+    #         camera,
+    #         facet_data,
+    #         orientation,
+    #         debug,
+    #         v_facet_centroid,
+    #         u_facet_centroid_normal,
+    #         v_cam_optic_centroid_cam_exp,
+    #         r_cam_optic_exp_B,
+    #         u_reflection_norm_cam,
+    #         draw_reflection=True,
+    #     )
 
-        # Position of optic origin in 3-d space, in camera coordinates.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        # translation_3 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B.inv())
-        translation_3 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B)
-        # Computed 3-d position of facet corners in camera coordinates.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        # v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp_B.inv()) + translation_3
-        v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp_B) + translation_3
-        # 3-d facet corner positions, projected back into image.
-        v_optic_corners_image_3 = camera.project(v_facet_corners_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
-        sdfs.plot_labeled_points(v_optic_corners_image_3, legend_label='Points Using Identity Camera')
-        # Treat centroid the same way, for cross-check.
-        # Re-computed 3-d position of facet centroid in camera coordinates.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        # v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp_B.inv()) + translation_3
-        v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp_B) + translation_3
-        # Re-computed 3-d facet centroid position, projected back into image.
-        expected_centroid_b = camera.project(v_facet_centroid_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
-        fig_rec.view.axis.scatter(
-            *expected_centroid_b.data, marker="+", c='blue', s=35, label='Centroid Using Identity Camera'
-        )
+    # # Plot expected optic corners, rotated including consideration of surface normal at centroid.
+    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    #     figure_title = "Expected Corners, Translated and Rotated, Align Centroid Normal with Z Axis"
+    #     fig_rec = sdfs.start_debug_image_figure(figure_title)
+    #     fig_rec.view.imshow(mask_clean, cmap="gray")
+    #     # Centroid measured in image.
+    #     fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
+    #     # Original computation of 3-d position of centroid in camera coordinates, projected back into image.
+    #     expected_centroid = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
+    #     fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='cyan', s=55, label='Expected Centroid')
 
-        # Position of optic origin in 3-d space, in camera coordinates, including rotation.
-        # Expected positions of optic corners in the image, using the full [rotation, translation] camera transform.
-        sdfs.plot_labeled_points(
-            v_optic_corners_image_exp, marker_size=10, point_color='k', legend_label='Points Using Camera Pose'
-        )
-        # Treat centroid the same way, for cross-check.
-        # Re-computed 3-d facet centroid position in the image, using the full [rotation, translation] camera transform.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        # expected_centroid_3b = camera.project(v_facet_centroid, r_cam_optic_exp_B.inv(), v_cam_optic_cam_exp)
-        expected_centroid_3b = camera.project(v_facet_centroid, r_cam_optic_exp_B, v_cam_optic_cam_exp)
-        fig_rec.view.axis.scatter(
-            *expected_centroid_3b.data, marker="+", c='magenta', s=10, label='Centroid Using Camera Pose'
-        )
-        fig_rec.view.axis.legend()
-        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+    #     # Position of optic origin in 3-d space, in camera coordinates.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     # translation_3 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B.inv())
+    #     translation_3 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B)
+    #     # Computed 3-d position of facet corners in camera coordinates.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     # v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp_B.inv()) + translation_3
+    #     v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp_B) + translation_3
+    #     # 3-d facet corner positions, projected back into image.
+    #     v_optic_corners_image_3 = camera.project(v_facet_corners_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
+    #     sdfs.plot_labeled_points(v_optic_corners_image_3, legend_label='Points Using Identity Camera')
+    #     # Treat centroid the same way, for cross-check.
+    #     # Re-computed 3-d position of facet centroid in camera coordinates.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     # v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp_B.inv()) + translation_3
+    #     v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp_B) + translation_3
+    #     # Re-computed 3-d facet centroid position, projected back into image.
+    #     expected_centroid_b = camera.project(v_facet_centroid_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
+    #     fig_rec.view.axis.scatter(
+    #         *expected_centroid_b.data, marker="+", c='blue', s=35, label='Centroid Using Identity Camera'
+    #     )
 
-    # # &&&& DELETE-SCAFFOLDING -- BETTER, BY ALIGNING WITH REFLECTION NORMAL
-    u_centroid_norm_cam = u_facet_centroid_normal.rotate(r_cam_optic_exp_B)
-    rotate_to_surface_normal_B2 = u_centroid_norm_cam.align_to(u_reflection_norm_cam)
-    r_cam_optic_exp_B2 = rotate_to_surface_normal_B2 * r_cam_optic_exp_B
-    # &&&& DELETE-SCAFFOLDING -- SHOULD SET LATER, AFTER COMPLETE
-    data_geometry_general.r_optic_cam_exp = r_cam_optic_exp_B2.inv()
+    #     # Position of optic origin in 3-d space, in camera coordinates, including rotation.
+    #     # Expected positions of optic corners in the image, using the full [rotation, translation] camera transform.
+    #     sdfs.plot_labeled_points(
+    #         v_optic_corners_image_exp, marker_size=10, point_color='k', legend_label='Points Using Camera Pose'
+    #     )
+    #     # Treat centroid the same way, for cross-check.
+    #     # Re-computed 3-d facet centroid position in the image, using the full [rotation, translation] camera transform.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     # expected_centroid_3b = camera.project(v_facet_centroid, r_cam_optic_exp_B.inv(), v_cam_optic_cam_exp)
+    #     expected_centroid_3b = camera.project(v_facet_centroid, r_cam_optic_exp_B, v_cam_optic_cam_exp)
+    #     fig_rec.view.axis.scatter(
+    #         *expected_centroid_3b.data, marker="+", c='magenta', s=10, label='Centroid Using Camera Pose'
+    #     )
+    #     fig_rec.view.axis.legend()
+    #     sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
-    # Find expected position of optic origin
-    # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-    # v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B2.inv())
-    v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B2)
-    data_geometry_general.v_cam_optic_cam_exp = v_cam_optic_cam_exp
+    # # # &&&& DELETE-SCAFFOLDING -- BETTER, BY ALIGNING WITH REFLECTION NORMAL
+    # u_centroid_norm_cam = u_facet_centroid_normal.rotate(r_cam_optic_exp_B)
+    # rotate_to_surface_normal_B2 = u_centroid_norm_cam.align_to(u_reflection_norm_cam)
+    # r_cam_optic_exp_B2 = rotate_to_surface_normal_B2 * r_cam_optic_exp_B
+    # # &&&& DELETE-SCAFFOLDING -- SHOULD SET LATER, AFTER COMPLETE
+
+    # &&&& DELETE-SCAFFOLDING -- SET THIS
+    # data_geometry_general.r_optic_cam_exp = r_cam_optic_exp_B2.inv()
+
+    # # Find expected position of optic origin
+    # # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    # # v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B2.inv())
+    # v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B2)
+    # &&&& DELETE-SCAFFOLDING -- DOCUMENT OR REFER TO NOTES ABOVE
+    v_cam_optic_origin_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_A)
+
+    # &&&& DELETE-SCAFFOLDING -- SET THIS
+    # data_geometry_general.v_cam_optic_cam_exp = v_cam_optic_cam_exp
 
     # Find expected optic vertices
     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
     # v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
-    v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_B2, v_cam_optic_cam_exp)
+    # v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_B2, v_cam_optic_cam_exp)
+    v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
 
-    # Plot mirror pose with translation and rotation considered, including the centroid surface normal.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        figure_title = "Mirror Location, Translated and Rotated, Align Centroid Normal with Reflection"
-        pogdo.figure_setup_mirror_fit_translation_rotation(
-            figure_title,
-            camera,
-            facet_data,
-            orientation,
-            debug,
-            v_facet_centroid,
-            u_facet_centroid_normal,
-            v_cam_optic_centroid_cam_exp,
-            r_cam_optic_exp_B2,
-            u_reflection_norm_cam,
-            draw_reflection=True,
-        )
+    # # Plot mirror pose with translation and rotation considered, including the centroid surface normal.
+    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    #     figure_title = "Mirror Location, Translated and Rotated, Align Centroid Normal with Reflection"
+    #     pogdo.figure_setup_mirror_fit_translation_rotation(
+    #         figure_title,
+    #         camera,
+    #         facet_data,
+    #         orientation,
+    #         debug,
+    #         v_facet_centroid,
+    #         u_facet_centroid_normal,
+    #         v_cam_optic_centroid_cam_exp,
+    #         r_cam_optic_exp_B2,
+    #         u_reflection_norm_cam,
+    #         draw_reflection=True,
+    #     )
 
-    # Plot expected optic corners, rotated including consideration of surface normal at centroid.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        figure_title = "Expected Corners, Translated and Rotated, Align Centroid Normal with Reflection"
-        fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_clean, cmap="gray")
-        # Centroid measured in image.
-        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
-        # Original computation of 3-d position of centroid in camera coordinates, projected back into image.
-        expected_centroid = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
-        fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='cyan', s=55, label='Expected Centroid')
+    # # Plot expected optic corners, rotated including consideration of surface normal at centroid.
+    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    #     figure_title = "Expected Corners, Translated and Rotated, Align Centroid Normal with Reflection"
+    #     fig_rec = sdfs.start_debug_image_figure(figure_title)
+    #     fig_rec.view.imshow(mask_clean, cmap="gray")
+    #     # Centroid measured in image.
+    #     fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Mask Centroid')
+    #     # Original computation of 3-d position of centroid in camera coordinates, projected back into image.
+    #     expected_centroid = camera.project(v_cam_optic_centroid_cam_exp, Rotation.identity(), Vxyz((0, 0, 0)))
+    #     fig_rec.view.axis.scatter(*expected_centroid.data, marker=".", c='cyan', s=55, label='Expected Centroid')
 
-        # Position of optic origin in 3-d space, in camera coordinates.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        translation_3 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B2)
-        # Computed 3-d position of facet corners in camera coordinates.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        # v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp_B2.inv()) + translation_3
-        v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp_B2) + translation_3
-        # 3-d facet corner positions, projected back into image.
-        v_optic_corners_image_3 = camera.project(v_facet_corners_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
-        sdfs.plot_labeled_points(v_optic_corners_image_3, legend_label='Points Using Identity Camera')
-        # Treat centroid the same way, for cross-check.
-        # Re-computed 3-d position of facet centroid in camera coordinates.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        # v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp_B2.inv()) + translation_3
-        v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp_B2) + translation_3
-        # Re-computed 3-d facet centroid position, projected back into image.
-        expected_centroid_b = camera.project(v_facet_centroid_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
-        fig_rec.view.axis.scatter(
-            *expected_centroid_b.data, marker="+", c='blue', s=35, label='Centroid Using Identity Camera'
-        )
+    #     # Position of optic origin in 3-d space, in camera coordinates.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     translation_3 = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B2)
+    #     # Computed 3-d position of facet corners in camera coordinates.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     # v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp_B2.inv()) + translation_3
+    #     v_facet_corners_cam_3 = v_facet_corners.rotate(r_cam_optic_exp_B2) + translation_3
+    #     # 3-d facet corner positions, projected back into image.
+    #     v_optic_corners_image_3 = camera.project(v_facet_corners_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
+    #     sdfs.plot_labeled_points(v_optic_corners_image_3, legend_label='Points Using Identity Camera')
+    #     # Treat centroid the same way, for cross-check.
+    #     # Re-computed 3-d position of facet centroid in camera coordinates.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     # v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp_B2.inv()) + translation_3
+    #     v_facet_centroid_cam_3 = v_facet_centroid.rotate(r_cam_optic_exp_B2) + translation_3
+    #     # Re-computed 3-d facet centroid position, projected back into image.
+    #     expected_centroid_b = camera.project(v_facet_centroid_cam_3, Rotation.identity(), Vxyz((0, 0, 0)))
+    #     fig_rec.view.axis.scatter(
+    #         *expected_centroid_b.data, marker="+", c='blue', s=35, label='Centroid Using Identity Camera'
+    #     )
 
-        # Position of optic origin in 3-d space, in camera coordinates, including rotation.
-        # Expected positions of optic corners in the image, using the full [rotation, translation] camera transform.
-        sdfs.plot_labeled_points(
-            v_optic_corners_image_exp, marker_size=10, point_color='k', legend_label='Points Using Camera Pose'
-        )
-        # Treat centroid the same way, for cross-check.
-        # Re-computed 3-d facet centroid position in the image, using the full [rotation, translation] camera transform.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        # expected_centroid_3b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
-        expected_centroid_3b = camera.project(v_facet_centroid, r_cam_optic_exp_B2, v_cam_optic_cam_exp)
-        fig_rec.view.axis.scatter(
-            *expected_centroid_3b.data, marker="+", c='magenta', s=10, label='Centroid Using Camera Pose'
-        )
-        fig_rec.view.axis.legend()
-        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+    #     # Position of optic origin in 3-d space, in camera coordinates, including rotation.
+    #     # Expected positions of optic corners in the image, using the full [rotation, translation] camera transform.
+    #     sdfs.plot_labeled_points(
+    #         v_optic_corners_image_exp, marker_size=10, point_color='k', legend_label='Points Using Camera Pose'
+    #     )
+    #     # Treat centroid the same way, for cross-check.
+    #     # Re-computed 3-d facet centroid position in the image, using the full [rotation, translation] camera transform.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     # expected_centroid_3b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+    #     expected_centroid_3b = camera.project(v_facet_centroid, r_cam_optic_exp_B2, v_cam_optic_cam_exp)
+    #     fig_rec.view.axis.scatter(
+    #         *expected_centroid_3b.data, marker="+", c='magenta', s=10, label='Centroid Using Camera Pose'
+    #     )
+    #     fig_rec.view.axis.legend()
+    #     sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Construct expected optic loop in pixels
     loop_optic_image_exp = LoopXY.from_vertices(v_optic_corners_image_exp)
@@ -664,7 +751,8 @@ def process_singlefacet_geometry(
         # Expected position of optic centroid in the image.
         # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
         # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
-        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2, v_cam_optic_cam_exp)
+        # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2, v_cam_optic_cam_exp)
+        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
         fig_rec.view.axis.scatter(
             *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
         )
@@ -693,7 +781,9 @@ def process_singlefacet_geometry(
             loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
         )
         # Expected position of optic centroid in the image.
-        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+        # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
         fig_rec.view.axis.scatter(
             *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
         )
@@ -708,7 +798,9 @@ def process_singlefacet_geometry(
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
         # Expected position of optic centroid in the image.
-        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+        # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
         fig_rec.view.axis.scatter(
             *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
         )
@@ -778,7 +870,9 @@ def process_singlefacet_geometry(
         # Centroid measured in image.
         fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
         # Expected position of optic centroid in the image.
-        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+        # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
         fig_rec.view.axis.scatter(
             *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
         )
@@ -800,14 +894,16 @@ def process_singlefacet_geometry(
 
     if debug.debug_active:
         lt.info('In process_singlefacet_geometry():')
-        lt.info('  dist_optic_screen        = ' + str(dist_optic_screen))
-        lt.info('  ori.v_cam_screen_cam     = ' + str(ori.v_cam_screen_cam))
-        lt.info('  v_measure_point_facet    = ' + str(v_measure_point_facet))
-        lt.info('  v_facet_centroid         = ' + str(v_facet_centroid))
-        lt.info('  v_cam_optic_cam_exp      = ' + str(v_cam_optic_cam_exp))
-        lt.info('  v_cam_optic_cam_refine_1 = ' + str(v_cam_optic_cam_refine_1))
-        lt.info('  r_cam_optic_exp_B2        = ' + str(r_cam_optic_exp_B2.as_euler('XYZ', degrees=True)))
-        lt.info('  r_optic_cam_refine_1     = ' + str(r_optic_cam_refine_1.as_euler('XYZ', degrees=True)))
+        lt.info('  dist_optic_screen         = ' + str(dist_optic_screen))
+        lt.info('  ori.v_cam_screen_cam      = ' + str(ori.v_cam_screen_cam))
+        lt.info('  v_measure_point_facet     = ' + str(v_measure_point_facet))
+        lt.info('  v_facet_centroid          = ' + str(v_facet_centroid))
+        # lt.info('  v_cam_optic_cam_exp      = ' + str(v_cam_optic_cam_exp))
+        lt.info('  v_cam_optic_origin_cam_exp = ' + str(v_cam_optic_origin_cam_exp))
+        lt.info('  v_cam_optic_cam_refine_1   = ' + str(v_cam_optic_cam_refine_1))
+        # lt.info('  r_cam_optic_exp_B2         = ' + str(r_cam_optic_exp_B2.as_euler('XYZ', degrees=True)))
+        lt.info('  r_cam_optic_exp_A          = ' + str(r_cam_optic_exp_A.as_euler('XYZ', degrees=True)))
+        lt.info('  r_optic_cam_refine_1       = ' + str(r_optic_cam_refine_1.as_euler('XYZ', degrees=True)))
 
     # Refine V with measured optic to display distance
     v_cam_optic_cam_refine_2 = sp.refine_v_distance(

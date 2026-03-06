@@ -29,7 +29,7 @@ class Camera:
     distortion_coef : np.ndarray
         1d array, distortion coefficients, typically length 4.
     image_shape_xy : tuple(int)
-        (x, y), image size in pixels.
+        (x, y) image size in pixels.
     name : str
         Name of camera/lens combination.
     """
@@ -65,7 +65,7 @@ class Camera:
         Returns
         -------
         Uxyz
-            Poining direction for each input pixel
+            Pointing direction for each input pixel
 
         """
         pointing = cv.undistortPoints(pixels.data, self.intrinsic_mat, self.distortion_coef)

@@ -210,7 +210,12 @@ def refine_v_distance(
     return v_cam_optic_cam * out.x
 
 
-def calc_rt_from_img_pts(pts_image: Vxy, pts_object: Vxyz, camera: Camera) -> tuple[Rotation, Vxyz]:
+# &&&& DELETE-SCAFFOLDING -- CLEAR ONCE CERTIFIED
+# Original signature.
+# def calc_rt_from_img_pts(pts_image: Vxy, pts_object: Vxyz, camera: Camera) -> tuple[Rotation, Vxyz]:
+def calc_rt_from_img_pts(
+    pts_image: Vxy, pts_object: Vxyz, camera: Camera, initial_rotation: Rotation, initial_vxyz: Vxyz
+) -> tuple[Rotation, Vxyz]:
     """
     Calculates Translation and Rotation given object and image points.
 
@@ -231,7 +236,28 @@ def calc_rt_from_img_pts(pts_image: Vxy, pts_object: Vxyz, camera: Camera) -> tu
         Camera-to-object cector in camera coordinates.
 
     """
-    ret, rvec, tvec = cv.solvePnP(pts_object.data.T, pts_image.data.T, camera.intrinsic_mat, camera.distortion_coef)
+    # Copy the input rotation and translation starting points, because the solvePnP()
+    # function will overwrite their contents as a side effect.  That will prevent us
+    # from being able to access the original values for debugging purposes, for example.
+    initial_rvec = initial_rotation.as_rotvec()
+    initial_rvec_copy = initial_rvec.copy()
+
+    initial_tvec = initial_vxyz.data
+    initial_tvec_copy = initial_tvec.copy()
+
+    # &&&& DELETE-SCAFFOLDING -- CLEAR ONCE CERTIFIED
+    # Original signature.
+    # ret, rvec, tvec = cv.solvePnP(pts_object.data.T, pts_image.data.T, camera.intrinsic_mat, camera.distortion_coef)
+    ret, rvec, tvec = cv.solvePnP(
+        pts_object.data.T,
+        pts_image.data.T,
+        camera.intrinsic_mat,
+        camera.distortion_coef,
+        initial_rvec_copy,
+        initial_tvec_copy,
+        useExtrinsicGuess=True,
+        flags=cv.SOLVEPNP_ITERATIVE,
+    )
 
     if not ret:
         lt.error_and_raise(ValueError, "Could not find position of optic relative to camera.")

@@ -96,7 +96,9 @@ class SlopeSolver:
         # Instantiate alignment transform
         trans_align = TransformXYZ.from_zero_zero()
 
-        for idx1 in range(4):
+        # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
+        # for idx1 in range(4):
+        for idx1 in range(1):  # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
             for idx2 in range(3):
                 # Calculate surface intersection points
                 self.surface.calculate_surface_intersect_points()

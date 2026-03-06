@@ -471,6 +471,7 @@ def process_singlefacet_geometry(
 
     # Plot mirror pose with translation and rotation considered, but not centroid surface normal.
     if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
         pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
             "Mirror Location, Translated and Rotated New Calculation",
             camera,
@@ -483,6 +484,7 @@ def process_singlefacet_geometry(
             u_reflection_norm_cam,
             draw_reflection=False,
         )
+        # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
         pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
             "Mirror Translated, Rotated New Calculation, Showing Reflection",
             camera,
@@ -846,12 +848,72 @@ def process_singlefacet_geometry(
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Calculate R/T from found corners
+    # &&&& DELETE-SCAFFOLDING -- CLEAR ONCE CERTIFIED
+    # Original signature.
+    # r_optic_cam_refine_1, v_cam_optic_cam_refine_1 = sp.calc_rt_from_img_pts(
+    #     loop_facet_image_refine.vertices, v_facet_corners, camera,
+    # )
     r_optic_cam_refine_1, v_cam_optic_cam_refine_1 = sp.calc_rt_from_img_pts(
-        loop_facet_image_refine.vertices, v_facet_corners, camera
+        loop_facet_image_refine.vertices,
+        v_facet_corners,
+        camera,
+        initial_rotation=r_cam_optic_exp_A,
+        initial_vxyz=v_cam_optic_origin_cam_exp,
     )
+
+    # # # # &&&& DELETE-SCAFFOLDING -- TEMPORARILY IGNORE solvePnP() RESULT
+    # # # r_optic_cam_refine_1 = r_cam_optic_exp_A  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    # # # v_cam_optic_cam_refine_1 = v_cam_optic_origin_cam_exp  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+
+    # &&&& DELETE-SCAFFOLDING -- SHOULD THIS NAME BE INVERTED?
     r_cam_optic_refine_1 = r_optic_cam_refine_1.inv()
     data_geometry_general.r_optic_cam_refine_1 = r_optic_cam_refine_1
     data_geometry_general.v_cam_optic_cam_refine_1 = v_cam_optic_cam_refine_1
+
+    # Plot mirror pose with refined translation.
+    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
+        pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
+            "Refined Optic Translation Only",
+            camera,
+            facet_data,
+            orientation,
+            debug,
+            v_facet_centroid,
+            v_cam_optic_cam_refine_1,  # v_cam_optic_centroid_cam_exp,
+            Rotation.identity(),  # r_optic_cam_refine_1, #r_cam_optic_exp_A,
+            u_reflection_norm_cam,
+            draw_reflection=False,
+        )
+
+    # Plot mirror pose with refined translation and rotation.
+    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
+        pogdo.figure_setup_mirror_refined_by_solvePnP(
+            "Refined Optic Rotation and Translation",
+            camera,
+            facet_data,
+            orientation,
+            debug,
+            v_facet_centroid,
+            v_cam_optic_cam_refine_1,  # v_cam_optic_centroid_cam_exp,
+            r_optic_cam_refine_1,  # r_cam_optic_exp_A,
+            u_reflection_norm_cam,
+            draw_reflection=False,
+        )
+        # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
+        pogdo.figure_setup_mirror_refined_by_solvePnP(
+            "Refined Optic Rotation and Translation, Showing Reflection",
+            camera,
+            facet_data,
+            orientation,
+            debug,
+            v_facet_centroid,
+            v_cam_optic_cam_refine_1,  # v_cam_optic_centroid_cam_exp,
+            r_optic_cam_refine_1,  # r_cam_optic_exp_A,
+            u_reflection_norm_cam,
+            draw_reflection=True,
+        )
 
     # Plot reprojected points 1
     if debug.debug_active:

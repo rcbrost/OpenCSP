@@ -265,7 +265,7 @@ def process_single_facet(
         mirror_needle_length = 0.5  # 0.1  # m.  Surface normal needles on mirror.
         axis_length = 0.1  # m.  Coordinate system axes (x=red, y=green, z=blue).
         # Fill data carrier.
-        sofast.params.debug_geometry.debug_active = True  # False # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        sofast.params.debug_geometry.debug_active = True  # False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_geometry.save_dir = dir_save_cur
         sofast.params.debug_geometry.figure_idx = debug_figure_idx
         sofast.params.debug_geometry.world_box = world_box  # Used only for diagnostic rendering.
@@ -278,7 +278,7 @@ def process_single_facet(
         sofast.params.debug_geometry.draw_sofast_setup_axis_grid = True  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.draw_sofast_setup_embedding_mirror = False  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.draw_sofast_setup_mirror_projection = False  # Used only for diagnostic rendering.
-        sofast.params.debug_slope_solver.debug_active = False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        sofast.params.debug_slope_solver.debug_active = True  # False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_slope_solver.save_dir = dir_save_cur
         sofast.params.debug_slope_solver.figure_idx = 100
     # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 1
@@ -306,26 +306,26 @@ def process_single_facet(
     #     sdfs.finish_debug_3d_figure(figure_title, 'geometry', fig_rec, sofast.params.debug_geometry)
 
     # Process SOFAST
-    # # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 2
-    # try:
-    #     # Process
-    #     sofast.process_optic_singlefacet(facet_data, fit_surface)
-    #     # Get measurement statistics
-    #     config = SofastConfiguration()
-    #     config.load_sofast_object(sofast)
-    #     measurement_stats = config.get_measurement_stats()
-    # except ValueError:
-    #     # Save all debug figures
-    #     save_all_debug_figures(dir_save_cur, sofast)
-    #     return
+    # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 2
+    try:
+        # Process
+        sofast.process_optic_singlefacet(facet_data, fit_surface)
+        # Get measurement statistics
+        config = sfcfg.SofastConfiguration()
+        config.load_sofast_object(sofast)
+        measurement_stats = config.get_measurement_stats()
+    except ValueError:
+        # Save all debug figures
+        save_all_debug_figures(dir_save_cur, sofast)
+        return
     # # &&&& DELETE-SCAFFOLDING -- MIDDLE PASS-THROUGH HACK 2
-    # Process
-    sofast.process_optic_singlefacet(facet_data, fit_surface)
-    # Get measurement statistics
-    config = SofastConfiguration()
-    config.load_sofast_object(sofast)
-    measurement_stats = config.get_measurement_stats()
-    # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 2
+    # # Process
+    # sofast.process_optic_singlefacet(facet_data, fit_surface)
+    # # Get measurement statistics
+    # config = SofastConfiguration()
+    # config.load_sofast_object(sofast)
+    # measurement_stats = config.get_measurement_stats()
+    # # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 2
 
     # Save all debug figures
     save_all_debug_figures(dir_save_cur, sofast)

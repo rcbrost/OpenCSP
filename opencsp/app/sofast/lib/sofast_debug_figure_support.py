@@ -87,7 +87,7 @@ def finish_debug_3d_figure(
     figure_title: str, phase: str, fig_rec: rcfg.RenderControlFigure, debug: DebugOpticsGeometry
 ) -> None:
     """Closes and saves debug 3-d figure."""
-    show = True  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
+    show = False  # True  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
 
     # Show now, so that all drawn element labels appear in the plot legend.
     # Set view axes to match the extent of the system.

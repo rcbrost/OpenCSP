@@ -115,9 +115,11 @@ class CalculationError(hdf5_tools.HDF5_SaveAbstract):
     errors during deflectometry calculations.
     """
 
+    error_dist_optic_screen_exp: float = None
     error_dist_optic_screen_1: float = None
     error_dist_optic_screen_2: float = None
     error_dist_optic_screen_3: float = None
+    error_reprojection_exp: float = None
     error_reprojection_1: float = None
     error_reprojection_2: float = None
     error_reprojection_3: float = None
@@ -133,17 +135,21 @@ class CalculationError(hdf5_tools.HDF5_SaveAbstract):
             Prefix to append to folder path within HDF file (folders must be separated by "/")
         """
         data = [
+            self.error_dist_optic_screen_exp,
             self.error_dist_optic_screen_1,
             self.error_dist_optic_screen_2,
             self.error_dist_optic_screen_3,
+            self.error_reprojection_exp,
             self.error_reprojection_1,
             self.error_reprojection_2,
             self.error_reprojection_3,
         ]
         datasets = [
+            prefix + "CalculationError/error_dist_optic_screen_exp",
             prefix + "CalculationError/error_dist_optic_screen_1",
             prefix + "CalculationError/error_dist_optic_screen_2",
             prefix + "CalculationError/error_dist_optic_screen_3",
+            prefix + "CalculationError/error_reprojection_exp",
             prefix + "CalculationError/error_reprojection_1",
             prefix + "CalculationError/error_reprojection_2",
             prefix + "CalculationError/error_reprojection_3",

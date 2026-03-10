@@ -665,8 +665,22 @@ class Vxyz:
         for x, y, z, label in zip(self.x, self.y, self.z, labels):
             view.draw_xyz((x, y, z), style, label)
 
+    def to_str(self):
+        """
+        Returns a string describing the Vxyz.
+        If the Vxyz contains only one vector, the string is easy to read.
+        If the Vxyz contains multiple vectors, then the string is simply the result of the str() function.
+        """
+        if self.len() == 1:
+            return (
+                f"Vxyz: [{self.x[0]:10.6f}, {self.y[0]:10.6f}, {self.z[0]:10.6f}]; magnitude={self.magnitude()[0]:9.6f}"
+            )
+        else:
+            # Later we might enhance this.
+            return str(self)
 
-def connection_lines(xyz_sequence_1: Vxyz, xyz_sequence_2: Vxyz) -> [Vxyz]:
+
+def connection_lines(xyz_sequence_1: Vxyz, xyz_sequence_2: Vxyz) -> list[Vxyz]:
     """Given two sequences of (x,y,z) points, return a list
     of line segments connecting them.
 

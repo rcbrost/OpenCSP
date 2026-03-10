@@ -174,6 +174,7 @@ def r_from_position_v2(u_facet_centroid_normal: Uxyz, v_cam_optic_cam: Vxyz, v_c
 def refine_v_distance(
     v_cam_optic_cam: Vxyz, dist_optic_screen: float, v_cam_screen_cam: Vxyz, v_meas_pt_optic_cam: Vxyz
 ) -> Vxyz:
+    # &&&& DELETE-SCAFFOLDING -- CHANGE "v_meas_pt_optic_cam" to "v_optic_meas_pt_cam" ONCE STABLE
     """
     Refines the camera to optic translation vector so that measured optic
     screen distance exactly matches calculated value.
@@ -187,7 +188,7 @@ def refine_v_distance(
     v_cam_screen_cam : Vxyz
         Camera to screen vector in camera coordinates.
     v_meas_pt_optic_cam : Vxyz
-        Optic origin to measure point vector in camera coordintes.
+        Optic origin to measure point vector in camera coordinates.
 
     Returns
     -------
@@ -196,6 +197,7 @@ def refine_v_distance(
 
     """
 
+    # &&&& DELETE-SCAFFOLDING -- CHANGE "v_meas_pt_optic_cam" to "v_optic_meas_pt_cam" ONCE STABLE
     def error_func(scale):
         # Calculate the distance error
         v_cam_meas_pt_cam = (v_cam_optic_cam * scale) + v_meas_pt_optic_cam
@@ -203,6 +205,8 @@ def refine_v_distance(
         return np.abs(error)
 
     # Perform optimization
+    # Here we use error magnitude minimizaiton.  Since the error_func values crosses zero,
+    # an alternative approach would be to use binary search.
     scale_0 = 1.0
     out = minimize(error_func, scale_0, method="Powell")
 

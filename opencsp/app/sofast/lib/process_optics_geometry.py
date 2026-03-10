@@ -125,6 +125,14 @@ def process_singlefacet_geometry(
     # Surface normal at centroid in facet coordinates
     u_facet_centroid_normal: Uxyz = facet_data.u_facet_centroid_normal
 
+    # &&&& DELETE-SCAFFOLDING -- REMOVE THIS HARD-CODED HACK.
+    # &&&& DELETE-SCAFFOLDING -- IN OUR CHALLENGING DATA SET, WE DON'T KNOW WHERE THE MEASURE POINT WAS,
+    # &&&& DELETE-SCAFFOLDING -- BUT WE WILL ASSUME THAT IT IS COINCIDENT WITH THE ESTIMATED FACET CENTROID.
+    # &&&& DELETE-SCAFFOLDING -- PASS THIS IN?  MAKE PART OF .INI FILE?
+    v_measure_point_facet = (
+        v_facet_centroid  # Reasonable for all cases where measure point was chosen to be the centroid.
+    )
+
     # Draw SOFAST setup, wthout a mirror.
     if debug.debug_active:
         figure_title = "SOFAST Setup, Without Mirror"
@@ -870,21 +878,21 @@ def process_singlefacet_geometry(
     data_geometry_general.r_optic_cam_refine_1 = r_optic_cam_refine_1
     data_geometry_general.v_cam_optic_cam_refine_1 = v_cam_optic_cam_refine_1
 
-    # Plot mirror pose with refined translation.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
-        pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
-            "Refined Optic Translation Only",
-            camera,
-            facet_data,
-            orientation,
-            debug,
-            v_facet_centroid,
-            v_cam_optic_cam_refine_1,  # v_cam_optic_centroid_cam_exp,
-            Rotation.identity(),  # r_optic_cam_refine_1, #r_cam_optic_exp_A,
-            u_reflection_norm_cam,
-            draw_reflection=False,
-        )
+    # # Plot mirror pose with refined translation.
+    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    #     # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
+    #     pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
+    #         "Refined Optic Translation Only",
+    #         camera,
+    #         facet_data,
+    #         orientation,
+    #         debug,
+    #         v_facet_centroid,
+    #         v_cam_optic_cam_refine_1,  # v_cam_optic_centroid_cam_exp,
+    #         Rotation.identity(),  # r_optic_cam_refine_1, #r_cam_optic_exp_A,
+    #         u_reflection_norm_cam,
+    #         draw_reflection=False,
+    #     )
 
     # Plot mirror pose with refined translation and rotation.
     if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
@@ -915,14 +923,14 @@ def process_singlefacet_geometry(
             draw_reflection=True,
         )
 
-    # Plot reprojected points 1
-    if debug.debug_active:
-        fig = plt.figure()
-        debug.figures.append(fig)
-        plt.imshow(mask_raw)
-        pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_1)
-        sdfs.plot_labeled_points(pts_reproj)
-        plt.title("Reprojected Points 1")
+    # # Plot reprojected points 1
+    # if debug.debug_active:
+    #     fig = plt.figure()
+    #     debug.figures.append(fig)
+    #     plt.imshow(mask_raw)
+    #     pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_1)
+    #     sdfs.plot_labeled_points(pts_reproj)
+    #     plt.title("Reprojected Points 1")
 
     # Plot reprojected points in comparison to refined optic corners
     if debug.debug_active:
@@ -939,7 +947,9 @@ def process_singlefacet_geometry(
             *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
         )
         # Refined positions of optic corners in the image.
-        sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
+        sdfs.plot_labeled_points(
+            loop_facet_image_refine.vertices, legend_label='Refined Image Points Using Camera Pose'
+        )
         fig_rec.view.draw_pq_list(
             loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
         )
@@ -952,46 +962,191 @@ def process_singlefacet_geometry(
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Calculate refined measure point vector in optic coordinates
+    # Here we switch from using the facet centroid to the facet measure point.
+    # We used the facet centroid up to now, because we did not have an optically-inferred estimate
+    # of the facet pose.  Instead, we have had a white blob, for which we can compute the image centroid.
+    # This is close to the facet centroid, but not exactly, especially when the facet is a curved surface
+    # viewed form an oblique angle.  We tolerated this approximation, because our initial pose was
+    # completely unknown.  Due to the lack of better information, the facet centroid was assumed to be
+    # the distance reference point for initial pose estimation.  But now we have an estimate of the
+    # pose based on its boundary, so we can more accurately identify the measurement reference point.
+    # We will use this measurement reference point (the "measure point") to refine the pose to have
+    # its measure-point-to-screen-origin distance match the measured distance.
+    #
+    # Note that the measure point may differ from the facet centroid in cases where the facet centroid
+    # is difficult to reach, for example for a very large mirror.  When there is a significant discrepancy,
+    # we rely on the solvePnP() function to establish a correct camera position, thus correcting the
+    # approximation we applied, at least for rotation.  However, due to the potential for distance errors
+    # arising from pixel noise, we will still refine the measure-point-to-screen-origin distance.
     v_measure_point_optic_cam_refine_1 = v_measure_point_facet.rotate(r_optic_cam_refine_1)
 
-    if debug.debug_active:
-        lt.info('In process_singlefacet_geometry():')
-        lt.info('  dist_optic_screen         = ' + str(dist_optic_screen))
-        lt.info('  ori.v_cam_screen_cam      = ' + str(ori.v_cam_screen_cam))
-        lt.info('  v_measure_point_facet     = ' + str(v_measure_point_facet))
-        lt.info('  v_facet_centroid          = ' + str(v_facet_centroid))
-        # lt.info('  v_cam_optic_cam_exp      = ' + str(v_cam_optic_cam_exp))
-        lt.info('  v_cam_optic_origin_cam_exp = ' + str(v_cam_optic_origin_cam_exp))
-        lt.info('  v_cam_optic_cam_refine_1   = ' + str(v_cam_optic_cam_refine_1))
-        # lt.info('  r_cam_optic_exp_B2         = ' + str(r_cam_optic_exp_B2.as_euler('XYZ', degrees=True)))
-        lt.info('  r_cam_optic_exp_A          = ' + str(r_cam_optic_exp_A.as_euler('XYZ', degrees=True)))
-        lt.info('  r_optic_cam_refine_1       = ' + str(r_optic_cam_refine_1.as_euler('XYZ', degrees=True)))
-
     # Refine V with measured optic to display distance
+    # We do this because the distance inferred from a camera view of two points seen along camera rays
+    # with a relatively small angle is subject to noise in the point-in-image calaculation, whereas the
+    # mirror-to-screen distance is expected to be more accurate as a direct measurement.
+    # # &&&& DELETE-SCAFFOLDING -- PREVIOUSLY USED NON-ADJUSTED DISTANCE
+    # # We don't use adjusted_dist_optic_screen, because it is more-or-less arbitrary
+    # # and influenced by things like the edge-snap rectangle window width, which is
+    # # unrelated to the primary measurement.
+    # v_cam_optic_cam_refine_2 = sp.refine_v_distance(
+    #     v_cam_optic_cam_refine_1,
+    #     dist_optic_screen,
+    #     ori.v_cam_screen_cam,
+    #     v_measure_point_optic_cam_refine_1,
+    # )
     v_cam_optic_cam_refine_2 = sp.refine_v_distance(
-        v_cam_optic_cam_refine_1, dist_optic_screen, ori.v_cam_screen_cam, v_measure_point_optic_cam_refine_1
+        v_cam_optic_cam_refine_1, adjusted_dist_optic_screen, ori.v_cam_screen_cam, v_measure_point_optic_cam_refine_1
     )
     data_geometry_general.v_cam_optic_cam_refine_2 = v_cam_optic_cam_refine_2
 
-    # Plot reprojected points 2
     if debug.debug_active:
-        fig = plt.figure()
-        debug.figures.append(fig)
-        plt.imshow(mask_raw)
+        dist_optic_screen_exp = (
+            ori.v_cam_screen_cam - (v_cam_optic_origin_cam_exp + v_measure_point_facet.rotate(r_cam_optic_exp_A))
+        ).magnitude()
+        # dist_optic_screen_exp_inv = (
+        #     ori.v_cam_screen_cam - (v_cam_optic_origin_cam_exp + v_measure_point_facet.rotate(r_cam_optic_exp_A.inv()))
+        # ).magnitude()
+        dist_optic_screen_refine_1 = (
+            ori.v_cam_screen_cam - (v_cam_optic_cam_refine_1 + v_measure_point_optic_cam_refine_1)
+        ).magnitude()
+        dist_optic_screen_refine_2 = (
+            ori.v_cam_screen_cam - (v_cam_optic_cam_refine_2 + v_measure_point_optic_cam_refine_1)
+        ).magnitude()
+        lt.info('In process_singlefacet_geometry():')
+        lt.info('  dist_optic_screen          = ' + f"{dist_optic_screen:.6f}")
+        lt.info('  adjusted_dist_optic_screen = ' + f"{adjusted_dist_optic_screen:.6f}")
+        lt.info('  ori.v_cam_screen_cam       = ' + ori.v_cam_screen_cam.to_str())
+        lt.info('  v_facet_centroid           = ' + v_facet_centroid.to_str())
+        lt.info('  v_measure_point_facet      = ' + v_measure_point_facet.to_str())
+        # lt.info('  v_cam_optic_cam_exp        = ' + v_cam_optic_cam_exp.to_str())
+        lt.info('  v_cam_optic_origin_cam_exp = ' + v_cam_optic_origin_cam_exp.to_str())
+        lt.info('  v_cam_optic_cam_refine_1   = ' + v_cam_optic_cam_refine_1.to_str())
+        lt.info('  v_cam_optic_cam_refine_2   = ' + v_cam_optic_cam_refine_2.to_str())
+        # lt.info('  r_cam_optic_exp_B2         = ' + str(r_cam_optic_exp_B2.as_euler('XYZ', degrees=True)))
+        lt.info('  r_cam_optic_exp_A          = ' + str(r_cam_optic_exp_A.as_euler('XYZ', degrees=True)))
+        lt.info('  r_optic_cam_refine_1       = ' + str(r_optic_cam_refine_1.as_euler('XYZ', degrees=True)))
+        # lt.info('  r_optic_cam_refine_1.inv() = ' + str(r_optic_cam_refine_1.inv().as_euler('XYZ', degrees=True)))
+        lt.info('  dist_optic_screen_exp      = ' + str(dist_optic_screen_exp))
+        # lt.info('  dist_optic_screen_exp_inv  = ' + str(dist_optic_screen_exp_inv))
+        lt.info('  dist_optic_screen_refine_1 = ' + str(dist_optic_screen_refine_1))
+        lt.info('  dist_optic_screen_refine_2 = ' + str(dist_optic_screen_refine_2))
+
+    # Plot reprojected points in comparison to refined optic corners
+    if debug.debug_active:
+        figure_title = "Refined Loop Points vs. Reprojected Points 1 vs. Reprojected Points 2"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_raw, cmap="gray")
+        # Centroid measured in image.
+        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
+        # Expected position of optic centroid in the image.
+        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+        # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
+        fig_rec.view.axis.scatter(
+            *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
+        )
+        # Refined positions of optic corners in the image.
+        sdfs.plot_labeled_points(
+            loop_facet_image_refine.vertices, legend_label='Refined Image Points Using Camera Pose'
+        )
+        fig_rec.view.draw_pq_list(
+            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+        )
+        # Points reprojected using camera pose from solvePnP().
+        pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_1)
+        sdfs.plot_labeled_points(
+            pts_reproj, marker_size=30, point_color='b', label_color='b', legend_label='Reprojected by solvePnP()'
+        )
+        # Points reprojected using camera pose from solvePnP() and then refined distance.
         pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_2)
-        sdfs.plot_labeled_points(pts_reproj)
-        plt.title("Reprojected Points 2")
+        sdfs.plot_labeled_points(
+            pts_reproj,
+            marker_size=30,
+            point_color='lightgreen',
+            label_color='lightgreen',
+            legend_label='Reprojected by solvePnP(), then Refined Distance',
+        )
+        fig_rec.view.axis.legend()
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+
+    # Plot mirror pose with refined translation and rotation.
+    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
+        pogdo.figure_setup_mirror_refined_by_solvePnP(
+            "Refined Optic Rotation and Translation 2",
+            camera,
+            facet_data,
+            orientation,
+            debug,
+            v_facet_centroid,
+            v_cam_optic_cam_refine_2,  # v_cam_optic_centroid_cam_exp,
+            r_optic_cam_refine_1,  # r_cam_optic_exp_A,
+            u_reflection_norm_cam,
+            draw_reflection=False,
+        )
+        # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
+        pogdo.figure_setup_mirror_refined_by_solvePnP(
+            "Refined Optic Rotation and Translation 2, Showing Reflection",
+            camera,
+            facet_data,
+            orientation,
+            debug,
+            v_facet_centroid,
+            v_cam_optic_cam_refine_2,  # v_cam_optic_centroid_cam_exp,
+            r_optic_cam_refine_1,  # r_cam_optic_exp_A,
+            u_reflection_norm_cam,
+            draw_reflection=True,
+        )
+
+    # Plot reprojected points over mask image
+    if debug.debug_active:
+        figure_title = "Reprojected Points 2"
+        fig_rec = sdfs.start_debug_image_figure(figure_title)
+        fig_rec.view.imshow(mask_raw, cmap="gray")
+        # Points reprojected using camera pose from solvePnP() and then refined distance.
+        pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_2)
+        sdfs.plot_labeled_points(
+            pts_reproj,
+            marker_size=30,
+            point_color='lightgreen',
+            label_color='lightgreen',
+            legend_label='Reprojected by solvePnP(), then Refined Distance',
+        )
+        fig_rec.view.axis.legend()
+        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+
+    # # Plot reprojected points 2
+    # if debug.debug_active:
+    #     fig = plt.figure()
+    #     debug.figures.append(fig)
+    #     plt.imshow(mask_raw)
+    #     pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_2)
+    #     sdfs.plot_labeled_points(pts_reproj)
+    #     plt.title("Reprojected Points 2")
 
     # Orient optic
     ori.orient_optic_cam(r_cam_optic_refine_1, v_cam_optic_cam_refine_2)
 
+    # &&&& DELETE-SCAFFOLDING -- THE FOLLOWING COMMENT IS INCORRECT.  CONSIDER "Calculate camera ray direction from camera to measure point, in optic coordinates."
     # Calculate measure point pointing direction
     u_cam_measure_point_facet = Uxyz((ori.v_cam_optic_optic + v_measure_point_facet).data)
     data_geometry_facet.u_cam_measure_point_facet = u_cam_measure_point_facet
 
+    # Calculate errors from using only centroid and centroid reflection
+    error_dist_optic_screen_exp = sp.distance_error(
+        ori.v_cam_screen_cam,
+        v_cam_optic_origin_cam_exp + v_measure_point_facet.rotate(r_cam_optic_exp_A),
+        adjusted_dist_optic_screen,
+    )
+    data_error.error_dist_optic_screen_exp = error_dist_optic_screen_exp
+    error_reprojection_exp = sp.reprojection_error(
+        camera, v_facet_corners, loop_facet_image_refine.vertices, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp
+    )
+    data_error.error_reprojection_exp = error_reprojection_exp
+
     # Calculate errors from using only facet corners
     error_dist_optic_screen_1 = sp.distance_error(
-        ori.v_cam_screen_cam, v_cam_optic_cam_refine_1 + v_measure_point_optic_cam_refine_1, dist_optic_screen
+        ori.v_cam_screen_cam, v_cam_optic_cam_refine_1 + v_measure_point_optic_cam_refine_1, adjusted_dist_optic_screen
     )
     data_error.error_dist_optic_screen_1 = error_dist_optic_screen_1
     error_reprojection_1 = sp.reprojection_error(
@@ -1001,13 +1156,22 @@ def process_singlefacet_geometry(
 
     # Calculate errors after refining with measured distance
     error_dist_optic_screen_2 = sp.distance_error(
-        ori.v_cam_screen_cam, v_cam_optic_cam_refine_2 + v_measure_point_optic_cam_refine_1, dist_optic_screen
+        ori.v_cam_screen_cam, v_cam_optic_cam_refine_2 + v_measure_point_optic_cam_refine_1, adjusted_dist_optic_screen
     )
     data_error.error_dist_optic_screen_2 = error_dist_optic_screen_2
     error_reprojection_2 = sp.reprojection_error(
         camera, v_facet_corners, loop_facet_image_refine.vertices, r_optic_cam_refine_1, v_cam_optic_cam_refine_2
     )
     data_error.error_reprojection_2 = error_reprojection_2
+
+    if debug.debug_active:
+        lt.info('In process_singlefacet_geometry():')
+        lt.info('  error_dist_optic_screen_exp = ' + str(error_dist_optic_screen_exp))
+        lt.info('  error_dist_optic_screen_1   = ' + str(error_dist_optic_screen_1))
+        lt.info('  error_dist_optic_screen_2   = ' + str(error_dist_optic_screen_2))
+        lt.info('  error_reprojection_exp = ' + str(error_reprojection_exp))
+        lt.info('  error_reprojection_1   = ' + str(error_reprojection_1))
+        lt.info('  error_reprojection_2   = ' + str(error_reprojection_2))
 
     # Save other data
     data_geometry_facet.measure_point_screen_distance = dist_optic_screen

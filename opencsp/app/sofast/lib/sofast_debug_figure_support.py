@@ -132,7 +132,7 @@ def start_and_draw_sofast_setup_figure(
     trans_mirror_screen: txyz.TransformXYZ | None,
     # Debug information carrier.
     debug: DebugOpticsGeometry,
-    view_az_el_roll_deg: float = None,
+    view_az_el_roll_deg: tuple[float, float, float] = None,
     grid: bool = True,
     axis_prefix: str = None,
 ) -> tuple[rcfg.RenderControlFigure, txyz.TransformXYZ, txyz.TransformXYZ, txyz.TransformXYZ]:

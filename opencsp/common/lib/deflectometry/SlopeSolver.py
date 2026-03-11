@@ -99,7 +99,9 @@ class SlopeSolver:
         # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
         # for idx1 in range(4):
         for idx1 in range(1):  # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
-            for idx2 in range(3):
+            # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
+            # for idx2 in range(3):
+            for idx2 in range(1):  # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
                 # Calculate surface intersection points
                 self.surface.calculate_surface_intersect_points()
 
@@ -122,51 +124,78 @@ class SlopeSolver:
                         stacklevel=2,
                     )
 
+                # Plot debug plot
+                if self.debug.debug_active:
+                    self._plot_debug_plots("Before Slope Fit", idx1, idx2)
+                    self._plot_debug_plots("Before Slope Fit", idx1, idx2, az_el_roll_deg=(0, 0, 0))
+                    self._plot_debug_plots("Before Slope Fit", idx1, idx2, az_el_roll_deg=(-90, 0, 0))
+                    self._plot_debug_plots("Before Slope Fit", idx1, idx2, az_el_roll_deg=(0, 90, 90))
+
                 # Update slope fit
                 self.surface.fit_slopes()
 
                 # Plot debug plot
                 if self.debug.debug_active:
-                    self._plot_debug_plots(idx1, idx2)
+                    self._plot_debug_plots("After Slope Fit", idx1, idx2)
+                    self._plot_debug_plots("After Slope Fit", idx1, idx2, az_el_roll_deg=(0, 0, 0))
+                    self._plot_debug_plots("After Slope Fit", idx1, idx2, az_el_roll_deg=(-90, 0, 0))
+                    self._plot_debug_plots("After Slope Fit", idx1, idx2, az_el_roll_deg=(0, 90, 90))
 
-            # Calculate measure point intersection point with existing fitting function
-            v_meas_pts_surf_int_optic = self.surface.intersect(u_measure_pixel_pointing_optic, v_optic_cam_optic)
+            # # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
+            # # Calculate measure point intersection point with existing fitting function
+            # v_meas_pts_surf_int_optic = self.surface.intersect(u_measure_pixel_pointing_optic, v_optic_cam_optic)
 
-            # Calculate design normal at alignment point
-            n_design = self.surface.normal_design_at_align_point()
+            # # Calculate design normal at alignment point
+            # n_design = self.surface.normal_design_at_align_point()
 
-            # Calculate measured normal at alignment point
-            n_meas = self.surface.normal_fit_at_align_point()
+            # # Calculate measured normal at alignment point
+            # n_meas = self.surface.normal_fit_at_align_point()
 
-            # Calculate the rotation needed to align the normal vectors
-            r_align_step = n_meas.align_to(n_design)
+            # # Calculate the rotation needed to align the normal vectors
+            # r_align_step = n_meas.align_to(n_design)
 
-            # Rotate all points about alignment point
-            self.surface.rotate_all(r_align_step)
+            # # Rotate all points about alignment point
+            # self.surface.rotate_all(r_align_step)
 
-            # Calculate scale so that align-point to screen matches measurement
-            args = (
-                dist_optic_screen,
-                v_align_point_optic,
-                v_optic_cam_optic,
-                v_optic_screen_optic,
-                v_meas_pts_surf_int_optic,
-            )
-            out = minimize(sf2.dist_optic_screen_error, np.array([1.0]), args=args)
-            scale = out.x[0]
-            v_align_optic_step = (v_optic_cam_optic - v_align_point_optic) * (scale - 1)
+            # # # Plot debug plot
+            # # if self.debug.debug_active:
+            # #     self._plot_debug_plots("After Rotate All", idx1, idx2)
+            # #     # self._plot_debug_plots("After Rotate All", idx1, idx2, az_el_roll_deg=(0, 0, 0))
+            # #     # self._plot_debug_plots("After Rotate All", idx1, idx2, az_el_roll_deg=(-90, 0, 0))
+            # #     # self._plot_debug_plots("After Rotate All", idx1, idx2, az_el_roll_deg=(0, 90, 90))
 
-            # Shift all points along align-point to camera axis
-            self.surface.shift_all(v_align_optic_step)
+            # # Calculate scale so that align-point to screen matches measurement
+            # args = (
+            #     dist_optic_screen,
+            #     v_align_point_optic,
+            #     v_optic_cam_optic,
+            #     v_optic_screen_optic,
+            #     v_meas_pts_surf_int_optic,
+            # )
+            # out = minimize(sf2.dist_optic_screen_error, np.array([1.0]), args=args)
+            # scale = out.x[0]
+            # v_align_optic_step = (v_optic_cam_optic - v_align_point_optic) * (scale - 1)
 
-            # Calculate alignment transform
-            trans_step = TransformXYZ.from_R_V(r_align_step, v_align_optic_step)
-            trans_align = trans_step * trans_align
+            # # Shift all points along align-point to camera axis
+            # self.surface.shift_all(v_align_optic_step)
+
+            # # Plot debug plot
+            # if self.debug.debug_active:
+            #     self._plot_debug_plots("After Shift All", idx1, idx2)
+            #     # self._plot_debug_plots("After Shift All", idx1, idx2, az_el_roll_deg=(0, 0, 0))
+            #     # self._plot_debug_plots("After Shift All", idx1, idx2, az_el_roll_deg=(-90, 0, 0))
+            #     # self._plot_debug_plots("After Shift All", idx1, idx2, az_el_roll_deg=(0, 90, 90))
+
+            # # Calculate alignment transform
+            # trans_step = TransformXYZ.from_R_V(r_align_step, v_align_optic_step)
+            # trans_align = trans_step * trans_align
 
         # Store alignment parameters
         self._data.surf_coefs_facet = self.surface.surf_coefs
         self._data.slope_coefs_facet = self.surface.slope_coefs
-        self._data.trans_alignment = trans_align
+        # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
+        # self._data.trans_alignment = trans_align
+        self._data.trans_alignment = TransformXYZ.identity()  # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
 
     def solve_slopes(self) -> None:
         """
@@ -201,7 +230,7 @@ class SlopeSolver:
         self._data.v_surf_points_facet = v_surf_points_facet
         self._data.slopes_facet_xy = slopes_facet_xy
 
-    def _plot_debug_plots(self, idx1: int, idx2: int):
+    def _plot_debug_plots(self, title: str, idx1: int, idx2: int, az_el_roll_deg: tuple[float, float, float] = None):
         # Create figure and axes
         if self.debug.slope_solver_single_plot and isinstance(self.debug.slope_solver_figures, list):
             # Create first figure if needed
@@ -212,20 +241,29 @@ class SlopeSolver:
             facet_outline = self.debug.optic_data.v_facet_corners.data
             axes.scatter(*facet_outline, color="k")
             # Format
-            axes.set_title("Slope Solver")
+            axes.set_title("Slope Solver: " + title)
         elif self.debug.slope_solver_single_plot:
             # Get axes for single plot
             axes = self.debug.slope_solver_figures.gca()
         else:
             # Create a new figure
-            fig = plt.figure()
-            axes = fig.add_subplot(projection="3d")
+            fig = plt.figure(figsize=(12, 9))
+            axes = fig.add_subplot(projection="3d", proj_type='ortho')
             self.debug.slope_solver_figures.append(fig)
             # Plot facet corners
             facet_outline = self.debug.optic_data.v_facet_corners.data
-            axes.scatter(*facet_outline, color="k")
+            axes.scatter(
+                *facet_outline, color="lightgreen", label="Facet Vertices"
+            )  # &&&& DELETE-SCAFFOLDING -- COLOR WAS "k"
             # Format
-            axes.set_title(f"Slope Solver ({idx1:d}, {idx2:d})")
+            axes.set_title(f"Slope Solver ({idx1:d}, {idx2:d}): " + title)
+
+        # Set view direction, if desired.
+        if az_el_roll_deg is not None:
+            azimuth_deg = az_el_roll_deg[0]
+            elevation_deg = az_el_roll_deg[1]
+            roll_deg = az_el_roll_deg[2]
+            axes.view_init(azim=azimuth_deg, elev=elevation_deg, roll=roll_deg)
 
         # Plot intersection points
         self.surface.plot_intersection_points(
@@ -234,3 +272,6 @@ class SlopeSolver:
             self.debug.slope_solver_camera_rays_length,
             self.debug.slope_solver_plot_camera_screen_points,
         )
+
+        # Add legend
+        plt.legend()  # &&&& DELETE-SCAFFOLDING -- NEW.  KEEP?

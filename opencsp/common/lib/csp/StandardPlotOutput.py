@@ -443,9 +443,9 @@ class StandardPlotOutput:
         # Plots slope deviation
         if self._has_measured_optic and self._has_reference_optic:
             # Separate outputs
-            quiver_densities = self._process_plot_options(self.options_slope_vis.quiver_density)
-            quiver_scales = self._process_plot_options(self.options_slope_vis.quiver_scale)
-            quiver_colors = self._process_plot_options(self.options_slope_vis.quiver_color)
+            quiver_densities = self._process_plot_options(self.options_slope_deviation_vis.quiver_density)
+            quiver_scales = self._process_plot_options(self.options_slope_deviation_vis.quiver_scale)
+            quiver_colors = self._process_plot_options(self.options_slope_deviation_vis.quiver_color)
 
             # Slope deviation magnitude
             fig_rec = fm.setup_figure(

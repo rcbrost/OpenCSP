@@ -166,7 +166,8 @@ class Surface2DParabolic(Surface2DAbstract):
         """
         dzdx_design = -self.v_align_point_optic.x[0] / 2 / self.initial_focal_lengths_xy[0]
         dzdy_design = -self.v_align_point_optic.y[0] / 2 / self.initial_focal_lengths_xy[1]
-        return Uxyz([dzdx_design, dzdy_design, 1])
+        normal = Uxyz([dzdx_design, dzdy_design, 1])  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
+        return normal  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY, FOR BREAK POINT ANALYSIS
 
     def normal_fit_at_align_point(self) -> Vxyz:
         """
@@ -178,17 +179,25 @@ class Surface2DParabolic(Surface2DAbstract):
             Surface normal vector.
 
         """
+        # &&&& DELETE-SCAFFOLDING -- ERROR IN BELOW.  NOTE COEFFICIENT [1,2] SHOULD BE [0,2].
+        # ORIGINAL VERSION:
+        # dzdx_meas = -(
+        #     self.slope_coefs[0, 1] * self.v_align_point_optic.x[0]
+        #     + self.slope_coefs[0, 0]
+        #     + self.slope_coefs[1, 2] * self.v_align_point_optic.x[0]
+        # )
         dzdx_meas = -(
             self.slope_coefs[0, 1] * self.v_align_point_optic.x[0]
             + self.slope_coefs[0, 0]
-            + self.slope_coefs[1, 2] * self.v_align_point_optic.x[0]
+            + self.slope_coefs[0, 2] * self.v_align_point_optic.x[0]
         )
         dzdy_meas = -(
             self.slope_coefs[1, 2] * self.v_align_point_optic.y[0]
             + self.slope_coefs[1, 0]
             + self.slope_coefs[1, 1] * self.v_align_point_optic.y[0]
         )
-        return Uxyz((dzdx_meas, dzdy_meas, 1))
+        normal = Uxyz((dzdx_meas, dzdy_meas, 1))  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
+        return normal  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY, FOR BREAK POINT ANALYSIS
 
     def calculate_surface_intersect_points(self) -> None:
         """

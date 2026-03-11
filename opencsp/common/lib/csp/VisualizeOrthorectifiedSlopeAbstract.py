@@ -144,7 +144,7 @@ class VisualizeOrthorectifiedSlopeAbstract:
                 clims = [-clim, clim]
             else:
                 clims = clim
-            title = "Slope Error X"
+            title = "Slope Error Y"
             cmap = "seismic"
         elif type_ == "xy":
             x_image = slopes_diff[0] * 1000  # mrad

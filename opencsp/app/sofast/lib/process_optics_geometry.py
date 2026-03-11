@@ -355,7 +355,7 @@ def process_singlefacet_geometry(
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Plot mirror pose with translation only fit.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    if debug.debug_active:
         figure_title = "Mirror Location, Translated Only, No Rotation"
         pogdo.figure_setup_mirror_translation_only_fit(
             figure_title, camera, facet_data, orientation, debug, v_facet_centroid, v_cam_optic_centroid_cam_exp
@@ -478,7 +478,7 @@ def process_singlefacet_geometry(
     v_z_screen = trans_mirror_screen.apply(v_z_optic)
 
     # Plot mirror pose with translation and rotation considered, but not centroid surface normal.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    if debug.debug_active:
         # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
         pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
             "Mirror Location, Translated and Rotated New Calculation",
@@ -507,7 +507,7 @@ def process_singlefacet_geometry(
         )
 
     # Plot optic corners, including both translation and rotation.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    if debug.debug_active:
         figure_title = "Expected Corners, Translated and Rotated New Calculation"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_clean, cmap="gray")
@@ -587,7 +587,7 @@ def process_singlefacet_geometry(
     # v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_B, v_cam_optic_cam_exp)
 
     # # Plot mirror pose with translation and rotation considered, including the centroid surface normal.
-    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    # if debug.debug_active:
     #     figure_title = "Mirror Location, Translated and Rotated, Align Centroid Normal with Z Axis"
     #     pogdo.figure_setup_mirror_fit_translation_rotation(
     #         figure_title,
@@ -604,7 +604,7 @@ def process_singlefacet_geometry(
     #     )
 
     # # Plot expected optic corners, rotated including consideration of surface normal at centroid.
-    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    # if debug.debug_active:
     #     figure_title = "Expected Corners, Translated and Rotated, Align Centroid Normal with Z Axis"
     #     fig_rec = sdfs.start_debug_image_figure(figure_title)
     #     fig_rec.view.imshow(mask_clean, cmap="gray")
@@ -678,7 +678,7 @@ def process_singlefacet_geometry(
     v_optic_corners_image_exp = camera.project(v_facet_corners, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
 
     # # Plot mirror pose with translation and rotation considered, including the centroid surface normal.
-    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    # if debug.debug_active:
     #     figure_title = "Mirror Location, Translated and Rotated, Align Centroid Normal with Reflection"
     #     pogdo.figure_setup_mirror_fit_translation_rotation(
     #         figure_title,
@@ -695,7 +695,7 @@ def process_singlefacet_geometry(
     #     )
 
     # # Plot expected optic corners, rotated including consideration of surface normal at centroid.
-    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    # if debug.debug_active:
     #     figure_title = "Expected Corners, Translated and Rotated, Align Centroid Normal with Reflection"
     #     fig_rec = sdfs.start_debug_image_figure(figure_title)
     #     fig_rec.view.imshow(mask_clean, cmap="gray")
@@ -747,7 +747,7 @@ def process_singlefacet_geometry(
     data_image_processing_general.loop_optic_image_exp = loop_optic_image_exp
 
     # Plot expected optic loop
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    if debug.debug_active:
         figure_title = "Expected Optic Loop"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_clean, cmap="gray")
@@ -779,7 +779,7 @@ def process_singlefacet_geometry(
         lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
 
     # Plot refined optic corners
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    if debug.debug_active:
         figure_title = "Refined Optic Loop, Clean Mask"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_clean, cmap="gray")
@@ -879,7 +879,7 @@ def process_singlefacet_geometry(
     data_geometry_general.v_cam_optic_cam_refine_1 = v_cam_optic_cam_refine_1
 
     # # Plot mirror pose with refined translation.
-    # if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    # if debug.debug_active:
     #     # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
     #     pogdo.figure_setup_mirror_fit_translation_rotation_but_not_normal(
     #         "Refined Optic Translation Only",
@@ -895,7 +895,7 @@ def process_singlefacet_geometry(
     #     )
 
     # Plot mirror pose with refined translation and rotation.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    if debug.debug_active:
         # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
         pogdo.figure_setup_mirror_refined_by_solvePnP(
             "Refined Optic Rotation and Translation",
@@ -1070,7 +1070,7 @@ def process_singlefacet_geometry(
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
     # Plot mirror pose with refined translation and rotation.
-    if True:  # debug.debug_active:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    if debug.debug_active:
         # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
         pogdo.figure_setup_mirror_refined_by_solvePnP(
             "Refined Optic Rotation and Translation 2",

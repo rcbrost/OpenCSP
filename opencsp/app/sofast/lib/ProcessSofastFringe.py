@@ -545,7 +545,10 @@ class ProcessSofastFringe(ProcessSofastAbstract):
             slope_solver = SlopeSolver(**kwargs)
 
             # Perform surface fitting
-            slope_solver.fit_surface()
+            # &&&& DELETE-SCAFFOLDING -- BEGIN NEW SOLVER ALGORITHM
+            # slope_solver.fit_surface()
+            slope_solver.fit_surface_2()
+            # &&&& DELETE-SCAFFOLDING -- END NEW SOLVER ALGORITHM
 
             # Perform full slope solving
             slope_solver.solve_slopes()

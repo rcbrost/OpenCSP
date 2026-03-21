@@ -207,7 +207,7 @@ def process_single_facet(
 
     # &&&& DELETE-SCAFFOLDING -- BEGIN SURFACE NORMAL NEEDLE STUDY
     draw_reference_mirror_overview = True  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
-    needle_length = 0.5  # m  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
+    needle_length = 0.5  # 0.1  # 0.5  # m  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
     sofast_view_azim_deg = -21.40  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
     sofast_view_elev_deg = 49.84  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
     sofast_view_roll_deg = 74  # &&&& DELETE-SCAFFOLDING -- INPUT FROM SETTINGS.INI FILE
@@ -264,7 +264,8 @@ def process_single_facet(
         z_axis_fov_distance = 0.9  # m.  Camera field of view (FOV)
         mirror_needle_length = 0.5  # 0.1  # m.  Surface normal needles on mirror.
         axis_length = 0.1  # m.  Coordinate system axes (x=red, y=green, z=blue).
-        # Fill data carrier.
+        # Fill data carriers.
+        # &&&& DELETE-SCAFFOLDING -- SEE OTHER FIELDS GETTING SET IN process_singlefacet_geometry() -- FIXUP AND SIMPLIFY
         sofast.params.debug_geometry.debug_active = False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_geometry.save_dir = dir_save_cur
         sofast.params.debug_geometry.figure_idx = debug_figure_idx
@@ -281,6 +282,10 @@ def process_single_facet(
         sofast.params.debug_slope_solver.debug_active = True  # False  # True  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
         sofast.params.debug_slope_solver.save_dir = dir_save_cur
         sofast.params.debug_slope_solver.figure_idx = 100
+        sofast.params.debug_slope_solver.figure_idx = 100
+        sofast.params.debug_slope_solver.debug_geometry = (
+            sofast.params.debug_geometry
+        )  # Used only for diagnostic rendering.
     # &&&& DELETE-SCAFFOLDING -- END PASS-THROUGH HACK 1
 
     # # &&&& DELETE-SCAFFOLDING -- UNCOMMENT THE BELOW AND GET IT WORKING
@@ -314,7 +319,8 @@ def process_single_facet(
         config = sfcfg.SofastConfiguration()
         config.load_sofast_object(sofast)
         measurement_stats = config.get_measurement_stats()
-    except ValueError:
+    except ValueError as e:
+        lt.error(f'A processing error occurred: {e}')
         # Save all debug figures
         save_all_debug_figures(dir_save_cur, sofast)
         return

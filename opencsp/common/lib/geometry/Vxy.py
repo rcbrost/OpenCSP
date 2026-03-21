@@ -499,3 +499,30 @@ class Vxy:
         for axis in axis_order:
             ret.append(indexes[axis])
         return tuple(ret)
+
+    def to_str(self, type_str: bool = False, mag_str: bool = False) -> str:
+        """
+        Returns a string describing the Vxy.
+        If the Vxy contains only one vector, the string is easy to read.
+        If the Vxy contains multiple vectors, then the string is simply
+        the result of the str() function.
+
+        Parameters
+        ----------
+        type_str : bool
+            If true, then for an input Vxy containing only one vector,
+            prefix string with "Vxy:".  Default is True.
+        mag_str : bool
+            If true, then for an input Vxy containing only one vector,
+            suffix string with the vector magnitude.  Default is True.
+        """
+        if self.len() == 1:
+            result_str = f"[{self.x[0]:10.6f}, {self.y[0]:10.6f}]"
+            if type_str:
+                result_str = "Vxy:" + result_str
+            if mag_str:
+                result_str = result_str + f"; magnitude={self.magnitude()[0]:9.6f}"
+            return result_str
+        else:
+            # Later we might enhance this.
+            return str(self)

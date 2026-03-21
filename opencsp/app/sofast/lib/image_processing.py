@@ -590,7 +590,8 @@ def detect_blobs_inverse_annotate(image: np.ndarray, params: cv.SimpleBlobDetect
 
 
 def _detect_blobs_keypoints(image: np.ndarray, params: cv.SimpleBlobDetector_Params) -> list[cv.KeyPoint]:
-    """Detects blobs in image
+    """
+    Detects blobs in image
 
     Parameters
     ----------
@@ -609,3 +610,115 @@ def _detect_blobs_keypoints(image: np.ndarray, params: cv.SimpleBlobDetector_Par
 
     # Detect blobs
     return detector.detect(image)
+
+
+def construct_search_spiral(max_radius: float = 50) -> list[tuple[int, int, float]]:
+    """
+    Constructs a list of neighboring pixel locations, sorted in order of increasing distance.
+
+    Parameters
+    ----------
+    max_radius : float
+        Maximum distance to search, in units of pixels.  Default 50.
+
+    Returns
+    -------
+    search_spiral : list[tuple[int, int, float]]
+        List of (row, col, distance) tuples, where the "(row, col)" elements indicate
+        relative pixel locations, and "distance" is the distance from center of this
+        pixel to the center of the listed (row, col) pixel.
+        Sorted in order of increasing distance.
+    """
+    spiral_unsorted = []
+    for idx_1 in range(-max_radius, max_radius):
+        for idx_2 in range(-max_radius, max_radius):
+            r = np.sqrt((idx_1 * idx_1) + (idx_2 * idx_2))
+            spiral_unsorted.append((idx_1, idx_2, r))
+    return sorted(spiral_unsorted, key=lambda xyr: xyr[2])  # sort by radius
+
+
+def snap_points_to_nearest_edge(
+    image_points: Vxy, mask: np.ndarray[bool], search_spiral: list[tuple[int, int, float]]
+) -> list[list[tuple[float, float], tuple[float, float]]]:
+    """
+    Given a set of (x,y) points describing locations in a binary image, search the
+    neighborhood of each point to find the nearest image edge point.
+
+    The maximum search distance is defined by the input search_spiral routine
+    construct_search_spiral() above.
+
+    Results are returned as a list of (input_image_point, found_nearest_edge_point)
+    pairs, where the input_image_point is one of the input (x,y) points, and the
+    found_nearest_edge_point is a (col,row) pair.
+
+    If the routine does not find an edge point for a given input image point
+    within the maximum search distance indicated by search_spiral, the the image
+    point is skipped and not included in the returned list.
+
+    Image boundaries are ignored, in the sense that an image boundary is not
+    viewed as an edge.
+
+    Parameters
+    ----------
+    image_points : Vxy
+        Points with (x,y) coordinates to search for nearest edge pixels.
+    mask : np.ndarray[bool]
+        Binary image to search for edges.
+    search_spiral : list[tuple[int, int, float]]
+        Sequential list of (row, col, distance) tuples to search, where
+        "(row, col)" indicates relative pixel locations, and "distance"
+        is the distance to that location.  Sorted in order of increasing
+        distance, which implies that search may halt as soon an edge
+        pixel is found.
+
+    Returns
+    -------
+    list[list[tuple[float,float],tuple[float,float]]]
+        List of (input_image_point, nearest_edge_point) pairs,
+        where
+           input_image_point is an input (x,y) point, and
+           found_nearest_edge_point is a (col,row) pair.
+
+        If a given input image point does not have an edge pixel within
+        the maximum search distance implied by search spiral, then that
+        point is not included in the returned list.
+    """
+    # Construct search spiral for snapping estimated boundary points to nearest image edge.
+    mask_shape = mask.shape
+    n_rows = mask_shape[0]
+    n_cols = mask_shape[1]
+    input_pt_snapped_pt_pair_list = []
+    for idx in range(image_points.len()):
+        this_vxy = image_points[idx]
+        this_x = this_vxy.x[0]
+        this_y = this_vxy.y[0]
+        this_row = round(this_y)
+        this_col = round(this_x)
+        if (this_row < n_rows) and (this_col < n_cols):
+            this_pixel_value = mask[this_row, this_col]
+            edge_found = False
+            for rcd in search_spiral:
+                del_row = rcd[0]
+                del_col = rcd[1]
+                row = this_row + del_row
+                col = this_col + del_col
+                if (row < n_rows) and (col < n_cols):
+                    loop_pixel_value = mask[row, col]
+                    if (this_pixel_value and (not loop_pixel_value)) or ((not this_pixel_value) and loop_pixel_value):
+                        edge_found = True
+                        break
+        if edge_found:
+            snap_vxy = Vxy((col, row))
+            input_pt_snapped_pt_pair_list.append((this_vxy, snap_vxy))
+            print(
+                f"In snap_points_to_nearest_edge(), idx={idx}, vxy={this_vxy.to_str()}, row={this_row}, col={this_col}, pixel={this_pixel_value}, snap_vxy={snap_vxy.to_str()}"
+            )
+        else:
+            # &&&& DELETE-SCAFFOLDING -- AFTER TESTING, MAKE THIS A NO-OP
+            input_pt_snapped_pt_pair_list.append((this_vxy, None))
+            print(
+                f"In fit_sursnap_points_to_nearest_edgeface_2(), idx={idx}, vxy={this_vxy.to_str()}, row={this_row}, col={this_col}, pixel={this_pixel_value}, edge not found."
+            )
+
+    # Return.
+    return input_pt_snapped_pt_pair_list

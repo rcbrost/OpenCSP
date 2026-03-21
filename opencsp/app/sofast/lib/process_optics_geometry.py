@@ -120,8 +120,12 @@ def process_singlefacet_geometry(
     ori = copy.copy(orientation)
 
     # Get optic data
-    v_facet_corners: Vxyz = facet_data.v_facet_corners  # Corners of facet in facet coordinates
-    v_facet_centroid: Vxyz = facet_data.v_facet_centroid  # Centroid of facet in facet coordinates
+    # Corners of facet in facet coordinates
+    v_facet_corners: Vxyz = facet_data.v_facet_corners
+    # High-resolution corners of facet in facet coordinates
+    v_facet_corners_hires: Vxyz = facet_data.v_facet_corners_hires
+    # Centroid of facet in facet coordinates
+    v_facet_centroid: Vxyz = facet_data.v_facet_centroid
     # Surface normal at centroid in facet coordinates
     u_facet_centroid_normal: Uxyz = facet_data.u_facet_centroid_normal
 
@@ -233,8 +237,8 @@ def process_singlefacet_geometry(
             fig_rec = sdfs.start_debug_image_figure(figure_title)
             fig_rec.view.imshow(mask_copy_after_ROI_dilate_erode, cmap="gray")
             sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
-        else:
-            mask_copy_after_ROI_dilate_erode = mask_copy_after_ROI.copy()
+    else:
+        mask_copy_after_ROI_dilate_erode = mask_copy_after_ROI.copy()
 
     # Select largest mask area.
     # If enabled, keep only the largest mask area
@@ -1177,6 +1181,16 @@ def process_singlefacet_geometry(
     data_geometry_facet.measure_point_screen_distance = dist_optic_screen
     data_geometry_facet.spatial_orientation = ori
     data_geometry_facet.v_align_point_facet = v_facet_centroid
+
+    # Cache data to be used by subsequent comptuation debugging plots.
+    # &&&& DELETE-SCAFFOLDING -- CLEAN THIS UP
+    debug.camera = camera
+    debug.mask_raw = mask_raw
+    debug.mask_processed = mask_processed
+    debug.v_facet_corners = v_facet_corners
+    debug.v_facet_corners_hires = v_facet_corners_hires
+    debug.r_cam_optic_refine_1 = r_cam_optic_refine_1
+    debug.v_cam_optic_cam_refine_2 = v_cam_optic_cam_refine_2
 
     return (
         data_geometry_general,

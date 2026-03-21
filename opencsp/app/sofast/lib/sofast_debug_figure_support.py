@@ -20,12 +20,19 @@ import opencsp.common.lib.tool.log_tools as lt
 
 
 def plot_labeled_points(
-    pts: Vxy, marker_size: int = 30, point_color: str = 'r', label_color: str = 'g', legend_label: str = ''
+    pts: Vxy,
+    marker_size: int = 30,
+    point_color: str = 'r',
+    label_points: bool = True,
+    label_color: str = 'g',
+    label_size: str = "medium",
+    legend_label: str = '',
 ) -> None:
     """Plots labeled points on axis for debugging"""
     plt.scatter(*pts.data, s=marker_size, c=point_color, label=legend_label)
-    for idx, pt in enumerate(pts):
-        plt.text(*pt.data, idx, color=label_color)
+    if label_points:
+        for idx, pt in enumerate(pts):
+            plt.text(*pt.data, idx, color=label_color, size=label_size)
 
 
 # GENERAL FIGURES
@@ -132,7 +139,7 @@ def start_and_draw_sofast_setup_figure(
     trans_mirror_screen: txyz.TransformXYZ | None,
     # Debug information carrier.
     debug: DebugOpticsGeometry,
-    view_az_el_roll_deg: tuple[float, float, float] = None,
+    az_el_roll_deg: tuple[float, float, float] = None,
     grid: bool = True,
     axis_prefix: str = None,
 ) -> tuple[rcfg.RenderControlFigure, txyz.TransformXYZ, txyz.TransformXYZ, txyz.TransformXYZ]:
@@ -152,15 +159,15 @@ def start_and_draw_sofast_setup_figure(
     )
 
     # Set view direction, if desired.
-    if view_az_el_roll_deg is not None:
+    if az_el_roll_deg is not None:
         if not fig_rec.view.is_3d():
             lt.error_and_raise(
                 ValueError,
                 "In start_draw_and_finish_sofast_setup_figure(), asked to set view direction for a non-3d plot.",
             )
-        azimuth_deg = view_az_el_roll_deg[0]
-        elevation_deg = view_az_el_roll_deg[1]
-        roll_deg = view_az_el_roll_deg[2]
+        azimuth_deg = az_el_roll_deg[0]
+        elevation_deg = az_el_roll_deg[1]
+        roll_deg = az_el_roll_deg[2]
         lt.info(
             'In start_draw_and_finish_sofast_setup_figure(), setting view (azimuth, elevation, roll) to '
             + str((azimuth_deg, elevation_deg, roll_deg))

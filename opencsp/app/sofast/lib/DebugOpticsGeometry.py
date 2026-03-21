@@ -4,6 +4,12 @@ from opencsp.app.sofast.lib.DisplayShape import DisplayShape as Display
 from opencsp.common.lib.csp.MirrorParametric import MirrorParametric
 import opencsp.common.lib.geometry.TransformXYZ as txyz
 
+# &&&& DELETE-SCAFFOLDING -- CLEAN THIS UP.  SHOULD THESE BE IMPORTED, OR PASSED ANOTHER WAY?
+import numpy as np
+from scipy.spatial.transform import Rotation
+from opencsp.common.lib.camera.Camera import Camera
+from opencsp.common.lib.geometry.Vxyz import Vxyz
+
 
 class DebugOpticsGeometry:
     """Class for holding debug data for used in 'process_optics_geometry"""
@@ -41,3 +47,18 @@ class DebugOpticsGeometry:
         """Used for diagnostic output showing SOFAST setup."""
         self.draw_sofast_setup_mirror_projection: bool = True
         """Used for diagnostic output showing SOFAST setup."""
+        self.debug_geometry: DebugOpticsGeometry = None
+        """Used for diagnostic output showing SOFAST setup."""
+        self.camera: Camera = None
+        """Used for diagnostic output showing SOFAST setup."""
+        self.mask_raw: np.ndarray = None
+        """Used for diagnostic output showing SOFAST setup."""
+        self.mask_processed: np.ndarray = None
+        """Used for diagnostic output showing SOFAST setup."""
+        self.v_facet_corners: Vxyz = None
+        """Used for diagnostic output showing SOFAST setup."""
+        self.v_facet_corners_hires: Vxyz = None
+        """Used for diagnostic output showing SOFAST setup."""
+        self.r_cam_optic_refine_1: Rotation = None
+        """Used for diagnostic output showing SOFAST setup."""
+        self.v_cam_optic_cam_refine_2: Vxyz = None

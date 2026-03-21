@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from opencsp.app.sofast.lib.DebugOpticsGeometry import DebugOpticsGeometry
+
 
 class SlopeSolverDataDebug:
     """Class to hold data for debugging SlopeSolver calculations"""
@@ -31,3 +33,5 @@ class SlopeSolverDataDebug:
         """Where to save figure objects."""
         self.figure_idx = 0
         """Incrementing figure index, so figures appear in order created."""
+        self.debug_geometry: DebugOpticsGeometry = None
+        """Information to carry from the geometric analysis to the solver analysis, for debugging rendering."""

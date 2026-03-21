@@ -509,7 +509,7 @@ def setup_figure_for_3d_data(
 
     # Setup the axes.
     if view_spec["type"] == "3d":
-        ax = plt.axes(projection="3d")
+        ax = plt.axes(projection="3d", proj_type='ortho')
         ax.set_xlabel(axis_control.x_label)
         ax.set_ylabel(axis_control.y_label)
         ax.set_zlabel(axis_control.z_label)

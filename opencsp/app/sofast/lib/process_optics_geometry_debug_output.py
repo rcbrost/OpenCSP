@@ -1,4 +1,4 @@
-"""Library of functions used to process the geometry of a deflectometry setup."""
+"""Functions supporting diagnosis of geometry processing for a deflectometry setup."""
 
 from scipy.spatial.transform import Rotation
 
@@ -38,7 +38,7 @@ def figure_sofast_setup_without_mirror(
         else:
             this_title = figure_title + ' (Az,El,Roll)=' + str(az_el_roll_deg)
         figure_sofast_setup_without_mirror_aux(
-            this_title, view_spec, camera, facet_data, orientation, debug, view_az_el_roll_deg=az_el_roll_deg
+            this_title, view_spec, camera, facet_data, orientation, debug, az_el_roll_deg=az_el_roll_deg
         )
 
 
@@ -49,7 +49,7 @@ def figure_sofast_setup_without_mirror_aux(
     facet_data: DefinitionFacet,
     orientation: SpatialOrientation,
     debug: DebugOpticsGeometry,
-    view_az_el_roll_deg: float = None,
+    az_el_roll_deg: tuple[float, float, float] = None,
 ) -> None:
     """Supports routine without aux extension."""
 
@@ -65,7 +65,7 @@ def figure_sofast_setup_without_mirror_aux(
         trans_cam_screen=trans_cam_screen,
         trans_mirror_screen=None,  # Signal don't draw mirror.
         debug=debug,
-        view_az_el_roll_deg=view_az_el_roll_deg,
+        az_el_roll_deg=az_el_roll_deg,
         grid=debug.draw_sofast_setup_axis_grid,
         axis_prefix="World ",
     )
@@ -102,7 +102,7 @@ def figure_setup_before_mirror_translation_fit(
         else:
             this_title = figure_title + ' (Az,El,Roll)=' + str(az_el_roll_deg)
         figure_setup_before_mirror_translation_fit_aux(
-            this_title, view_spec, camera, facet_data, orientation, debug, view_az_el_roll_deg=az_el_roll_deg
+            this_title, view_spec, camera, facet_data, orientation, debug, az_el_roll_deg=az_el_roll_deg
         )
 
 
@@ -113,7 +113,7 @@ def figure_setup_before_mirror_translation_fit_aux(
     facet_data: DefinitionFacet,
     orientation: SpatialOrientation,
     debug: DebugOpticsGeometry,
-    view_az_el_roll_deg: float = None,
+    az_el_roll_deg: tuple[float, float, float] = None,
 ) -> None:
     """Supports routine without aux extension."""
 
@@ -131,7 +131,7 @@ def figure_setup_before_mirror_translation_fit_aux(
         trans_cam_screen=trans_cam_screen,
         trans_mirror_screen=trans_mirror_screen,
         debug=debug,
-        view_az_el_roll_deg=view_az_el_roll_deg,
+        az_el_roll_deg=az_el_roll_deg,
         grid=debug.draw_sofast_setup_axis_grid,
         axis_prefix="World ",
     )
@@ -179,7 +179,7 @@ def figure_setup_mirror_translation_only_fit(
             debug,
             v_facet_centroid,
             v_cam_optic_centroid_cam_exp,
-            view_az_el_roll_deg=az_el_roll_deg,
+            az_el_roll_deg=az_el_roll_deg,
         )
 
 
@@ -192,7 +192,7 @@ def figure_setup_mirror_translation_only_fit_aux(
     debug: DebugOpticsGeometry,
     v_facet_centroid: Vxyz,
     v_cam_optic_centroid_cam_exp: Vxyz,
-    view_az_el_roll_deg: float = None,
+    az_el_roll_deg: tuple[float, float, float] = None,
 ) -> None:
     """Supports routine without aux extension."""
 
@@ -213,7 +213,7 @@ def figure_setup_mirror_translation_only_fit_aux(
         trans_cam_screen=trans_cam_screen,
         trans_mirror_screen=trans_mirror_screen,
         debug=debug,
-        view_az_el_roll_deg=view_az_el_roll_deg,
+        az_el_roll_deg=az_el_roll_deg,
         grid=debug.draw_sofast_setup_axis_grid,
         axis_prefix="World ",
     )
@@ -303,7 +303,7 @@ def figure_setup_mirror_fit_translation_rotation_but_not_normal(
             r_cam_optic_exp_A,
             u_reflection_norm_cam,
             draw_reflection,
-            view_az_el_roll_deg=az_el_roll_deg,
+            az_el_roll_deg=az_el_roll_deg,
         )
 
 
@@ -319,7 +319,7 @@ def figure_setup_mirror_fit_translation_rotation_but_not_normal_aux(
     r_cam_optic_exp_A: Rotation,
     u_reflection_norm_cam: Uxyz,
     draw_reflection: bool,
-    view_az_el_roll_deg: float = None,
+    az_el_roll_deg: tuple[float, float, float] = None,
 ) -> None:
     """Supports routine without aux extension."""
 
@@ -359,7 +359,7 @@ def figure_setup_mirror_fit_translation_rotation_but_not_normal_aux(
         trans_cam_screen=trans_cam_screen,
         trans_mirror_screen=trans_mirror_screen,
         debug=debug,
-        view_az_el_roll_deg=view_az_el_roll_deg,
+        az_el_roll_deg=az_el_roll_deg,
         grid=debug.draw_sofast_setup_axis_grid,
         axis_prefix="World ",
     )
@@ -485,7 +485,7 @@ def figure_setup_mirror_fit_translation_rotation(
             r_cam_optic_exp_B,
             u_reflection_norm_cam,
             draw_reflection,
-            view_az_el_roll_deg=az_el_roll_deg,
+            az_el_roll_deg=az_el_roll_deg,
         )
 
 
@@ -502,7 +502,7 @@ def figure_setup_mirror_fit_translation_rotation_aux(
     r_cam_optic_exp_B: Rotation,
     u_reflection_norm_cam: Uxyz,
     draw_reflection: bool,
-    view_az_el_roll_deg: float = None,
+    az_el_roll_deg: tuple[float, float, float] = None,
 ) -> None:
     """Supports routine without aux extension."""
 
@@ -541,7 +541,7 @@ def figure_setup_mirror_fit_translation_rotation_aux(
         trans_cam_screen=trans_cam_screen,
         trans_mirror_screen=trans_mirror_screen,
         debug=debug,
-        view_az_el_roll_deg=view_az_el_roll_deg,
+        az_el_roll_deg=az_el_roll_deg,
         grid=debug.draw_sofast_setup_axis_grid,
         axis_prefix="World ",
     )
@@ -680,7 +680,7 @@ def figure_setup_mirror_refined_by_solvePnP(
             r_optic_cam_refine_1,
             u_reflection_norm_cam,
             draw_reflection,
-            view_az_el_roll_deg=az_el_roll_deg,
+            az_el_roll_deg=az_el_roll_deg,
         )
 
 
@@ -696,7 +696,7 @@ def figure_setup_mirror_refined_by_solvePnP_aux(
     r_optic_cam_refine_1: Rotation,
     u_reflection_norm_cam: Uxyz,
     draw_reflection: bool,
-    view_az_el_roll_deg: float = None,
+    az_el_roll_deg: tuple[float, float, float] = None,
 ) -> None:
     """Supports routine without aux extension."""
 
@@ -739,7 +739,7 @@ def figure_setup_mirror_refined_by_solvePnP_aux(
         trans_cam_screen=trans_cam_screen,
         trans_mirror_screen=trans_mirror_screen,
         debug=debug,
-        view_az_el_roll_deg=view_az_el_roll_deg,
+        az_el_roll_deg=az_el_roll_deg,
         grid=debug.draw_sofast_setup_axis_grid,
         axis_prefix="World ",
     )

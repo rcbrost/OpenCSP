@@ -20,6 +20,49 @@ import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
 import opencsp.common.lib.tool.log_tools as lt
 
 
+# SOLVER LOOP PROGRESS SUMMARY
+
+
+def fit_surface_loop_record_column_headings() -> str:
+    #       22  7777777 7777777 7777777 7777777 7777777 7777777 999999999 7777777 7777777 7777777 7777777 7777777 7777777
+    return "idx   c0      c1x     c2x2    c3y    c4xy    c5y2    Dcorner    rcx     rcy     rcz     tcx     tcy     tcz"
+
+
+def fit_surface_loop_record_column_headings_units() -> str:
+    #      "idx   c0      c1x     c2x2    c3y    c4xy    c5y2    Dcorner    rcx     rcy     rcz     tcx     tcy     tcz"
+    return " -    (m)      -      (1/m)    -     (1/m)   (1/m)     (m)       (Rodriguez vector)     (m)     (m)     (m)"
+
+
+def fit_surface_loop_record_column_headings_separator() -> str:
+    #      "idx   c0      c1x     c2x2    c3y    c4xy    c5y2    Dcorner    rcx     rcy     rcz     tcx     tcy     tcz"
+    return (
+        "-------------------------------------------------------------------------------------------------------------"
+    )
+
+
+def fit_surface_loop_record_str(loop_record: dict) -> str:
+    idx_str = f"{loop_record['loop_idx']:2d}"
+    # Surface coefficients
+    c0_str = f"{loop_record['surf_coefs'][0]:7.4f}"
+    c1x_str = f"{loop_record['surf_coefs'][1]:7.4f}"
+    c2x2_str = f"{loop_record['surf_coefs'][2]:7.4f}"
+    c3y_str = f"{loop_record['surf_coefs'][3]:7.4f}"
+    c4xy_str = f"{loop_record['surf_coefs'][4]:7.4f}"
+    c5y2_str = f"{loop_record['surf_coefs'][5]:7.4f}"
+    # Change in corners
+    vxyz_corner_change = loop_record['vxyz_corner_change']
+    largest_change = abs(vxyz_corner_change.data[2, :]).max()
+    Dcorner_str = f"{largest_change:9.6f}"
+    # Camera pose
+    rcx_str = f"{loop_record['r_cam_optic'].as_rotvec()[0]:7.4f}"
+    rcy_str = f"{loop_record['r_cam_optic'].as_rotvec()[1]:7.4f}"
+    rcz_str = f"{loop_record['r_cam_optic'].as_rotvec()[2]:7.4f}"
+    tcx_str = f"{loop_record['v_cam_optic_cam'].x[0]:7.4f}"
+    tcy_str = f"{loop_record['v_cam_optic_cam'].y[0]:7.4f}"
+    tcz_str = f"{loop_record['v_cam_optic_cam'].z[0]:7.4f}"
+    return f"{idx_str}  {c0_str} {c1x_str} {c2x2_str} {c3y_str} {c4xy_str} {c5y2_str} {Dcorner_str} {rcx_str} {rcy_str} {rcz_str} {tcx_str} {tcy_str} {tcz_str}"
+
+
 # INTERSECTION SURFACE, DEFINING VERTICES, CAMERA
 
 
@@ -28,8 +71,7 @@ def figure_intersection_surface_situation(
     v_facet_corners_hires_1: Vxyz | None,
     v_facet_corners_hires_2: Vxyz | None,
     surface: Surface2DAbstract,
-    idx1: int,
-    idx2: int,
+    loop_idx: int,
     debug: SlopeSolverDataDebug,
 ):
     """Sets up and draws a figure showing SOFAST layout, including only screen and camera."""
@@ -53,8 +95,7 @@ def figure_intersection_surface_situation(
             v_facet_corners_hires_1,
             v_facet_corners_hires_2,
             surface,
-            idx1,
-            idx2,
+            loop_idx,
             debug,
             view_spec_az_el_roll_deg=view_spec_az_el_roll,
         )
@@ -65,8 +106,7 @@ def figure_intersection_surface_situation_aux(
     v_facet_corners_hires_1: Vxyz | None,
     v_facet_corners_hires_2: Vxyz | None,
     surface: Surface2DAbstract,
-    idx1: int,
-    idx2: int,
+    loop_idx: int,
     debug: SlopeSolverDataDebug,
     view_spec_az_el_roll_deg: list[dict, tuple[float, float, float]] = None,
 ) -> None:
@@ -76,7 +116,7 @@ def figure_intersection_surface_situation_aux(
     az_el_roll_deg = view_spec_az_el_roll_deg[1]
 
     # Create a new figure.
-    full_title = f"Slope Solver ({idx1:d}, {idx2:d}): " + title
+    full_title = f"Slope Solver (loop_idx={loop_idx:d}): " + title
     fig_rec = sdfs.start_debug_3d_figure(figure_title=full_title, view_spec=view_spec, figsize=(12, 9))
 
     # # Plot original facet corners.
@@ -171,6 +211,46 @@ def reproj_snap_aux(
             label_size="small",
             legend_label='Reprojected After solvePnP(), then Refined Distance',
         )
+    if hires_pts_reproj_1 is not None:
+        sdfs.plot_labeled_points(
+            hires_pts_reproj_1,
+            marker_size=12,
+            point_color='blue',
+            label_points=label_points,
+            label_color='blue',
+            label_size="xx-small",
+            legend_label='High-Resolution Points, Before Modification',
+        )
+    if hires_pts_reproj_snap_1 is not None:
+        sdfs.plot_labeled_points(
+            hires_pts_reproj_snap_1,
+            marker_size=8,
+            point_color='magenta',
+            label_points=label_points,
+            label_color='magenta',
+            label_size="xx-small",
+            legend_label='High-Resolution Points, Snapped to Image Edge',
+        )
+    # Legend
+    fig_rec.view.axis.legend()
+    sdfs.finish_debug_image_figure(figure_title, 'solver', fig_rec, debug.debug_geometry)
+
+
+# INITIAL REPROJECTION SUMMARY, AFTER SNAP TO EDGE (WITHOUT COARSE VERTICES)
+
+
+def reproj_snap_2(hires_pts_reproj_1: Vxy, hires_pts_reproj_snap_1: Vxy, debug: SlopeSolverDataDebug) -> None:
+    reproj_snap_2_aux(hires_pts_reproj_1, hires_pts_reproj_snap_1, label_points=True, debug=debug)
+    reproj_snap_2_aux(hires_pts_reproj_1, None, label_points=False, debug=debug)
+    reproj_snap_2_aux(None, hires_pts_reproj_snap_1, label_points=False, debug=debug)
+
+
+def reproj_snap_2_aux(
+    hires_pts_reproj_1: Vxy | None, hires_pts_reproj_snap_1: Vxy | None, label_points: bool, debug: SlopeSolverDataDebug
+) -> None:
+    figure_title = "Reprojected Points, and Snap to Edges"
+    fig_rec = sdfs.start_debug_image_figure(figure_title)
+    fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     if hires_pts_reproj_1 is not None:
         sdfs.plot_labeled_points(
             hires_pts_reproj_1,

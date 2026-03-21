@@ -7,8 +7,9 @@ import opencsp.app.sofast.lib.sofast_debug_figure_support as sdfs
 from opencsp.common.lib.camera.Camera import Camera
 from opencsp.common.lib.geometry.LineXY import LineXY
 from opencsp.common.lib.geometry.LoopXY import LoopXY
-from opencsp.common.lib.geometry.Vxy import Vxy
 from opencsp.common.lib.geometry.Uxyz import Uxyz
+from opencsp.common.lib.geometry.Vxy import Vxy
+from opencsp.common.lib.geometry.Vxyz import Vxyz
 import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
 import opencsp.common.lib.tool.log_tools as lt
 
@@ -638,8 +639,8 @@ def construct_search_spiral(max_radius: float = 50) -> list[tuple[int, int, floa
 
 
 def snap_points_to_nearest_edge(
-    image_points: Vxy, mask: np.ndarray[bool], search_spiral: list[tuple[int, int, float]]
-) -> list[list[tuple[float, float], tuple[float, float]]]:
+    surface_points: Vxyz, image_points: Vxy, mask: np.ndarray[bool], search_spiral: list[tuple[int, int, float]]
+) -> list[list[tuple[float, float, float], tuple[float, float], tuple[float, float]]]:
     """
     Given a set of (x,y) points describing locations in a binary image, search the
     neighborhood of each point to find the nearest image edge point.
@@ -660,8 +661,11 @@ def snap_points_to_nearest_edge(
 
     Parameters
     ----------
+    surface_points : Vxyz
+        Points in 3-d space corresponding to image_points.  Not used in this computation,
+        but provided so that returned list will maintain correspondence to 3-d points.
     image_points : Vxy
-        Points with (x,y) coordinates to search for nearest edge pixels.
+        Points in image space with (x,y) coordinates to search for nearest edge pixels.
     mask : np.ndarray[bool]
         Binary image to search for edges.
     search_spiral : list[tuple[int, int, float]]
@@ -673,10 +677,11 @@ def snap_points_to_nearest_edge(
 
     Returns
     -------
-    list[list[tuple[float,float],tuple[float,float]]]
-        List of (input_image_point, nearest_edge_point) pairs,
+    list[list[tuple[float,float,float],tuple[float,float],tuple[float,float]]]
+        List of (3d_point, input_image_point, nearest_edge_point) pairs,
         where
-           input_image_point is an input (x,y) point, and
+           3d_point corresponds to input_image_point.
+           input_image_point is an input (x,y) point.
            found_nearest_edge_point is a (col,row) pair.
 
         If a given input image point does not have an edge pixel within
@@ -689,6 +694,7 @@ def snap_points_to_nearest_edge(
     n_cols = mask_shape[1]
     input_pt_snapped_pt_pair_list = []
     for idx in range(image_points.len()):
+        this_vxyz = surface_points[idx]
         this_vxy = image_points[idx]
         this_x = this_vxy.x[0]
         this_y = this_vxy.y[0]
@@ -709,16 +715,7 @@ def snap_points_to_nearest_edge(
                         break
         if edge_found:
             snap_vxy = Vxy((col, row))
-            input_pt_snapped_pt_pair_list.append((this_vxy, snap_vxy))
-            print(
-                f"In snap_points_to_nearest_edge(), idx={idx}, vxy={this_vxy.to_str()}, row={this_row}, col={this_col}, pixel={this_pixel_value}, snap_vxy={snap_vxy.to_str()}"
-            )
-        else:
-            # &&&& DELETE-SCAFFOLDING -- AFTER TESTING, MAKE THIS A NO-OP
-            input_pt_snapped_pt_pair_list.append((this_vxy, None))
-            print(
-                f"In fit_sursnap_points_to_nearest_edgeface_2(), idx={idx}, vxy={this_vxy.to_str()}, row={this_row}, col={this_col}, pixel={this_pixel_value}, edge not found."
-            )
+            input_pt_snapped_pt_pair_list.append((this_vxyz, this_vxy, snap_vxy))
 
     # Return.
     return input_pt_snapped_pt_pair_list

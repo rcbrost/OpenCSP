@@ -206,217 +206,6 @@ class SlopeSolver:
         self._data.trans_alignment = trans_align
         # self._data.trans_alignment = TransformXYZ.identity()  # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
 
-    # &&&& DELETE-SCAFFOLDING -- BEGIN NEW SOLVER ALGORITHM
-
-    def fit_surface_2(self, original_orientation: SpatialOrientation) -> None:
-        """
-        # &&&& DELETE-SCAFFOLDING -- FIX THIS DOCSTRING
-        Performs the initial fine-tuning alignment of the facet, screen, and
-        camera. Fits a surface to the calculated slope data.
-
-        """
-        # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
-        vxyz_corners_hires_0 = self.debug.debug_geometry.v_facet_corners_hires
-        # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
-        camera = self.debug.debug_geometry.camera
-        # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
-        mask_processed = self.debug.debug_geometry.mask_processed
-
-        # Construct search spiral for snapping boundary points to nearest edge.
-        search_spiral = ip.construct_search_spiral(max_radius=50)
-        # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        print('In fit_surface_2(), spiral complete.  Spiral length=', len(search_spiral))
-
-        # Iteratively serach for a compatible solution:
-        #    Stable inputs:
-        #        Facet vertices V defining the facet boundary on the (x,y) plane.
-        #        Camera model
-        #        Mask image
-        #        Pixel (x,y,z) reflection points RF on screen/target.
-        #    Begin with:
-        #        (a) Hypothesized surface equation COEFFS = c0, c1x, c2x2, c3y, c4xy, c5y2.
-        #                z = c0 + c1x*x + c2x2*x^2 + c3y*y + c4xy*x*y + c5y2*y^2.
-        #        (b) Initial camera pose estimate POSE = (R_cam,T_cam).
-        #    Repeat:
-        #        1. Project facet boundary vertices along z onto surface equation COEFFS ==> 3-d facet vertices V'.
-        #        2. Use camera model and current POSE estimate to project 3-d vertices onto image.
-        #        3. Refine projected image points by snapping onto edges in mask image.
-        #        4. Use refined image points to call solvePnP() and compute a refined camera POSE'.
-        #        5. Using POSE' project rays from camera to COEFFS surface, finding intersection points INT.
-        #        6. Use intersection points and reflection points RF to compute surface normals at INT points.
-        #        7. Using surface normals at points, compute regression fit for slope coefficients.
-        #        8. Convert fit slope coefficients to new surface COEFFS' = c0', c1x', c2x2', c3y', c4xy', c5y2'.
-        #    Until new COEFFS' agree with original COEFFS, up to a tolerance.
-
-        # Initial values.
-        loop_idx = 0
-        vxyz_corners_entering_loop = vxyz_corners_hires_0
-        # &&&& DELETE-SCAFFOLDING -- RESOLVE/RENAME "INV" CONFUSION HERE
-        r_cam_optic_entering_loop = self.debug.debug_geometry.r_cam_optic_refine_1
-        v_cam_optic_cam_entering_loop = self.debug.debug_geometry.v_cam_optic_cam_refine_2
-
-        # Keep track of loop progress.
-        loop_record_0 = {
-            "loop_idx": loop_idx,
-            "surf_coefs": self.surface.surf_coefs,
-            "slope_coefs": self.surface.slope_coefs,
-            "r_cam_optic": r_cam_optic_entering_loop,
-            "v_cam_optic_cam": v_cam_optic_cam_entering_loop,
-            "vxyz_corners": vxyz_corners_entering_loop,
-            "vxyz_corner_change": (vxyz_corners_entering_loop - vxyz_corners_entering_loop),  # Zero change.
-        }
-        loop_record_list = [loop_record_0]
-
-        # Main loop.
-        while True:
-            loop_idx += 1
-            loop_record = {"loop_idx": loop_idx}
-            loop_record_list.append(loop_record)
-
-            # 1. Project facet boundary vertices along z onto surface equation COEFFS ==> 3-d facet vertices V'.
-            z_corners_sfc = sf2.coef_to_points(vxyz_corners_entering_loop, self.surface.surf_coefs, 2)
-            vxyz_corners_sfc = copy.deepcopy(vxyz_corners_entering_loop)
-            vxyz_corners_sfc.data[2, :] = z_corners_sfc
-            # Note how far the vertices moved.
-            vxyz_corners_change = vxyz_corners_sfc - vxyz_corners_entering_loop
-            loop_record["vxyz_corners"] = vxyz_corners_sfc
-            loop_record["vxyz_corner_change"] = vxyz_corners_change
-
-            # 2. Use camera model and current POSE estimate to project 3-d vertices onto image.
-            vxy_corners_sfc_reproj = self.debug.debug_geometry.camera.project(
-                vxyz_corners_sfc, r_cam_optic_entering_loop.inv(), v_cam_optic_cam_entering_loop
-            )
-
-            # 3. Refine projected image points by snapping onto edges in mask image.
-            sfc_pt_reproj_pt_snapped_pt_list = ip.snap_points_to_nearest_edge(
-                vxyz_corners_sfc, vxy_corners_sfc_reproj, mask_processed, search_spiral
-            )
-            vxyz_corners_sfc_matched = Vxyz.from_list([a[0] for a in sfc_pt_reproj_pt_snapped_pt_list])
-            vxy_corners_sfc_reproj_matched = Vxy.from_list([a[1] for a in sfc_pt_reproj_pt_snapped_pt_list])
-            vxy_corners_sfc_reproj_snap = Vxy.from_list([a[2] for a in sfc_pt_reproj_pt_snapped_pt_list])
-            # Plot reprojected points over mask image
-            if self.debug.debug_active:
-                ssdo.reproj_snap_2(vxy_corners_sfc_reproj_matched, vxy_corners_sfc_reproj_snap, debug=self.debug)
-
-            # 4. Use refined image points to call solvePnP() and compute a refined camera POSE'.
-            r_optic_cam_new, v_cam_optic_cam_new = sp.calc_rt_from_img_pts(
-                vxy_corners_sfc_reproj_snap,
-                vxyz_corners_sfc_matched,
-                camera,
-                initial_rotation=r_cam_optic_entering_loop,
-                initial_vxyz=v_cam_optic_cam_entering_loop,
-            )
-            # &&&& DELETE-SCAFFOLDING -- SHOULD THIS NAME BE INVERTED?
-            r_cam_optic_new = r_optic_cam_new.inv()
-            # Orient optic
-            ori_new = copy.copy(original_orientation)
-            ori_new.orient_optic_cam(r_cam_optic_new, v_cam_optic_cam_new)
-            loop_record["r_cam_optic"] = ori_new.r_cam_optic
-            loop_record["v_cam_optic_cam"] = ori_new.v_cam_optic_cam
-            # Plot reprojected points over mask image
-            # &&&& DELETE-SCAFFOLDING -- MOVE REPROJECTION INTO DEBUG FIGURE ROUTINE
-            vxy_corners_sfc_reproj_new = self.debug.debug_geometry.camera.project(
-                vxyz_corners_sfc, ori_new.r_cam_optic.inv(), ori_new.v_cam_optic_cam
-            )
-            if self.debug.debug_active:
-                ssdo.reproj_after_snap_snap(vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, self.debug)
-
-            # 5. Using POSE' project rays from camera to COEFFS surface, finding intersection points INT.
-            # &&&& DELETE-SCAFFOLDING -- MOVE OUTSIDE LOOP?
-            # Calculate pixel pointing directions (camera coordinates)
-            u_pixel_pointing_cam = ip.calculate_active_pixels_vectors(mask_processed, camera)
-            # Convert to optic coordinates
-            u_active_pixel_pointing_optic_new = u_pixel_pointing_cam.rotate(ori_new.r_cam_optic)
-            # Downsample measurement data
-            u_active_pixel_pointing_optic_new_downsample = u_active_pixel_pointing_optic_new[:: self.surface.downsample]
-            # Project camera pixel rays and intersect with fit surface
-            self.surface.v_surf_int_pts_optic = self.surface.intersect(
-                u_active_pixel_pointing_optic_new_downsample, ori_new.v_optic_cam_optic
-            )
-            # Check for invalid points
-            num_nans = np.isnan(self.surface.v_surf_int_pts_optic.data)
-            if np.any(num_nans):
-                warnings.warn(
-                    f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in surface intersection points in iteration: ({loop_idx:d}).",
-                    stacklevel=2,
-                )
-            # Plot debug plot
-            if self.debug.debug_active:
-                ssdo.figure_intersection_surface_situation(
-                    "After Calculate Intersections", vxyz_corners_sfc, None, self.surface, loop_idx, self.debug
-                )
-
-            # 6. Use intersection points and reflection points RF to compute surface normals at INT points.
-            self.surface.calculate_slopes()
-            # Check for invalid points
-            num_nans = np.isnan(self.surface.slopes)
-            if np.any(num_nans):
-                warnings.warn(
-                    f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in slope data in iteration: ({loop_idx:d}).",
-                    stacklevel=2,
-                )
-
-            # 7. Using surface normals at points, compute regression fit for slope coefficients.
-            # 8. Convert fit slope coefficients to new surface COEFFS' = c0', c1x', c2x2', c3y', c4xy', c5y2'.
-            self.surface.fit_slopes()
-            loop_record["surf_coefs"] = self.surface.surf_coefs
-            loop_record["slope_coefs"] = self.surface.slope_coefs
-
-            # Set the fine facet boundary z values to lie on the new fit surface.
-            z_facet_corners_hires_4 = sf2.coef_to_points(vxyz_corners_sfc, self.surface.surf_coefs, 2)
-            v_facet_corners_hires_4 = copy.deepcopy(vxyz_corners_sfc)
-            v_facet_corners_hires_4.data[2, :] = z_facet_corners_hires_4
-            # Check fine facet boundary z values.
-            v_facet_corners_hires_4_minus_1 = v_facet_corners_hires_4 - vxyz_corners_sfc
-            largest_change = abs(v_facet_corners_hires_4_minus_1.data[2, :]).max()
-            # &&&& DELETE-SCAFFOLDING -- FIX CONTAINING ROUTINE NAME IN MESSAGE BELOW
-            lt.info(
-                f"In fit_surface_2(), maximum z difference between high-resolution corners before and after fit = {largest_change} m."
-            )
-
-            # High-resolution points reprojected (after snap to new fit surface).
-            # &&&& DELETE-SCAFFOLDING -- MOVE REPROJECTION INTO DEBUG FIGURE ROUTINE
-            hires_pts_reproj_4 = self.debug.debug_geometry.camera.project(
-                v_facet_corners_hires_4, ori_new.r_cam_optic.inv(), ori_new.v_cam_optic_cam
-            )
-            # Plot reprojected points over mask image
-            if self.debug.debug_active:
-                ssdo.reproj_after_fit(
-                    vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, hires_pts_reproj_4, self.debug
-                )
-            # Plot debug plot
-            if self.debug.debug_active:
-                ssdo.figure_intersection_surface_situation(
-                    "After Slope Fit", vxyz_corners_sfc, v_facet_corners_hires_4, self.surface, loop_idx, self.debug
-                )
-
-            # Summarize loop progress.
-            if self.debug.debug_active:
-                lt.info("\nIn fit_surface_2(), loop_record_list:")
-                lt.info(ssdo.fit_surface_loop_record_column_headings())
-                lt.info(ssdo.fit_surface_loop_record_column_headings_units())
-                lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
-                for loop_record in loop_record_list:
-                    lt.info(ssdo.fit_surface_loop_record_str(loop_record))
-                lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
-
-            # Check loop termination.
-            if loop_idx >= 20:
-                break
-            else:
-                # Update loop entry values.
-                vxyz_corners_entering_loop = vxyz_corners_sfc
-                r_cam_optic_entering_loop = ori_new.r_cam_optic
-                v_cam_optic_cam_entering_loop = ori_new.v_cam_optic_cam
-
-        # Store alignment parameters
-        self._data.surf_coefs_facet = self.surface.surf_coefs
-        self._data.slope_coefs_facet = self.surface.slope_coefs
-        # &&&& DELETE-SCAFFOLDING -- TEMPORARY PASS-THROUGH HACK
-        self._data.trans_alignment = TransformXYZ.identity()  # &&&& DELETE-SCAFFOLDING -- SHOULD BE ELIMINATED?
-
-    # &&&& DELETE-SCAFFOLDING -- END NEW SOLVER ALGORITHM
-
     def solve_slopes(self) -> None:
         """
         Solves the surface slopes of the optic using camera position
@@ -498,3 +287,234 @@ class SlopeSolver:
 
         # Add legend
         plt.legend()  # &&&& DELETE-SCAFFOLDING -- NEW.  KEEP?
+
+    # &&&& DELETE-SCAFFOLDING -- BEGIN NEW SOLVER ALGORITHM
+
+    def fit_surface_2(self, original_orientation: SpatialOrientation) -> None:
+        """
+        # &&&& DELETE-SCAFFOLDING -- FIX THIS DOCSTRING
+        Performs the initial fine-tuning alignment of the facet, screen, and
+        camera. Fits a surface to the calculated slope data.
+
+        """
+        # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
+        vxyz_corners_hires_0 = self.debug.debug_geometry.v_facet_corners_hires
+        # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
+        camera = self.debug.debug_geometry.camera
+        # &&&& DELETE-SCAFFOLDING -- PASS THIS IN
+        mask_processed = self.debug.debug_geometry.mask_processed
+
+        # # &&&& DELETE-SCAFFOLDING -- DELETE ONCE CLEAR NOT NEEDED
+        # # Save initial camera pose for later comparison.
+        # r_cam_optic_original = self.debug.debug_geometry.r_cam_optic_refine_1
+        # v_cam_optic_cam_original = self.debug.debug_geometry.v_cam_optic_cam_refine_2
+
+        # &&&& DELETE-SCAFFOLDING -- MOVE OUTSIDE LOOP?
+        # Calculate pixel pointing directions (camera coordinates)
+        u_pixel_pointing_cam = ip.calculate_active_pixels_vectors(mask_processed, camera)
+
+        # Construct search spiral for snapping boundary points to nearest edge.
+        search_spiral = ip.construct_search_spiral(max_radius=50)
+        # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        print('In fit_surface_2(), spiral complete.  Spiral length=', len(search_spiral))
+
+        # Iteratively serach for a compatible solution:
+        #    Stable inputs:
+        #        Facet vertices V defining the facet boundary on the (x,y) plane.
+        #        Camera model
+        #        Mask image
+        #        Pixel (x,y,z) reflection points RF on screen/target.
+        #    Begin with:
+        #        (a) Hypothesized surface equation COEFFS = c0, c1x, c2x2, c3y, c4xy, c5y2.
+        #                z = c0 + c1x*x + c2x2*x^2 + c3y*y + c4xy*x*y + c5y2*y^2.
+        #        (b) Initial camera pose estimate POSE = (R_cam,T_cam).
+        #    Repeat:
+        #        1. Project facet boundary vertices along z onto surface equation COEFFS ==> 3-d facet vertices V'.
+        #        2. Use camera model and current POSE estimate to project 3-d vertices onto image.
+        #        3. Refine projected image points by snapping onto edges in mask image.
+        #        4. Use refined image points to call solvePnP() and compute a refined camera POSE'.
+        #        5. Using POSE' project rays from camera to COEFFS surface, finding intersection points INT.
+        #        6. Use intersection points and reflection points RF to compute surface normals at INT points.
+        #        7. Using surface normals at points, compute regression fit for slope coefficients.
+        #        8. Convert fit slope coefficients to new surface COEFFS' = c0', c1x', c2x2', c3y', c4xy', c5y2'.
+        #    Until new COEFFS' agree with original COEFFS, up to a tolerance.
+
+        # Initial values.
+        loop_idx = 0
+        vxyz_corners_entering_loop = vxyz_corners_hires_0
+        r_cam_optic_entering_loop = self.debug.debug_geometry.r_cam_optic_refine_1
+        v_cam_optic_cam_entering_loop = self.debug.debug_geometry.v_cam_optic_cam_refine_2
+
+        # Keep track of loop progress.
+        loop_record_0 = {
+            "loop_idx": loop_idx,
+            "surf_coefs": self.surface.surf_coefs,
+            "slope_coefs": self.surface.slope_coefs,
+            "r_cam_optic": r_cam_optic_entering_loop,
+            "v_cam_optic_cam": v_cam_optic_cam_entering_loop,
+            "vxyz_corners": vxyz_corners_entering_loop,
+            "vxyz_corner_change": (vxyz_corners_entering_loop - vxyz_corners_entering_loop),  # Zero change.
+        }
+        loop_record_list = [loop_record_0]
+
+        # Main loop.
+        while True:
+            loop_idx += 1
+            loop_record = {"loop_idx": loop_idx}
+            loop_record_list.append(loop_record)
+
+            # 1. Project facet boundary vertices along z onto surface equation COEFFS ==> 3-d facet vertices V'.
+            z_corners_sfc = sf2.coef_to_points(vxyz_corners_entering_loop, self.surface.surf_coefs, 2)
+            vxyz_corners_sfc = copy.deepcopy(vxyz_corners_entering_loop)
+            vxyz_corners_sfc.data[2, :] = z_corners_sfc
+            # Note how far the vertices moved.
+            vxyz_corners_change = vxyz_corners_sfc - vxyz_corners_entering_loop
+            loop_record["vxyz_corners"] = vxyz_corners_sfc
+            loop_record["vxyz_corner_change"] = vxyz_corners_change
+
+            # 2. Use camera model and current POSE estimate to project 3-d vertices onto image.
+            vxy_corners_sfc_reproj = self.debug.debug_geometry.camera.project(
+                vxyz_corners_sfc, r_cam_optic_entering_loop.inv(), v_cam_optic_cam_entering_loop
+            )
+
+            # 3. Refine projected image points by snapping onto edges in mask image.
+            sfc_pt_reproj_pt_snapped_pt_list = ip.snap_points_to_nearest_edge(
+                vxyz_corners_sfc, vxy_corners_sfc_reproj, mask_processed, search_spiral
+            )
+            vxyz_corners_sfc_matched = Vxyz.from_list([a[0] for a in sfc_pt_reproj_pt_snapped_pt_list])
+            vxy_corners_sfc_reproj_matched = Vxy.from_list([a[1] for a in sfc_pt_reproj_pt_snapped_pt_list])
+            vxy_corners_sfc_reproj_snap = Vxy.from_list([a[2] for a in sfc_pt_reproj_pt_snapped_pt_list])
+            # Plot reprojected points over mask image
+            if self.debug.debug_active:
+                ssdo.reproj_snap_2(vxy_corners_sfc_reproj_matched, vxy_corners_sfc_reproj_snap, debug=self.debug)
+
+            # 4. Use refined image points to call solvePnP() and compute a refined camera POSE'.
+            r_optic_cam_new, v_cam_optic_cam_new = sp.calc_rt_from_img_pts(
+                vxy_corners_sfc_reproj_snap,
+                vxyz_corners_sfc_matched,
+                camera,
+                initial_rotation=r_cam_optic_entering_loop,
+                initial_vxyz=v_cam_optic_cam_entering_loop,
+            )
+            # &&&& DELETE-SCAFFOLDING -- SHOULD THIS NAME BE INVERTED?
+            r_cam_optic_new = r_optic_cam_new.inv()
+            # Orient optic
+            ori_new = copy.copy(original_orientation)
+            ori_new.orient_optic_cam(r_cam_optic_new, v_cam_optic_cam_new)
+            loop_record["r_cam_optic"] = ori_new.r_cam_optic
+            loop_record["v_cam_optic_cam"] = ori_new.v_cam_optic_cam
+            # Plot reprojected points over mask image
+            # &&&& DELETE-SCAFFOLDING -- MOVE REPROJECTION INTO DEBUG FIGURE ROUTINE
+            vxy_corners_sfc_reproj_new = self.debug.debug_geometry.camera.project(
+                vxyz_corners_sfc, ori_new.r_cam_optic.inv(), ori_new.v_cam_optic_cam
+            )
+            if self.debug.debug_active:
+                ssdo.reproj_after_snap_snap(vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, self.debug)
+
+            # 5. Using POSE' project rays from camera to COEFFS surface, finding intersection points INT.
+            # Convert pixel pointing directions to optic coordinates
+            u_active_pixel_pointing_optic_new = u_pixel_pointing_cam.rotate(ori_new.r_cam_optic)
+            # Downsample measurement data
+            u_active_pixel_pointing_optic_new_downsample = u_active_pixel_pointing_optic_new[:: self.surface.downsample]
+            # Project camera pixel rays and intersect with fit surface
+            self.surface.v_surf_int_pts_optic = self.surface.intersect(
+                u_active_pixel_pointing_optic_new_downsample, ori_new.v_optic_cam_optic
+            )
+            # Check for invalid points
+            num_nans = np.isnan(self.surface.v_surf_int_pts_optic.data)
+            if np.any(num_nans):
+                warnings.warn(
+                    f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in surface intersection points in iteration: ({loop_idx:d}).",
+                    stacklevel=2,
+                )
+            # Plot debug plot
+            if self.debug.debug_active:
+                ssdo.figure_intersection_surface_situation(
+                    "After Calculate Intersections", vxyz_corners_sfc, None, self.surface, loop_idx, self.debug
+                )
+
+            # 6. Use intersection points and reflection points RF to compute surface normals at INT points.
+            self.surface.calculate_slopes()
+            # Check for invalid points
+            num_nans = np.isnan(self.surface.slopes)
+            if np.any(num_nans):
+                warnings.warn(
+                    f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in slope data in iteration: ({loop_idx:d}).",
+                    stacklevel=2,
+                )
+
+            # 7. Using surface normals at points, compute regression fit for slope coefficients.
+            # 8. Convert fit slope coefficients to new surface COEFFS' = c0', c1x', c2x2', c3y', c4xy', c5y2'.
+            # &&&& DELETE-SCAFFOLDING -- TEMPORARY TURN OFF
+            self.surface.fit_slopes()
+            loop_record["surf_coefs"] = self.surface.surf_coefs
+            loop_record["slope_coefs"] = self.surface.slope_coefs
+
+            # Set the fine facet boundary z values to lie on the new fit surface.
+            z_facet_corners_hires_4 = sf2.coef_to_points(vxyz_corners_sfc, self.surface.surf_coefs, 2)
+            v_facet_corners_hires_4 = copy.deepcopy(vxyz_corners_sfc)
+            v_facet_corners_hires_4.data[2, :] = z_facet_corners_hires_4
+            # Check fine facet boundary z values.
+            v_facet_corners_hires_4_minus_1 = v_facet_corners_hires_4 - vxyz_corners_sfc
+            largest_change = abs(v_facet_corners_hires_4_minus_1.data[2, :]).max()
+            # &&&& DELETE-SCAFFOLDING -- FIX CONTAINING ROUTINE NAME IN MESSAGE BELOW
+            lt.info(
+                f"In fit_surface_2(), maximum z difference between high-resolution corners before and after fit = {largest_change} m."
+            )
+
+            # High-resolution points reprojected (after snap to new fit surface).
+            # &&&& DELETE-SCAFFOLDING -- MOVE REPROJECTION INTO DEBUG FIGURE ROUTINE
+            hires_pts_reproj_4 = self.debug.debug_geometry.camera.project(
+                v_facet_corners_hires_4, ori_new.r_cam_optic.inv(), ori_new.v_cam_optic_cam
+            )
+            # Plot reprojected points over mask image
+            if self.debug.debug_active:
+                ssdo.reproj_after_fit(
+                    vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, hires_pts_reproj_4, self.debug
+                )
+            # Plot debug plot
+            if self.debug.debug_active:
+                ssdo.figure_intersection_surface_situation(
+                    "After Slope Fit", vxyz_corners_sfc, v_facet_corners_hires_4, self.surface, loop_idx, self.debug
+                )
+
+            # Summarize loop progress.
+            if self.debug.debug_active:
+                lt.info("\nIn fit_surface_2(), loop_record_list:")
+                lt.info(ssdo.fit_surface_loop_record_column_headings())
+                lt.info(ssdo.fit_surface_loop_record_column_headings_units())
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
+                for loop_record in loop_record_list:
+                    lt.info(ssdo.fit_surface_loop_record_str(loop_record))
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
+
+            # Check loop termination.
+            if loop_idx >= 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.
+
+                break
+            else:
+                # Update loop entry values.
+                vxyz_corners_entering_loop = vxyz_corners_sfc
+                r_cam_optic_entering_loop = ori_new.r_cam_optic
+                v_cam_optic_cam_entering_loop = ori_new.v_cam_optic_cam
+
+        # Update intersection points and slopes after final fit_slopes() call.
+        # Convert final pixel pointing directions to optic coordinates
+        u_active_pixel_pointing_optic_new = u_pixel_pointing_cam.rotate(ori_new.r_cam_optic)
+        # Project final camera pixel rays and intersect with fit surface
+        self.surface.v_surf_int_pts_optic = self.surface.intersect(
+            u_active_pixel_pointing_optic_new, ori_new.v_optic_cam_optic
+        )
+        # &&&& DELETE-SCAFFOLDING -- USING self.v_screen_points_facet IS PROBABLY NOT RIGHT, BECAUSE I DON'T KNOW THAT IT HAS BEEN UPDATED TO NEW TRANSFORM
+        slopes_facet_xy = sf2.calc_slopes(
+            self.surface.v_surf_int_pts_optic, self.surface.v_optic_cam_optic, self.v_screen_points_facet
+        )
+
+        # Store loop results
+        self._data.surf_coefs_facet = self.surface.surf_coefs
+        self._data.slope_coefs_facet = self.surface.slope_coefs
+        self._data.trans_alignment = TransformXYZ.identity()  # &&&& DELETE-SCAFFOLDING -- ELIMINATE THIS?  MULTI-FACET?
+        self._data.v_surf_points_facet = self.surface.v_surf_int_pts_optic
+        self._data.slopes_facet_xy = slopes_facet_xy
+
+    # &&&& DELETE-SCAFFOLDING -- END NEW SOLVER ALGORITHM

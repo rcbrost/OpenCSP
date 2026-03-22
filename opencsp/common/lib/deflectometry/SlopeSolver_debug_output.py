@@ -1,7 +1,7 @@
 """Functions supporting diagnosis of slope solution for a deflectometry setup."""
 
 import matplotlib.pyplot as plt
-
+import numpy as np
 from scipy.spatial.transform import Rotation
 
 from opencsp.common.lib.camera.Camera import Camera
@@ -24,20 +24,18 @@ import opencsp.common.lib.tool.log_tools as lt
 
 
 def fit_surface_loop_record_column_headings() -> str:
-    #       22  7777777 7777777 7777777 7777777 7777777 7777777 999999999 7777777 7777777 7777777 7777777 7777777 7777777
-    return "idx   c0      c1x     c2x2    c3y    c4xy    c5y2    Dcorner    rcx     rcy     rcz     tcx     tcy     tcz"
+    #       22  7777777 7777777 7777777 7777777 7777777 7777777   999999999    999999999   7777777 7777777 7777777 7777777 7777777 7777777 7777777
+    return "idx    c0     c1x     c2x2    c3y    c4xy    c5y2    Dcorner_min  Dcorner_max    rcx     rcy     rcz     tcx     tcy     tcz     |tc|"
 
 
 def fit_surface_loop_record_column_headings_units() -> str:
-    #      "idx   c0      c1x     c2x2    c3y    c4xy    c5y2    Dcorner    rcx     rcy     rcz     tcx     tcy     tcz"
-    return " -    (m)      -      (1/m)    -     (1/m)   (1/m)     (m)       (Rodriguez vector)     (m)     (m)     (m)"
+    #      "idx    c0     c1x     c2x2    c3y    c4xy    c5y2    Dcorner_min  Dcorner_max    rcx     rcy     rcz     tcx     tcy     tcz     |tc|"
+    return " -     (m)     -      (1/m)    -     (1/m)   (1/m)       (m)          (m)         (Rodriguez vector)     (m)     (m)     (m)     (m)"
 
 
 def fit_surface_loop_record_column_headings_separator() -> str:
-    #      "idx   c0      c1x     c2x2    c3y    c4xy    c5y2    Dcorner    rcx     rcy     rcz     tcx     tcy     tcz"
-    return (
-        "-------------------------------------------------------------------------------------------------------------"
-    )
+    #      "idx    c0     c1x     c2x2    c3y    c4xy    c5y2    Dcorner_min  Dcorner_max    rcx     rcy     rcz     tcx     tcy     tcz     |tc|"
+    return "-----------------------------------------------------------------------------------------------------------------------------------------"
 
 
 def fit_surface_loop_record_str(loop_record: dict) -> str:
@@ -51,16 +49,25 @@ def fit_surface_loop_record_str(loop_record: dict) -> str:
     c5y2_str = f"{loop_record['surf_coefs'][5]:7.4f}"
     # Change in corners
     vxyz_corner_change = loop_record['vxyz_corner_change']
-    largest_change = abs(vxyz_corner_change.data[2, :]).max()
-    Dcorner_str = f"{largest_change:9.6f}"
+    change_min = vxyz_corner_change.data[2, :].min()
+    change_max = vxyz_corner_change.data[2, :].max()
+    Dcorner_min_str = f"{change_min:9.6f}"
+    Dcorner_max_str = f"{change_max:9.6f}"
     # Camera pose
     rcx_str = f"{loop_record['r_cam_optic'].as_rotvec()[0]:7.4f}"
     rcy_str = f"{loop_record['r_cam_optic'].as_rotvec()[1]:7.4f}"
     rcz_str = f"{loop_record['r_cam_optic'].as_rotvec()[2]:7.4f}"
-    tcx_str = f"{loop_record['v_cam_optic_cam'].x[0]:7.4f}"
+    tcx = loop_record['v_cam_optic_cam'].x[0]
+    tcy = loop_record['v_cam_optic_cam'].y[0]
+    tcz = loop_record['v_cam_optic_cam'].z[0]
+    tcx_str = f"{tcx:7.4f}"
+    tcy_str = f"{tcy:7.4f}"
+    tcz_str = f"{tcz:7.4f}"
+    norm_tc = np.sqrt((tcx * tcx) + (tcy * tcy) + (tcz * tcz))
     tcy_str = f"{loop_record['v_cam_optic_cam'].y[0]:7.4f}"
     tcz_str = f"{loop_record['v_cam_optic_cam'].z[0]:7.4f}"
-    return f"{idx_str}  {c0_str} {c1x_str} {c2x2_str} {c3y_str} {c4xy_str} {c5y2_str} {Dcorner_str} {rcx_str} {rcy_str} {rcz_str} {tcx_str} {tcy_str} {tcz_str}"
+    norm_tc_str = f"{norm_tc:7.4f}"
+    return f"{idx_str}  {c0_str} {c1x_str} {c2x2_str} {c3y_str} {c4xy_str} {c5y2_str}   {Dcorner_min_str}    {Dcorner_max_str}   {rcx_str} {rcy_str} {rcz_str} {tcx_str} {tcy_str} {tcz_str} {norm_tc_str}"
 
 
 # INTERSECTION SURFACE, DEFINING VERTICES, CAMERA

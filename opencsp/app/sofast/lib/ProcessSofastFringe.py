@@ -544,14 +544,17 @@ class ProcessSofastFringe(ProcessSofastAbstract):
             # Instantiate slope solver
             slope_solver = SlopeSolver(**kwargs)
 
-            # Perform surface fitting
             # &&&& DELETE-SCAFFOLDING -- BEGIN NEW SOLVER ALGORITHM
+            # # Perform surface fitting
             # slope_solver.fit_surface()
+
+            # # Perform full slope solving
+            # slope_solver.solve_slopes()
+            # &&&& DELETE-SCAFFOLDING -- NOTE solve_slopes() IS ELIMINATED BY NEW fit_surface_2() ALGORITHM
+
+            # Perform surface fitting
             slope_solver.fit_surface_2(self.orientation)
             # &&&& DELETE-SCAFFOLDING -- END NEW SOLVER ALGORITHM
-
-            # Perform full slope solving
-            slope_solver.solve_slopes()
 
             # Save slope data
             self.data_calculation_facet.append(slope_solver.get_data())

@@ -559,7 +559,7 @@ def example_process_single_facet_driver(arg_settings_dir_body_ext: str = None, v
     ----------
 
     arg_settings_dir_body_ext : str
-        Full path and filename for settings file, containing inputand output directories, plot control settings, etc.
+        Full path and filename for settings file, containing input and output directories, plot control settings, etc.
         Optional.  If not provided, internal defaults are used.
         See code for options sought within file.
 

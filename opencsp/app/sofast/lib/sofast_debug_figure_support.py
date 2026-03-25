@@ -43,7 +43,7 @@ def start_debug_image_figure(figure_title: str) -> rcfg.RenderControlFigure:
     possibly with other annotations."""
     fig_rec = fm.setup_figure(
         figure_control=rcfg.RenderControlFigure(tile=False),
-        axis_control=rca.image(grid=False),
+        axis_control=rca.image(grid=False, axis_prefix="Image "),
         view_spec=vs.view_spec_im(),
         title=figure_title,
     )
@@ -91,7 +91,11 @@ def start_debug_3d_figure(
 
 
 def finish_debug_3d_figure(
-    figure_title: str, phase: str, fig_rec: rcfg.RenderControlFigure, debug: DebugOpticsGeometry
+    figure_title: str,
+    phase: str,
+    fig_rec: rcfg.RenderControlFigure,
+    debug: DebugOpticsGeometry,
+    axis_prefix: str = None,
 ) -> None:
     """Closes and saves debug 3-d figure."""
     show = False  # True  # &&&& DELETE-SCAFFOLDING -- HANDLE SOURCE, PASS FROM CALLERS
@@ -113,7 +117,8 @@ def finish_debug_3d_figure(
 
     # Construct filename and save figure.
     figure_title_clean = figure_title.replace(' ', '_').replace(',', '')
-    figure_file_body = f"{debug.figure_idx:02d}_{phase}_{figure_title_clean}"
+    axis_prefix_clean = axis_prefix.replace(' ', '').lower()
+    figure_file_body = f"{debug.figure_idx:02d}_{phase}_{figure_title_clean}_{axis_prefix_clean}"
     debug.figure_idx += 1
     fig_rec.save(
         output_dir=debug.save_dir,

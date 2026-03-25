@@ -280,7 +280,7 @@ def default(marker='.', color='b', linewidth=1, markersize=8):
     return RenderControlPointSeq(linestyle='-', linewidth=linewidth, color=color, marker=marker, markersize=markersize)
 
 
-def outline(color='k', linewidth=1):
+def outline(color='k', linestyle='-', linewidth=1):
     """
     Create a render control for outlines of physical objects.
 
@@ -289,16 +289,18 @@ def outline(color='k', linewidth=1):
     Parameters
     ----------
     color : str, optional
-        Color for the outlines. By default, 'k' (black).
+        Color for the outline. By default, 'k' (black).
+    linestyle : str, optional
+        Line style for the outline. By default, '-', indicating a solid line.
     linewidth : float, optional
-        Line width for the outlines. By default, 1.
+        Line width for the outline. By default, 1.
 
     Returns
     -------
     RenderControlPointSeq
         An instance of `RenderControlPointSeq` configured to display outlines only.
     """
-    return RenderControlPointSeq(linestyle='-', linewidth=linewidth, color=color, marker='None')
+    return RenderControlPointSeq(linestyle=linestyle, linewidth=linewidth, color=color, marker='None')
 
 
 def data_curve(color='b', linewidth=1, marker='.', markersize=3) -> RenderControlPointSeq:

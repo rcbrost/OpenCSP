@@ -77,7 +77,7 @@ class SlopeSolver:
         # Load initialization data in surface fit object
         self.surface.set_spatial_data(
             u_active_pixel_pointing_optic,
-            v_screen_points_facet,
+            v_screen_points_facet,  # &&&& DELETE-SCAFFOLDING -- THIS DOESN'T MATCH CALLED ROUTINE NAME!
             v_optic_cam_optic,
             u_measure_pixel_pointing_optic,
             v_align_point_optic,
@@ -354,6 +354,7 @@ class SlopeSolver:
             "v_cam_optic_cam": v_cam_optic_cam_entering_loop,
             "vxyz_corners": vxyz_corners_entering_loop,
             "vxyz_corner_change": (vxyz_corners_entering_loop - vxyz_corners_entering_loop),  # Zero change.
+            "n_intersect": 0,
         }
         loop_record_list = [loop_record_0]
 
@@ -414,13 +415,17 @@ class SlopeSolver:
             # 5. Using POSE' project rays from camera to COEFFS surface, finding intersection points INT.
             # Convert pixel pointing directions to optic coordinates
             u_active_pixel_pointing_optic_new = u_pixel_pointing_cam.rotate(ori_new.r_cam_optic)
+            # Update surface cache
+            self.surface.u_active_pixel_pointing_optic = u_active_pixel_pointing_optic_new
             # Downsample measurement data
             u_active_pixel_pointing_optic_new_downsample = u_active_pixel_pointing_optic_new[:: self.surface.downsample]
             # Project camera pixel rays and intersect with fit surface
             self.surface.v_surf_int_pts_optic = self.surface.intersect(
                 u_active_pixel_pointing_optic_new_downsample, ori_new.v_optic_cam_optic
             )
+            loop_record["n_intersect"] = self.surface.v_surf_int_pts_optic.len()
             # Check for invalid points
+            # &&&& DELETE-SCAFFOLDING -- MOVE INTO INTERSECT() ROUTINE
             num_nans = np.isnan(self.surface.v_surf_int_pts_optic.data)
             if np.any(num_nans):
                 warnings.warn(
@@ -430,12 +435,13 @@ class SlopeSolver:
             # Plot debug plot
             if self.debug.debug_active:
                 ssdo.figure_intersection_surface_situation(
-                    "After Calculate Intersections", vxyz_corners_sfc, None, self.surface, loop_idx, self.debug
+                    "After Calculate Intersections", vxyz_corners_sfc, None, self.surface, ori_new, loop_idx, self.debug
                 )
 
             # 6. Use intersection points and reflection points RF to compute surface normals at INT points.
             self.surface.calculate_slopes()
             # Check for invalid points
+            # &&&& DELETE-SCAFFOLDING -- MOVE INTO CALCULATE_SLOPES() ROUTINE
             num_nans = np.isnan(self.surface.slopes)
             if np.any(num_nans):
                 warnings.warn(
@@ -475,7 +481,13 @@ class SlopeSolver:
             # Plot debug plot
             if self.debug.debug_active:
                 ssdo.figure_intersection_surface_situation(
-                    "After Slope Fit", vxyz_corners_sfc, v_facet_corners_hires_4, self.surface, loop_idx, self.debug
+                    "After Slope Fit",
+                    vxyz_corners_sfc,
+                    v_facet_corners_hires_4,
+                    self.surface,
+                    ori_new,
+                    loop_idx,
+                    self.debug,
                 )
 
             # Summarize loop progress.
@@ -489,7 +501,7 @@ class SlopeSolver:
                 lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
 
             # Check loop termination.
-            if loop_idx >= 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.
+            if loop_idx >= 20:  # 7:  # 1:  # 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.
 
                 break
             else:

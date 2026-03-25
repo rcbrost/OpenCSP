@@ -54,34 +54,52 @@ def meters(draw_axes: bool = True, grid: bool = True, axis_prefix: str = None) -
     )
 
 
-def latlon(decimal_t_degminsecs_f: bool = True, draw_axes: bool = True, grid: bool = True) -> RenderControlAxis:
+def latlon(
+    decimal_t_degminsecs_f: bool = True, draw_axes: bool = True, grid: bool = True, axis_prefix: str = None
+) -> RenderControlAxis:
     """
     Labels indicating units of latitude and longitude.
+
+    axis_prefix should include a separator character.
+    For example, if the goal is to have an axis label of "World x (deg,min,sec)",
+    then axis_prefix should be "World ".
     """
+    if axis_prefix == None:
+        axis_prefix_str = ''
+    else:
+        axis_prefix_str = axis_prefix
     unit = "deg" if decimal_t_degminsecs_f else "deg,min,sec"
     return RenderControlAxis(
-        x_label=f"longitude ({unit})",
-        y_label=f"latitude ({unit})",
-        z_label=f"z ({unit})",
-        p_label=f"p ({unit})",
-        q_label=f"q ({unit})",
-        w_label=f"w ({unit})",
+        x_label=axis_prefix_str + f"longitude ({unit})",
+        y_label=axis_prefix_str + f"latitude ({unit})",
+        z_label=axis_prefix_str + f"z ({unit})",
+        p_label=axis_prefix_str + f"p ({unit})",
+        q_label=axis_prefix_str + f"q ({unit})",
+        w_label=axis_prefix_str + f"w ({unit})",
         draw_axes=draw_axes,
         grid=grid,
     )
 
 
-def image(draw_axes: bool = True, grid: bool = True) -> RenderControlAxis:
+def image(draw_axes: bool = True, grid: bool = True, axis_prefix: str = None) -> RenderControlAxis:
     """
     Labels indicating image.
+
+    axis_prefix should include a separator character.
+    For example, if the goal is to have an axis label of "World x (pix)",
+    then axis_prefix should be "World ".
     """
+    if axis_prefix == None:
+        axis_prefix_str = ''
+    else:
+        axis_prefix_str = axis_prefix
     return RenderControlAxis(
-        x_label='x N/A',
-        y_label='y N/A',
-        z_label='z N/A',
-        p_label='x (pix)',
-        q_label='y (pix)',
-        w_label='w N/A',
+        x_label=axis_prefix_str + 'x N/A',
+        y_label=axis_prefix_str + 'y N/A',
+        z_label=axis_prefix_str + 'z N/A',
+        p_label=axis_prefix_str + 'x (pix)',
+        q_label=axis_prefix_str + 'y (pix)',
+        w_label=axis_prefix_str + 'w N/A',
         draw_axes=draw_axes,
         grid=grid,
     )

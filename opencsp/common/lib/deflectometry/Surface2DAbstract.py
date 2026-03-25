@@ -71,26 +71,15 @@ class Surface2DAbstract(HDF5_IO_Abstract):
     def shift_all(self, v_align_optic_step: Vxyz) -> None:
         """Shifts all data vectors"""
 
-    def plot_intersection_points(
-        self,
-        axes: plt.Axes,
-        downsample: int = 50,
-        camera_ray_length: float = 0.0,
-        plot_camera_screen_points: bool = False,
-    ) -> None:
-        """Plots calculated intersection points with surface and align point. Optionally
-        plots camera rays and screen/camera locations.
+    def plot_intersection_points(self, axes: plt.Axes, downsample: int = 50) -> None:
+        """Plots calculated intersection points with surface and align point.
 
         Parameters
         ----------
         axes : plt.Axes
-            Matplotlib axes, None to make new figure.
+            Matplotlib axes.
         downsample : int, optional
             Ray downsample factor, by default 50
-        camera_ray_length : float
-            Ray lengths, meters. Set to 0 to turn off.
-        plot_camera_screen_points : bool
-            To plot camera and screen locations, by default False.
 
         Returns
         -------
@@ -101,42 +90,21 @@ class Surface2DAbstract(HDF5_IO_Abstract):
             *self.v_surf_int_pts_optic[::downsample].data, edgecolor="none", alpha=0.5, linewidth=0, antialiased=False
         )
 
-        # Plot camera rays
-        input_camera_ray_length = camera_ray_length  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        camera_ray_length = 0.5  # 0.1  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-        if True:  # camera_ray_length != 0:    # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-            for ray in self.u_active_pixel_pointing_optic[::downsample]:
-                x = [self.v_optic_cam_optic.x, self.v_optic_cam_optic.x + ray.x * camera_ray_length]
-                y = [self.v_optic_cam_optic.y, self.v_optic_cam_optic.y + ray.y * camera_ray_length]
-                z = [self.v_optic_cam_optic.z, self.v_optic_cam_optic.z + ray.z * camera_ray_length]
-                # &&&& DELETE-SCAFFOLDING -- COLOR WAS "gray"
-                # axes.plot(x, y, z, color="gray", alpha=0.3)
-                axes.plot(x, y, z, color="pink", alpha=0.95)  # Don't label -- too many rays
+    def plot_screen_points(self, axes: plt.Axes, downsample: int = 50) -> None:
+        """Plots calculated screen reflection points.
 
-        # Plot fit normal at align point
-        v_fit = self.normal_fit_at_align_point()
-        pt1 = self.v_align_point_optic
-        pt2 = self.v_align_point_optic + v_fit
-        # &&&& DELETE-SCAFFOLDING -- COLOR WAS "k"
-        axes.plot([pt1.x, pt2.x], [pt1.y, pt2.y], [pt1.z, pt2.z], color="m", linestyle="-", label="Fit Normal")
-        # Plot design normal at align point
-        v_des = self.normal_design_at_align_point()
-        pt1 = self.v_align_point_optic
-        pt2 = self.v_align_point_optic + v_des
-        # &&&& DELETE-SCAFFOLDING -- COLOR WAS "k"
-        axes.plot([pt1.x, pt2.x], [pt1.y, pt2.y], [pt1.z, pt2.z], color="k", linestyle="--", label="Design Normal")
+        Parameters
+        ----------
+        axes : plt.Axes
+            Matplotlib axes.
+        downsample : int, optional
+            Ray downsample factor, by default 50
 
-        # Plot other points
-        axes.scatter(*self.v_align_point_optic.data, marker="o", color="r", label="Align Point")
-        if True:  # plot_camera_screen_points:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-            # &&&& DELETE-SCAFFOLDING -- COLOR WAS "k"
-            # axes.scatter(*self.v_optic_cam_optic.data, marker="*", color="k", label="Camera")
-            axes.scatter(*self.v_optic_cam_optic.data, marker="*", color="cyan", label="Camera")
-            # &&&& DELETE-SCAFFOLDING -- COLOR WAS "b"
-            axes.scatter(*self.v_optic_screen_optic.data, marker="+", color="green", label="Screen Center")
-
-        # Format
-        axes.axis("equal")
-        axes.set_xlabel("x (meter)")
-        axes.set_ylabel("y (meter)")
-        axes.set_zlabel("z (meter)")
+        Returns
+        -------
+        Matplotlib axes
+        """
+        # Plot intersection points surface
+        axes.plot_trisurf(
+            *self.v_screen_points_optic[::downsample].data, edgecolor="none", alpha=0.5, linewidth=0, antialiased=False
+        )

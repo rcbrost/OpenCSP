@@ -242,7 +242,7 @@ def draw_sofast_setup(
         SOFAST display model, modeling relationship between screen
         coordinates and 3-d coordinates.
     dot_locations: DotLocationsFixedPattern | None
-        For SOFAST Fixed setups, thisis thepattern of dots on the screen.
+        For SOFAST Fixed setups, this is the pattern of dots on the screen.
     mirror: MirrorParametric
         Model of nominal mirror to be measured in the setup.
     facet_data: DefinitionFacet

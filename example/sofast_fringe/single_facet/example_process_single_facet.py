@@ -276,6 +276,7 @@ def process_single_facet(
         sofast.params.debug_geometry.axis_length = axis_length  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.display = display  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.mirror = mirror_reference  # Used only for diagnostic rendering.
+        sofast.params.debug_geometry.facet_data = facet_data  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.draw_sofast_setup_axis_grid = True  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.draw_sofast_setup_embedding_mirror = False  # Used only for diagnostic rendering.
         sofast.params.debug_geometry.draw_sofast_setup_mirror_projection = False  # Used only for diagnostic rendering.

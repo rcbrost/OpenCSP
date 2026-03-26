@@ -501,7 +501,7 @@ class SlopeSolver:
                 lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
 
             # Check loop termination.
-            if loop_idx >= 20:  # 7:  # 1:  # 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.
+            if loop_idx >= 1:  # 20:  # 7:  # 1:  # 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.
 
                 break
             else:

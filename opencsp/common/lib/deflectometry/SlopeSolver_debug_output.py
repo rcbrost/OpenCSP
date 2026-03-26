@@ -300,6 +300,27 @@ def figure_intersection_surface_situation_world(
         axis_length=sofast_setup_axis_length,
     )
 
+    # Plot high-resolution facet corners, before fit_slopes() execution.
+    # Use draw_line(), because we only want one legend entry, not a legend entry for every point.
+    if v_facet_corners_hires_1 is not None:
+        if v_facet_corners_hires_2 is None:
+            label_str = "Facet Vertices (High Resolution)"
+        else:
+            label_str = "Hires Vertices (Before Fit)"
+        transformed_v_facet_corners_hires_1 = trans_mirror_world.apply(v_facet_corners_hires_1)
+        transformed_v_facet_corners_hires_1.draw_line(
+            fig_rec, style=rcps.marker(marker='.', color='b', markersize=4), label=label_str
+        )
+
+    # Plot high-resolution facet corners, after fit_slopes() execution.
+    # Use draw_line(), because we only want one legend entry, not a legend entry for every point.
+    if v_facet_corners_hires_2 is not None:
+        label_str = "Hires Vertices (After Fit)"
+        transformed_v_facet_corners_hires_2 = trans_mirror_world.apply(v_facet_corners_hires_2)
+        transformed_v_facet_corners_hires_2.draw_line(
+            fig_rec, style=rcps.marker(marker='.', color='red', markersize=2), label=label_str
+        )
+
     # Set view direction, if desired.
     if az_el_roll_deg is not None:
         if not fig_rec.view.is_3d():

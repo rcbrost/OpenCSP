@@ -75,6 +75,33 @@ def fit_surface_loop_record_str(loop_record: dict) -> str:
     return f"{idx_str}  {c0_str} {c1x_str} {c2x2_str} {c3y_str} {c4xy_str} {c5y2_str}   {Dcorner_min_str}    {Dcorner_max_str}   {rcx_str} {rcy_str} {rcz_str} {tcx_str} {tcy_str} {tcz_str} {norm_tc_str}  {n_int_str}"
 
 
+# SOLVER LOOP PROGRESS SUMMARY 2
+
+
+def fit_surface_loop_record_column_headings_2() -> str:
+    #        0   [  0.000000,   0.000000,   1.000000]     [  0.000000,   0.000000,   1.000000]     [  0.000000,   0.000000,   1.000000]
+    return "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured"
+
+
+def fit_surface_loop_record_column_headings_units_2() -> str:
+    #      "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured"
+    return " -                    (m)                                       (m)                                    (m)"
+
+
+def fit_surface_loop_record_column_headings_separator_2() -> str:
+    #      "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured"
+    return "---------------------------------------------------------------------------------------------------------------------------"
+
+
+def fit_surface_loop_record_str_2(loop_record: dict) -> str:
+    idx_str = f"{loop_record['loop_idx']:2d}"
+    # Average surface normals
+    avg_fit_str = loop_record["u_avg_fit_normal"].to_str()
+    avg_meas_str = loop_record["u_avg_measured_normal"].to_str()
+    avg_meas_minus_fit_str = loop_record["u_avg_measured_minus_fit"].to_str()
+    return f"{idx_str}   {avg_fit_str}     {avg_meas_str}     {avg_meas_minus_fit_str}"
+
+
 # INTERSECTION SURFACE, DEFINING VERTICES, CAMERA
 
 
@@ -569,11 +596,13 @@ def figure_intersection_surface_situation_optic(
 
 
 def reproj_snap(
-    pts_reproj: Vxy, hires_pts_reproj_1: Vxy, hires_pts_reproj_snap_1: Vxy, debug: SlopeSolverDataDebug
+    pts_reproj: Vxy, hires_pts_reproj_1: Vxy, hires_pts_reproj_snap_1: Vxy, loop_idx: int, debug: SlopeSolverDataDebug
 ) -> None:
-    reproj_snap_aux(pts_reproj, hires_pts_reproj_1, hires_pts_reproj_snap_1, label_points=True, debug=debug)
-    reproj_snap_aux(None, hires_pts_reproj_1, None, label_points=False, debug=debug)
-    reproj_snap_aux(None, None, hires_pts_reproj_snap_1, label_points=False, debug=debug)
+    reproj_snap_aux(
+        pts_reproj, hires_pts_reproj_1, hires_pts_reproj_snap_1, label_points=True, loop_idx=loop_idx, debug=debug
+    )
+    reproj_snap_aux(None, hires_pts_reproj_1, None, label_points=False, loop_idx=loop_idx, debug=debug)
+    reproj_snap_aux(None, None, hires_pts_reproj_snap_1, label_points=False, loop_idx=loop_idx, debug=debug)
 
 
 def reproj_snap_aux(
@@ -581,9 +610,10 @@ def reproj_snap_aux(
     hires_pts_reproj_1: Vxy | None,
     hires_pts_reproj_snap_1: Vxy | None,
     label_points: bool,
+    loop_idx: int,
     debug: SlopeSolverDataDebug,
 ) -> None:
-    figure_title = "Reprojected Points, and Snap to Edges"
+    figure_title = f"Slope Solver (loop_idx={loop_idx:d}): " + "Reprojected Points, and Snap to Edges"
     fig_rec = sdfs.start_debug_image_figure(figure_title)
     fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     if pts_reproj is not None:
@@ -624,16 +654,22 @@ def reproj_snap_aux(
 # INITIAL REPROJECTION SUMMARY, AFTER SNAP TO EDGE (WITHOUT COARSE VERTICES)
 
 
-def reproj_snap_2(hires_pts_reproj_1: Vxy, hires_pts_reproj_snap_1: Vxy, debug: SlopeSolverDataDebug) -> None:
-    reproj_snap_2_aux(hires_pts_reproj_1, hires_pts_reproj_snap_1, label_points=True, debug=debug)
-    reproj_snap_2_aux(hires_pts_reproj_1, None, label_points=False, debug=debug)
-    reproj_snap_2_aux(None, hires_pts_reproj_snap_1, label_points=False, debug=debug)
+def reproj_snap_2(
+    hires_pts_reproj_1: Vxy, hires_pts_reproj_snap_1: Vxy, loop_idx: int, debug: SlopeSolverDataDebug
+) -> None:
+    reproj_snap_2_aux(hires_pts_reproj_1, hires_pts_reproj_snap_1, label_points=True, loop_idx=loop_idx, debug=debug)
+    reproj_snap_2_aux(hires_pts_reproj_1, None, label_points=False, loop_idx=loop_idx, debug=debug)
+    reproj_snap_2_aux(None, hires_pts_reproj_snap_1, label_points=False, loop_idx=loop_idx, debug=debug)
 
 
 def reproj_snap_2_aux(
-    hires_pts_reproj_1: Vxy | None, hires_pts_reproj_snap_1: Vxy | None, label_points: bool, debug: SlopeSolverDataDebug
+    hires_pts_reproj_1: Vxy | None,
+    hires_pts_reproj_snap_1: Vxy | None,
+    label_points: bool,
+    loop_idx: int,
+    debug: SlopeSolverDataDebug,
 ) -> None:
-    figure_title = "Reprojected Points, and Snap to Edges"
+    figure_title = f"Slope Solver (loop_idx={loop_idx:d}): " + "Reprojected Points, and Snap to Edges"
     fig_rec = sdfs.start_debug_image_figure(figure_title)
     fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     if hires_pts_reproj_1 is not None:
@@ -664,15 +700,25 @@ def reproj_snap_2_aux(
 # REPROJECTION OF SNAP TO EDGE, SNAP TO SURFACE REPROJECTION
 
 
-def reproj_after_snap_snap(hires_pts_reproj_snap_1: Vxy, hires_pts_reproj_3: Vxy, debug: SlopeSolverDataDebug) -> None:
-    reproj_after_snap_snap_aux(hires_pts_reproj_snap_1, hires_pts_reproj_3, label_points=True, debug=debug)
-    reproj_after_snap_snap_aux(hires_pts_reproj_snap_1, hires_pts_reproj_3, label_points=False, debug=debug)
+def reproj_after_snap_snap(
+    hires_pts_reproj_snap_1: Vxy, hires_pts_reproj_3: Vxy, loop_idx: int, debug: SlopeSolverDataDebug
+) -> None:
+    reproj_after_snap_snap_aux(
+        hires_pts_reproj_snap_1, hires_pts_reproj_3, label_points=True, loop_idx=loop_idx, debug=debug
+    )
+    reproj_after_snap_snap_aux(
+        hires_pts_reproj_snap_1, hires_pts_reproj_3, label_points=False, loop_idx=loop_idx, debug=debug
+    )
 
 
 def reproj_after_snap_snap_aux(
-    hires_pts_reproj_snap_1: Vxy, hires_pts_reproj_3: Vxy, label_points: bool, debug: SlopeSolverDataDebug
+    hires_pts_reproj_snap_1: Vxy,
+    hires_pts_reproj_3: Vxy,
+    label_points: bool,
+    loop_idx: int,
+    debug: SlopeSolverDataDebug,
 ) -> None:
-    figure_title = "Snap-to-Edge Points, Snapped to Surface and Reprojected"
+    figure_title = f"Slope Solver (loop_idx={loop_idx:d}): " + "Snap-to-Edge Points, Snapped to Surface and Reprojected"
     fig_rec = sdfs.start_debug_image_figure(figure_title)
     fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     sdfs.plot_labeled_points(
@@ -702,15 +748,27 @@ def reproj_after_snap_snap_aux(
 
 
 def reproj_after_fit(
-    hires_pts_reproj_snap_1: Vxy, hires_pts_reproj_3: Vxy, hires_pts_reproj_4: Vxy, debug: SlopeSolverDataDebug
+    hires_pts_reproj_snap_1: Vxy,
+    hires_pts_reproj_3: Vxy,
+    hires_pts_reproj_4: Vxy,
+    loop_idx: int,
+    debug: SlopeSolverDataDebug,
 ) -> None:
-    reproj_after_fit_aux(hires_pts_reproj_snap_1, hires_pts_reproj_3, hires_pts_reproj_4, debug=debug)
+    reproj_after_fit_aux(
+        hires_pts_reproj_snap_1, hires_pts_reproj_3, hires_pts_reproj_4, loop_idx=loop_idx, debug=debug
+    )
 
 
 def reproj_after_fit_aux(
-    hires_pts_reproj_snap_1: Vxy, hires_pts_reproj_3: Vxy, hires_pts_reproj_4: Vxy, debug: SlopeSolverDataDebug
+    hires_pts_reproj_snap_1: Vxy,
+    hires_pts_reproj_3: Vxy,
+    hires_pts_reproj_4: Vxy,
+    loop_idx: int,
+    debug: SlopeSolverDataDebug,
 ) -> None:
-    figure_title = "After Fitting Surface to Slopes, Snapping to Surface, Reprojecting"
+    figure_title = (
+        f"Slope Solver (loop_idx={loop_idx:d}): " + "After Fitting Surface to Slopes, Snapping to Surface, Reprojecting"
+    )
     fig_rec = sdfs.start_debug_image_figure(figure_title)
     fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     sdfs.plot_labeled_points(

@@ -9,6 +9,8 @@ class Uxyz(Vxyz):
     in three-dimensional space. Upon initialization, the vector is normalized to
     ensure it has a magnitude of 1.
 
+    See class Vxyz for various methods of declaring a Uxyz object.
+
     Attributes
     ----------
     _data : np.ndarray

@@ -154,7 +154,7 @@ class Surface2DParabolic(Surface2DAbstract):
         int_pts = v_origin + u_pixel_pointing.as_Vxyz() * scale[np.newaxis, :]  # optic coordinates
         return int_pts
 
-    def normal_design_at_align_point(self) -> Vxyz:
+    def normal_design_at_align_point(self) -> Uxyz:
         """
         Returns the surface normal of the design surface at the align point.
 
@@ -166,7 +166,7 @@ class Surface2DParabolic(Surface2DAbstract):
         """
         return self.normal_design_at_point(self.v_align_point_optic)
 
-    def normal_design_at_point(self, p_xyz: Vxyz) -> Vxyz:
+    def normal_design_at_point(self, p_xyz: Vxyz) -> Uxyz:
         """
         Returns the surface normal of the design surface at the point.
 
@@ -187,7 +187,7 @@ class Surface2DParabolic(Surface2DAbstract):
         normal = Uxyz([-dzdx_design, -dzdy_design, 1])  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
         return normal  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY, FOR BREAK POINT ANALYSIS
 
-    def normal_fit_at_align_point(self) -> Vxyz:
+    def normal_fit_at_align_point(self) -> Uxyz:
         """
         Returns the surface normal of the fit surface at the align point.
 
@@ -199,7 +199,7 @@ class Surface2DParabolic(Surface2DAbstract):
         """
         return self.normal_fit_at_point(self.v_align_point_optic)
 
-    def normal_fit_at_point(self, p_xyz: Vxyz) -> Vxyz:
+    def normal_fit_at_point(self, p_xyz: Vxyz) -> Uxyz:
         """
         Returns the surface normal of the fit surface at the align point.
 
@@ -265,6 +265,55 @@ class Surface2DParabolic(Surface2DAbstract):
         normal = Uxyz((-dzdx_meas, -dzdy_meas, 1))  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
         return normal  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY, FOR BREAK POINT ANALYSIS
 
+    def average_fit_normal(self) -> Uxyz:
+        # &&&& DELETE-SCAFFOLDING -- VECTORIZE THIS
+        # &&&& DELETE-SCAFFOLDING -- MOVE INTO BASE CLASS
+        # &&&& DELETE-SCAFFOLDING -- PROVIDE DOCSTRING
+        # &&&& DELETE-SCAFFOLDING -- NOTE INTERSECTION POINTS MUST BE SET.  PROTECT WITH ERROR CHECK.
+        n_pts = self.v_surf_int_pts_optic.len()
+        x_sum = 0
+        y_sum = 0
+        z_sum = 0
+        for idx in range(n_pts):
+            x = self.v_surf_int_pts_optic.x[idx]
+            y = self.v_surf_int_pts_optic.y[idx]
+            z = self.v_surf_int_pts_optic.z[idx]
+            uxyz_normal = self.normal_fit_at_point(Vxyz([x, y, z]))
+            x_sum += uxyz_normal.x[0]
+            y_sum += uxyz_normal.y[0]
+            z_sum += uxyz_normal.z[0]
+        x_avg = x_sum / n_pts
+        y_avg = y_sum / n_pts
+        z_avg = z_sum / n_pts
+        # Note that the average of the coordinates of many units vectors is generally
+        # not a unit vector.  But the Uxyz constructor will normalize it.
+        uxyz_avg_normal = Uxyz([x_avg, y_avg, z_avg])  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
+        return uxyz_avg_normal  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY, FOR BREAK POINT ANALYSIS
+
+    def average_measured_normal(self) -> Uxyz:
+        # &&&& DELETE-SCAFFOLDING -- VECTORIZE THIS
+        # &&&& DELETE-SCAFFOLDING -- MOVE INTO BASE CLASS
+        # &&&& DELETE-SCAFFOLDING -- PROVIDE DOCSTRING
+        # &&&& DELETE-SCAFFOLDING -- NOTE SLOPES MUST BE SET.  PROTECT WITH ERROR CHECK.
+        n_pts = self.slopes.shape[1]
+        x_sum = 0
+        y_sum = 0
+        z_sum = 0
+        for idx in range(n_pts):
+            dzdx = self.slopes[0, idx]
+            dzdy = self.slopes[1, idx]
+            uxyz_normal = Uxyz([-dzdx, -dzdy, 1])  # Uxyz normalizes its input
+            x_sum += uxyz_normal.x[0]
+            y_sum += uxyz_normal.y[0]
+            z_sum += uxyz_normal.z[0]
+        x_avg = x_sum / n_pts
+        y_avg = y_sum / n_pts
+        z_avg = z_sum / n_pts
+        # Note that the average of the coordinates of many units vectors is generally
+        # not a unit vector.  But the Uxyz constructor will normalize it.
+        uxyz_avg_normal = Uxyz([x_avg, y_avg, z_avg])  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
+        return uxyz_avg_normal  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY, FOR BREAK POINT ANALYSIS
+
     def calculate_surface_intersect_points(self) -> None:
         """
         Calculates pixel ray intersection points with surface.
@@ -298,7 +347,8 @@ class Surface2DParabolic(Surface2DAbstract):
             slope_coefs_x = sf2.fit_slope_ls(self.slope_fit_poly_order, self.slopes[0], self.v_surf_int_pts_optic)
             slope_coefs_y = sf2.fit_slope_ls(self.slope_fit_poly_order, self.slopes[1], self.v_surf_int_pts_optic)
 
-        # Average to create surface shape coefficients
+        # Average to create surface shape coefficients.
+        #
         # In the following, the coefficients A, B, C, D, E, F are for the general paraboloid equation:
         #
         #     z = A + Bx + Cx^2 + Dy + Exy + Fy^2

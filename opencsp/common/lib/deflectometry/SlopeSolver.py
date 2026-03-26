@@ -359,10 +359,14 @@ class SlopeSolver:
             "vxyz_corners": vxyz_corners_entering_loop,
             "vxyz_corner_change": (vxyz_corners_entering_loop - vxyz_corners_entering_loop),  # Zero change.
             "n_intersect": 0,
+            "u_avg_fit_normal": Uxyz([0, 0, 1]),
+            "u_avg_measured_normal": Uxyz([0, 0, 1]),
+            "u_avg_measured_minus_fit": Uxyz([0, 0, 1]),
         }
         loop_record_list = [loop_record_0]
 
         # Main loop.
+        first_time = True
         while True:
             loop_idx += 1
             loop_record = {"loop_idx": loop_idx}
@@ -391,7 +395,9 @@ class SlopeSolver:
             vxy_corners_sfc_reproj_snap = Vxy.from_list([a[2] for a in sfc_pt_reproj_pt_snapped_pt_list])
             # Plot reprojected points over mask image
             if self.debug.debug_active:
-                ssdo.reproj_snap_2(vxy_corners_sfc_reproj_matched, vxy_corners_sfc_reproj_snap, debug=self.debug)
+                ssdo.reproj_snap_2(
+                    vxy_corners_sfc_reproj_matched, vxy_corners_sfc_reproj_snap, loop_idx=loop_idx, debug=self.debug
+                )
 
             # 4. Use refined image points to call solvePnP() and compute a refined camera POSE'.
             r_optic_cam_new, v_cam_optic_cam_new = sp.calc_rt_from_img_pts(
@@ -404,8 +410,11 @@ class SlopeSolver:
             # &&&& DELETE-SCAFFOLDING -- SHOULD THIS NAME BE INVERTED?
             r_cam_optic_new = r_optic_cam_new.inv()
             # Orient optic
-            ori_new = copy.copy(original_orientation)
-            ori_new.orient_optic_cam(r_cam_optic_new, v_cam_optic_cam_new)
+            # &&&& DELETE-SCAFFOLDING -- TEMPORARY, OR DOCUMENT
+            if first_time:
+                ori_new = copy.copy(original_orientation)
+                ori_new.orient_optic_cam(r_cam_optic_new, v_cam_optic_cam_new)
+                first_time = False
             loop_record["r_cam_optic"] = ori_new.r_cam_optic
             loop_record["v_cam_optic_cam"] = ori_new.v_cam_optic_cam
             # Plot reprojected points over mask image
@@ -414,7 +423,9 @@ class SlopeSolver:
                 vxyz_corners_sfc, ori_new.r_cam_optic.inv(), ori_new.v_cam_optic_cam
             )
             if self.debug.debug_active:
-                ssdo.reproj_after_snap_snap(vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, self.debug)
+                ssdo.reproj_after_snap_snap(
+                    vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, loop_idx, self.debug
+                )
 
             # 4b. Update cached values in surface to match new camera POSE'.
             #     From Surface2DParabolic.set_spatial_data()
@@ -478,6 +489,20 @@ class SlopeSolver:
                     stacklevel=2,
                 )
 
+            # &&&& DELETE-SCAFFOLDING -- DOCUMENT NEW APPROACH: ALIGN BASED ON AVERAGE SLOPE.
+            u_avg_fit_normal = self.surface.average_fit_normal()
+            u_avg_measured_normal = self.surface.average_measured_normal()
+            loop_record["u_avg_fit_normal"] = u_avg_fit_normal
+            loop_record["u_avg_measured_normal"] = u_avg_measured_normal
+            loop_record["u_avg_measured_minus_fit"] = u_avg_measured_normal.as_Vxyz() - u_avg_fit_normal.as_Vxyz()
+            print("\n\nIn fit_surface_2():")
+            print("   normal_design_at_align_point=", self.surface.normal_design_at_align_point().to_str())
+            print("   normal_fit_at_align_point=", self.surface.normal_fit_at_align_point().to_str())
+            print("   u_avg_fit_normal=", loop_record["u_avg_fit_normal"])
+            print("   u_avg_measured_normal=", loop_record["u_avg_measured_normal"])
+            print("   Delta: measured minus fit=", loop_record["u_avg_measured_minus_fit"])
+            print("\n\n")
+
             # 7. Using surface normals at points, compute regression fit for slope coefficients.
             # 8. Convert fit slope coefficients to new surface COEFFS' = c0', c1x', c2x2', c3y', c4xy', c5y2'.
             # &&&& DELETE-SCAFFOLDING -- TEMPORARY TURN OFF
@@ -505,7 +530,7 @@ class SlopeSolver:
             # Plot reprojected points over mask image
             if self.debug.debug_active:
                 ssdo.reproj_after_fit(
-                    vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, hires_pts_reproj_4, self.debug
+                    vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, hires_pts_reproj_4, loop_idx, self.debug
                 )
             # Plot debug plot
             if self.debug.debug_active:
@@ -529,8 +554,16 @@ class SlopeSolver:
                     lt.info(ssdo.fit_surface_loop_record_str(loop_record))
                 lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
 
+                lt.info("\nIn fit_surface_2(), loop_record_list 2:")
+                lt.info(ssdo.fit_surface_loop_record_column_headings_2())
+                lt.info(ssdo.fit_surface_loop_record_column_headings_units_2())
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+                for loop_record in loop_record_list:
+                    lt.info(ssdo.fit_surface_loop_record_str_2(loop_record))
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+
             # Check loop termination.
-            if loop_idx >= 4:  # 20:  # 7:  # 1:  # 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.
+            if loop_idx >= 20:  # 7:  # 1:  # 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.
 
                 break
             else:

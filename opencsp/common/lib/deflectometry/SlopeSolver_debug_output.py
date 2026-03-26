@@ -266,13 +266,47 @@ def figure_intersection_surface_situation_world(
         v_screen_points_screen = orientation.trans_screen_optic.inv().apply(v_screen_points_optic)
         # In world coordinates.
         v_screen_points_world = trans_screen_world.apply(v_screen_points_screen)
-        fig_rec.view.axis.plot_trisurf(
-            *v_screen_points_world[::screen_points_downsample].data,
-            edgecolor="none",
-            alpha=0.5,
-            linewidth=0,
-            antialiased=False,
-        )
+        try:
+            fig_rec.view.axis.plot_trisurf(
+                *v_screen_points_world[::screen_points_downsample].data,
+                edgecolor="none",
+                alpha=0.5,
+                linewidth=0,
+                antialiased=False,
+            )
+        except RuntimeError as e:
+            # If the screen is perfectly flat, then the screen points are degenerate, because
+            # they do not span a 3-d convex hull with volume.  This causes the Delauney
+            # triangulation to throw an error.
+            # To rectify this situation, we will dither a single point to make it non-degenerate.
+            if "singular input data" in str(e):
+                try:
+                    v_screen_points_world_downsample = v_screen_points_world[::screen_points_downsample]
+                    v_screen_points_world_downsample.data[0][0] += 0.0005
+                    v_screen_points_world_downsample.data[1][0] += 0.0005
+                    v_screen_points_world_downsample.data[2][0] += 0.0005
+                    fig_rec.view.axis.plot_trisurf(
+                        *v_screen_points_world_downsample.data,
+                        edgecolor="none",
+                        alpha=0.5,
+                        linewidth=0,
+                        antialiased=False,
+                    )
+                except RuntimeError as e2:
+                    if "singular input data" in str(e2):
+                        # Then our attempted fix is still singular, meaning that the constants we
+                        # added caused the point to shift within the degenerate plane.  Now we do
+                        # this again, but with a different offset.  They can't both be within the
+                        # same degenerate plane.
+                        v_screen_points_world_downsample = v_screen_points_world[::screen_points_downsample]
+                        v_screen_points_world_downsample.data[1][0] -= 0.001
+                        fig_rec.view.axis.plot_trisurf(
+                            *v_screen_points_world_downsample.data,
+                            edgecolor="none",
+                            alpha=0.5,
+                            linewidth=0,
+                            antialiased=False,
+                        )
 
     # Draw screen, camera, and mirror.
     sfcfg.draw_sofast_setup(

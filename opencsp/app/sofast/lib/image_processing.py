@@ -713,9 +713,9 @@ def snap_points_to_nearest_edge(
                     if (this_pixel_value and (not loop_pixel_value)) or ((not this_pixel_value) and loop_pixel_value):
                         edge_found = True
                         break
-        if edge_found:
-            snap_vxy = Vxy((col, row))
-            input_pt_snapped_pt_pair_list.append((this_vxyz, this_vxy, snap_vxy))
+            if edge_found:
+                snap_vxy = Vxy((col, row))
+                input_pt_snapped_pt_pair_list.append((this_vxyz, this_vxy, snap_vxy))
 
     # Return.
     return input_pt_snapped_pt_pair_list

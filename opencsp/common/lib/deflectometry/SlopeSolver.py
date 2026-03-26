@@ -32,6 +32,7 @@ class SlopeSolver:
         v_optic_cam_optic: Vxyz,
         u_active_pixel_pointing_optic: Uxyz,
         u_measure_pixel_pointing_optic: Uxyz,
+        v_screen_points_screen: Vxyz,
         v_screen_points_facet: Vxyz,
         v_optic_screen_optic: Vxyz,
         v_align_point_optic: Vxyz,
@@ -50,6 +51,8 @@ class SlopeSolver:
             Active pixel pointing directions in optic coordinates.
         u_measure_pixel_pointing_optic : Uxyz
             Measure pixel pointing direction in optic cooridinates.
+        v_screen_points_screen : Vxyz
+            Positions of screen points in screen coordinates.
         v_screen_points_facet : Vxyz
             Positions of screen points in optic coordinates.
         v_optic_screen_optic : Vxyz
@@ -68,6 +71,7 @@ class SlopeSolver:
         self.v_optic_cam_optic = v_optic_cam_optic
         self.u_active_pixel_pointing_optic = u_active_pixel_pointing_optic
         self.u_measure_pixel_pointing_optic = u_measure_pixel_pointing_optic
+        self.v_screen_points_screen = v_screen_points_screen
         self.v_screen_points_facet = v_screen_points_facet
         self.v_optic_screen_optic = v_optic_screen_optic
         self.v_align_point_optic = v_align_point_optic
@@ -412,11 +416,36 @@ class SlopeSolver:
             if self.debug.debug_active:
                 ssdo.reproj_after_snap_snap(vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, self.debug)
 
-            # 5. Using POSE' project rays from camera to COEFFS surface, finding intersection points INT.
-            # Convert pixel pointing directions to optic coordinates
+            # 4b. Update cached values in surface to match new camera POSE'.
+            #     From Surface2DParabolic.set_spatial_data()
+            #         # Downsample and save measurement data
+            #         self.u_active_pixel_pointing_optic = u_active_pixel_pointing_optic[:: self.downsample]
+            #         self.v_screen_points_optic = v_screen_points_optic[:: self.downsample]
+            #         # Save position data
+            #         self.v_optic_cam_optic = v_optic_cam_optic
+            #         self.u_measure_pixel_pointing_optic = u_measure_pixel_pointing_optic
+            #         self.v_align_point_optic = v_align_point_optic
+            #         self.v_optic_screen_optic = v_optic_screen_optic
+            #         Convert pixel pointing directions to optic coordinates
+            # The pixel pointing directions are rigidly connected to the camera.
+            # So when the camera moves, these vectors change, when expressed in optic cordinates.
             u_active_pixel_pointing_optic_new = u_pixel_pointing_cam.rotate(ori_new.r_cam_optic)
+            # The screen points are rigidly connected to the screen, which is rigidly connected
+            # to the camera by an unchanging calibration transform.
+            # So when the camera moves, the screen points move, when expressed in optic cordinates.
+            v_screen_points_optic_new = ori_new.trans_screen_optic.apply(self.v_screen_points_screen)
+            v_optic_cam_optic_new = ori_new.v_optic_cam_optic
+            u_measure_pixel_pointing_optic_new = "NOT UPDATED"
+            v_align_point_optic_new = self.v_align_point_optic  # Align point is defined in optic coords.
+            v_optic_screen_optic_new = ori_new.v_optic_screen_optic
             # Update surface cache
-            self.surface.u_active_pixel_pointing_optic = u_active_pixel_pointing_optic_new
+            self.surface.u_active_pixel_pointing_optic = u_active_pixel_pointing_optic_new[:: self.surface.downsample]
+            self.surface.v_screen_points_optic = v_screen_points_optic_new[:: self.surface.downsample]
+            self.surface.v_optic_cam_optic = v_optic_cam_optic_new
+            self.surface.u_measure_pixel_pointing_optic = u_measure_pixel_pointing_optic_new
+            self.surface.v_align_point_optic = v_align_point_optic_new
+            self.surface.v_optic_screen_optic = v_optic_screen_optic_new
+            # 5. Using POSE' project rays from camera to COEFFS surface, finding intersection points INT.
             # Downsample measurement data
             u_active_pixel_pointing_optic_new_downsample = u_active_pixel_pointing_optic_new[:: self.surface.downsample]
             # Project camera pixel rays and intersect with fit surface
@@ -501,7 +530,7 @@ class SlopeSolver:
                 lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
 
             # Check loop termination.
-            if loop_idx >= 1:  # 20:  # 7:  # 1:  # 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.
+            if loop_idx >= 4:  # 20:  # 7:  # 1:  # 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.
 
                 break
             else:

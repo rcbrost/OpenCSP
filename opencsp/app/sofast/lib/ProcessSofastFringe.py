@@ -533,6 +533,7 @@ class ProcessSofastFringe(ProcessSofastAbstract):
                 "v_optic_cam_optic": self.data_geometry_facet[facet_idx].spatial_orientation.v_optic_cam_optic,
                 "u_active_pixel_pointing_optic": self.data_geometry_facet[facet_idx].u_pixel_pointing_facet,
                 "u_measure_pixel_pointing_optic": self.data_geometry_facet[facet_idx].u_cam_measure_point_facet,
+                "v_screen_points_screen": self.data_geometry_facet[facet_idx].v_screen_points_screen,
                 "v_screen_points_facet": self.data_geometry_facet[facet_idx].v_screen_points_facet,
                 "v_optic_screen_optic": self.data_geometry_facet[facet_idx].spatial_orientation.v_optic_screen_optic,
                 "v_align_point_optic": self.data_geometry_facet[facet_idx].v_align_point_facet,

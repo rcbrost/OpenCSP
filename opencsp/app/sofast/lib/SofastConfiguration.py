@@ -215,6 +215,8 @@ def draw_sofast_setup(
     # Render control
     sofast_setup_style: rcssp.RenderControlSofastSetup = rcssp.RenderControlSofastSetup(),
     z_axis_fov_distance: float = 0.6,  # m
+    draw_mirror_centroid: bool = True,
+    draw_mirror_centroid_normal: bool = True,
     mirror_needle_length=0.1,  # m
     axis_length: float = 0.1,  # m
 ) -> None:
@@ -263,6 +265,10 @@ def draw_sofast_setup(
         Distance from camera front nodal point (origin) to draw the
         field of view (FOV) boundary.  A good choice is to set this
         to the distance from the camera to the observed mirror.
+    draw_mirror_centroid: bool
+        Whether to draw the mirror centroid.  Default True.
+    draw_mirror_centroid_normal: bool
+        Whether to draw the surface normal at the mirror centroid.  Default True.
     mirror_needle_length, float
         Length to draw surface normal needles at the mirror centroid and vertices.
     axis_length : float, optional
@@ -1026,6 +1032,8 @@ def draw_mirror(
     short_name: str = 'M',
     long_name: str = 'Mirror',
     sofast_mirror_style: rcsm.RenderControlSofastMirror = rcsm.RenderControlSofastMirror(),
+    draw_mirror_centroid: bool = True,
+    draw_mirror_centroid_normal: bool = True,
     needle_length: float = 0.1,
     axis_length: float = 0.1,  # m
 ) -> Vxyz:
@@ -1052,6 +1060,10 @@ def draw_mirror(
         Default None.
     sofast_mirror_style: RenderControlSofastMirror
         Rendering control parameters.
+    draw_mirror_centroid: bool
+        Whether to draw the mirror centroid.  Default True.
+    draw_mirror_centroid_normal: bool
+        Whether to draw the surface normal at the mirror centroid.  Default True.
     needle_length : float, optional
         Length to draw surface normals at mirror centroid and vertices.
         Default 0.1.
@@ -1089,19 +1101,21 @@ def draw_mirror(
     )
 
     # Draw the mirror centroid defined by the facet definition file.
-    # Apply transform
-    transformed_v_facet_centroid = transform.apply(facet_data.v_facet_centroid)
-    # Draw centroid
-    transformed_v_facet_centroid.draw_points(view, style=rcps.marker(color=sofast_mirror_style.color))
+    if draw_mirror_centroid:
+        # Apply transform
+        transformed_v_facet_centroid = transform.apply(facet_data.v_facet_centroid)
+        # Draw centroid
+        transformed_v_facet_centroid.draw_points(view, style=rcps.marker(color=sofast_mirror_style.color))
 
     # Draw the surface normal at the mirror centroid, also defined in the facet definition file.
-    # Rotate the surface normal vector, without translation.
-    rotated_u_facet_centroid_normal = facet_data.u_facet_centroid_normal.rotate(transform.R)
-    # Draw surface normal at facet centroid
-    needle_base = transformed_v_facet_centroid
-    needle_tip = needle_base + (rotated_u_facet_centroid_normal.as_Vxyz() * needle_length)
-    needle = Vxyz.from_list((needle_base, needle_tip))
-    needle.draw_line(view, style=rcps.outline(color=sofast_mirror_style.color))
+    if draw_mirror_centroid_normal:
+        # Rotate the surface normal vector, without translation.
+        rotated_u_facet_centroid_normal = facet_data.u_facet_centroid_normal.rotate(transform.R)
+        # Draw surface normal at facet centroid
+        needle_base = transformed_v_facet_centroid
+        needle_tip = needle_base + (rotated_u_facet_centroid_normal.as_Vxyz() * needle_length)
+        needle = Vxyz.from_list((needle_base, needle_tip))
+        needle.draw_line(view, style=rcps.outline(color=sofast_mirror_style.color))
 
     # Draw coordinate system.
     transformed_origin = draw_csys(

@@ -164,12 +164,42 @@ class Surface2DParabolic(Surface2DAbstract):
             Surface normal vector.
 
         """
-        dzdx_design = -self.v_align_point_optic.x[0] / 2 / self.initial_focal_lengths_xy[0]
-        dzdy_design = -self.v_align_point_optic.y[0] / 2 / self.initial_focal_lengths_xy[1]
-        normal = Uxyz([dzdx_design, dzdy_design, 1])  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
+        return self.normal_design_at_point(self.v_align_point_optic)
+
+    def normal_design_at_point(self, p_xyz: Vxyz) -> Vxyz:
+        """
+        Returns the surface normal of the design surface at the point.
+
+        Parameters
+        -------
+        p_xyz : Vxyz
+            Point to compute surface normal.
+
+        Returns
+        -------
+        Vxyz
+            Surface normal vector.
+
+        """
+        # &&&& DELETE-SCAFFOLDING -- THIS FORMULA IS IN ERROR, BECAUSE IT DOES NOT CONSIDER THAT THE DESIGN PARAOLOID MIGHT HAVE ROTATED ASTIGMATISM
+        dzdx_design = p_xyz.x[0] / (2 * self.initial_focal_lengths_xy[0])
+        dzdy_design = p_xyz.y[0] / (2 * self.initial_focal_lengths_xy[1])
+        normal = Uxyz([-dzdx_design, -dzdy_design, 1])  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
         return normal  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY, FOR BREAK POINT ANALYSIS
 
     def normal_fit_at_align_point(self) -> Vxyz:
+        """
+        Returns the surface normal of the fit surface at the align point.
+
+        Returns
+        -------
+        Vxyz
+            Surface normal vector.
+
+        """
+        return self.normal_fit_at_point(self.v_align_point_optic)
+
+    def normal_fit_at_point(self, p_xyz: Vxyz) -> Vxyz:
         """
         Returns the surface normal of the fit surface at the align point.
 
@@ -186,17 +216,53 @@ class Surface2DParabolic(Surface2DAbstract):
         #     + self.slope_coefs[0, 0]
         #     + self.slope_coefs[1, 2] * self.v_align_point_optic.x[0]
         # )
-        dzdx_meas = -(
-            self.slope_coefs[0, 1] * self.v_align_point_optic.x[0]
-            + self.slope_coefs[0, 0]
-            + self.slope_coefs[0, 2] * self.v_align_point_optic.x[0]
-        )
-        dzdy_meas = -(
-            self.slope_coefs[1, 2] * self.v_align_point_optic.y[0]
-            + self.slope_coefs[1, 0]
-            + self.slope_coefs[1, 1] * self.v_align_point_optic.y[0]
-        )
-        normal = Uxyz((dzdx_meas, dzdy_meas, 1))  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
+        #
+        # &&&& DELETE-SCAFFOLDING -- ANOTHER ERROR IN BELOW.  MINUS SIGN SHOULD APPEAR IN SURFACE NORMAL EQUATION, NOT SLOPE.
+        # REVISED #1 VERSION:
+        # dzdx_meas = -(
+        #     self.slope_coefs[0, 1] * self.v_align_point_optic.x[0]
+        #     + self.slope_coefs[0, 0]
+        #     + self.slope_coefs[0, 2] * self.v_align_point_optic.x[0]
+        # )
+        # dzdy_meas = -(
+        #     self.slope_coefs[1, 2] * self.v_align_point_optic.y[0]
+        #     + self.slope_coefs[1, 0]
+        #     + self.slope_coefs[1, 1] * self.v_align_point_optic.y[0]
+        # )
+        #
+        # &&&& DELETE-SCAFFOLDING -- ANOTHER ERROR IN BELOW.  NOTE BOTH COEFFICIENTS MULTIPLIED BY X.
+        # REVISED #2 VERSION:
+        # dzdx_meas = self.slope_coefs[0, 1] * self.v_align_point_optic.x[0]
+        #     + self.slope_coefs[0, 0]
+        #     + self.slope_coefs[0, 2] * self.v_align_point_optic.x[0]
+        #
+        # &&&& DELETE-SCAFFOLDING -- ANOTHER ERROR IN BELOW.  NOTE BOTH COEFFICIENTS MULTIPLIED BY Y.
+        # REVISED #2 VERSION:
+        # dzdy_meas = self.slope_coefs[1, 2] * self.v_align_point_optic.y[0]
+        #     + self.slope_coefs[1, 0]
+        #     + self.slope_coefs[1, 1] * self.v_align_point_optic.y[0]
+
+        # From routine fit_slopes() below:
+        #
+        #     slope_coefs_x[0] = B
+        #     slope_coefs_x[1] = 2C
+        #     slope_coefs_x[2] = E
+        #
+        #     slope_coefs_y[0] = D
+        #     slope_coefs_y[1] = E
+        #     slope_coefs_y[2] = 2F
+        #
+        B = self.slope_coefs[0, 0]
+        C = self.slope_coefs[0, 1] / 2
+        E = self.slope_coefs[0, 2]
+
+        D = self.slope_coefs[1, 0]
+        E = self.slope_coefs[1, 1]
+        F = self.slope_coefs[1, 2] / 2
+
+        dzdx_meas = B + (2 * C * p_xyz.x[0]) + (E * p_xyz.y[0])
+        dzdy_meas = D + (E * p_xyz.x[0]) + (2 * F * p_xyz.y[0])
+        normal = Uxyz((-dzdx_meas, -dzdy_meas, 1))  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY
         return normal  # &&&& DELETE-SCAFFOLDING -- UNNECESSARY COPY, FOR BREAK POINT ANALYSIS
 
     def calculate_surface_intersect_points(self) -> None:
@@ -232,18 +298,48 @@ class Surface2DParabolic(Surface2DAbstract):
             slope_coefs_x = sf2.fit_slope_ls(self.slope_fit_poly_order, self.slopes[0], self.v_surf_int_pts_optic)
             slope_coefs_y = sf2.fit_slope_ls(self.slope_fit_poly_order, self.slopes[1], self.v_surf_int_pts_optic)
 
-        # Save slope coefficients
+        # Average to create surface shape coefficients
+        # In the following, the coefficients A, B, C, D, E, F are for the general paraboloid equation:
+        #
+        #     z = A + Bx + Cx^2 + Dy + Exy + Fy^2
+        #         c0  c1x  c2x2   c3y  c4xy  c5y2  <-- Surface equation coefficients
+        #
+        # with derivatives:
+        #
+        #     dz/dx = B + 2Cx + Ey
+        #
+        #     dz/dy = D + Ex + 2Fy
+        #
+        # For further details, see B. J. Smith, R. C. Brost, and B. G. Bean, "OpenCSP
+        # Deflectometry Technical Description,"" Document Version 1.0, Sandia National
+        # Laboratories Technical Report SAND2024-10934, August 2024.
+        #
+        # The fit routines return these coefficients from the linear least-squares fit in the
+        # order [k0,k1,k2], corresponding to dz = k0 + k1*x + k2*y.  These are packed into
+        # the self.surf_coeffs data member, with the following correspondence:
+        #
+        #     slope_coefs_x[0] = B
+        #     slope_coefs_x[1] = 2C
+        #     slope_coefs_x[2] = E
+        #
+        #     slope_coefs_y[0] = D
+        #     slope_coefs_y[1] = E
+        #     slope_coefs_y[2] = 2F
+        #
+        # These mappings allow us to save the coefficients below.
+
+        # Save slope coefficients.
         self.slope_coefs = np.array((slope_coefs_x, slope_coefs_y))
 
-        # Average to create surface shape coefficients
+        # Save surface coefficients.
         self.surf_coefs = np.array(
             [
-                0,
-                slope_coefs_x[0],
-                slope_coefs_x[1] / 2,
-                slope_coefs_y[0],
-                (slope_coefs_x[2] + slope_coefs_y[1]) / 2,
-                slope_coefs_y[2] / 2,
+                0,  # A
+                slope_coefs_x[0],  # B
+                slope_coefs_x[1] / 2,  # C
+                slope_coefs_y[0],  # D
+                (slope_coefs_x[2] + slope_coefs_y[1]) / 2,  # E
+                slope_coefs_y[2] / 2,  # F
             ]
         )
 

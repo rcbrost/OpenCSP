@@ -330,6 +330,8 @@ def figure_intersection_surface_situation_world(
         # Render control
         sofast_setup_style=sofast_setup_style,
         z_axis_fov_distance=sofast_setup_z_axis_fov_distance,
+        draw_mirror_centroid=False,
+        draw_mirror_centroid_normal=False,
         mirror_needle_length=mirror_needle_length,
         axis_length=sofast_setup_axis_length,
     )
@@ -354,6 +356,28 @@ def figure_intersection_surface_situation_world(
         transformed_v_facet_corners_hires_2.draw_line(
             fig_rec, style=rcps.marker(marker='.', color='red', markersize=2), label=label_str
         )
+
+    # Plot fit normal at align point
+    v_fit = surface.normal_fit_at_align_point()
+    v_fit_pt1 = surface.v_align_point_optic
+    v_fit_pt2 = surface.v_align_point_optic + (v_fit.as_Vxyz() * mirror_needle_length * 1.5)
+    fit_normal_in_place = v_fit_pt1.concatenate(v_fit_pt2)
+    transformed_fit_normal = trans_mirror_world.apply(fit_normal_in_place)
+    transformed_fit_normal.draw_line(fig_rec, style=rcps.outline(color='r'), label="Fit Normal")
+    # Plot design normal at align point
+    v_des = surface.normal_design_at_align_point()
+    v_des_pt1 = surface.v_align_point_optic
+    v_des_pt2 = surface.v_align_point_optic + (v_des.as_Vxyz() * mirror_needle_length * 0.5)
+    design_normal_in_place = v_des_pt1.concatenate(v_des_pt2)
+    transformed_design_normal = trans_mirror_world.apply(design_normal_in_place)
+    transformed_design_normal.draw_line(fig_rec, style=rcps.outline(color='k', linestyle="--"), label="Design Normal")
+
+    # Plot other points
+    # Use draw_line(), because we only want one legend entry, not a legend entry for every point.
+    transformed_align_point = trans_mirror_world.apply(surface.v_align_point_optic)
+    transformed_align_point.draw_line(
+        fig_rec, style=rcps.marker(marker='.', color='m', markersize=5), label="Align Point"
+    )
 
     # Set view direction, if desired.
     if az_el_roll_deg is not None:
@@ -491,21 +515,21 @@ def figure_intersection_surface_situation_optic(
     # Plot fit normal at align point
     v_fit = surface.normal_fit_at_align_point()
     v_fit_pt1 = surface.v_align_point_optic
-    v_fit_pt2 = surface.v_align_point_optic + (v_fit.as_Vxyz() * mirror_needle_length)
+    v_fit_pt2 = surface.v_align_point_optic + (v_fit.as_Vxyz() * mirror_needle_length * 1.5)
     fit_normal_in_place = v_fit_pt1.concatenate(v_fit_pt2)
-    fit_normal_in_place.draw_line(fig_rec, style=rcps.outline(color='m'), label="Fit Normal")
+    fit_normal_in_place.draw_line(fig_rec, style=rcps.outline(color='r'), label="Fit Normal")
     # Plot design normal at align point
     v_des = surface.normal_design_at_align_point()
     v_des_pt1 = surface.v_align_point_optic
     v_des_pt2 = surface.v_align_point_optic + (v_des.as_Vxyz() * mirror_needle_length)
     design_normal_in_place = v_des_pt1.concatenate(v_des_pt2)
-    design_normal_in_place.draw_line(fig_rec, style=rcps.outline(color='k', linestyle="--"), label="Design Normal")
+    design_normal_in_place.draw_line(fig_rec, style=rcps.outline(color='m', linestyle="--"), label="Design Normal")
 
     # Plot other points
     # Use draw_line(), because we only want one legend entry, not a legend entry for every point.
     # &&&& DELETE-SCAFFOLDING -- MARKERSIZE WAS 3, COLOR WAS 'cyan'
     surface.v_align_point_optic.draw_line(
-        fig_rec, style=rcps.marker(marker='.', color='red', markersize=15), label="Align Point"
+        fig_rec, style=rcps.marker(marker='.', color='m', markersize=5), label="Align Point"
     )
     # orientation.v_optic_cam_optic.draw_line(
     #     fig_rec, style=rcps.marker(marker='*', color='k', markersize=7), label="Camera"

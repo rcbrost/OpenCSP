@@ -45,11 +45,19 @@ class Surface2DAbstract(HDF5_IO_Abstract):
 
     @abstractmethod
     def normal_design_at_align_point(self) -> Vxyz:
-        """Normal vector of design surface at point"""
+        """Normal vector of design surface at alignment point"""
+
+    @abstractmethod
+    def normal_design_at_point(self, p_xyz: Vxyz) -> Vxyz:
+        """Normal vector of design surface at given point"""
 
     @abstractmethod
     def normal_fit_at_align_point(self) -> Vxyz:
-        """Normal vector of fit surface at point"""
+        """Normal vector of fit surface at alignment point"""
+
+    @abstractmethod
+    def normal_fit_at_point(self, p_xyz: Vxyz) -> Vxyz:
+        """Normal vector of fit surface at given point"""
 
     @abstractmethod
     def calculate_surface_intersect_points(self) -> Vxyz:

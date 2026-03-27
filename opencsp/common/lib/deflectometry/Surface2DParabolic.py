@@ -29,12 +29,35 @@ class Surface2DParabolic(Surface2DAbstract):
         super().__init__()
 
         # Save initial parabola shape data
+        # In the following, the coefficients A, B, C, D, E, F are for the general paraboloid equation:
+        #
+        #     z = A + Bx + Cx^2 + Dy + Exy + Fy^2
+        #
+        # with derivatives:
+        #
+        #     dz/dx = B + 2Cx + Ey
+        #
+        #     dz/dy = D + Ex + 2Fy
+        #
+        # For further details, see B. J. Smith, R. C. Brost, and B. G. Bean, "OpenCSP
+        # Deflectometry Technical Description,"" Document Version 1.0, Sandia National
+        # Laboratories Technical Report SAND2024-10934, August 2024.
+        #
         self.slope_fit_poly_order = 1
         self.initial_focal_lengths_xy = initial_focal_lengths_xy
-        self.surf_coefs = np.array(
-            [0, 0, 1 / 4 / initial_focal_lengths_xy[0], 0, 0, 1 / 4 / initial_focal_lengths_xy[1]], dtype=float
-        )
-        self.slope_coefs = np.zeros((2, 3))
+        A = 0
+        B = 0
+        C = 1 / (4 * initial_focal_lengths_xy[0])
+        D = 0
+        E = 0
+        F = 1 / (4 * initial_focal_lengths_xy[1])
+        self.surf_coefs = np.array([A, B, C, D, E, F], dtype=float)
+        self.slope_coefs = np.array([[B, (2 * C), E], [D, E, (2 * F)]])
+        # # Original version
+        # self.surf_coefs = np.array(
+        #     [0, 0, 1 / (4 * initial_focal_lengths_xy[0]), 0, 0, 1 / (4 * initial_focal_lengths_xy[1])], dtype=float
+        # )
+        # self.slope_coefs = np.zeros((2, 3))
 
         # Save fitting data
         self.robust_least_squares = robust_least_squares

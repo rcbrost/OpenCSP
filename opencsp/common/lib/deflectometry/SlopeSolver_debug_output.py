@@ -5,6 +5,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 from opencsp.common.lib.camera.Camera import Camera
+import opencsp.common.lib.deflectometry.slope_fitting_2d as sf2
 from opencsp.common.lib.deflectometry.SlopeSolverDataDebug import SlopeSolverDataDebug
 from opencsp.app.sofast.lib.DebugOpticsGeometry import DebugOpticsGeometry
 from opencsp.app.sofast.lib.DefinitionFacet import DefinitionFacet
@@ -17,6 +18,7 @@ from opencsp.common.lib.geometry.Uxyz import Uxyz
 from opencsp.common.lib.geometry.Vxy import Vxy
 from opencsp.common.lib.geometry.Vxyz import Vxyz
 import opencsp.common.lib.render.view_spec as vs
+import opencsp.common.lib.render_control.RenderControlFigure as rcfg
 import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
 import opencsp.common.lib.render_control.RenderControlSofastSetup as rcssp
 import opencsp.common.lib.tool.log_tools as lt
@@ -240,7 +242,7 @@ def figure_intersection_surface_situation_world(
     az_el_roll_deg = view_spec_az_el_roll_deg[1]
 
     # Create a new figure.
-    full_title = f"Slope Solver (loop_idx={loop_idx:d}): " + title
+    full_title = f"loop={loop_idx:d}: " + title
     axis_prefix = "World "
     fig_rec = sdfs.start_debug_3d_figure(
         figure_title=full_title, view_spec=view_spec, figsize=(12, 9), axis_prefix=axis_prefix
@@ -253,17 +255,101 @@ def figure_intersection_surface_situation_world(
     trans_camera_world = trans_screen_world * orientation.trans_screen_cam.inv()
     trans_mirror_world = trans_screen_world * orientation.trans_screen_optic.inv()
 
-    # Plot camera rays
-    if plot_camera_rays:
-        u_active_pixel_pointing_optic_downsample = surface.u_active_pixel_pointing_optic[::camera_ray_downsample]
-        u_active_pixel_pointing_cam = u_active_pixel_pointing_optic_downsample.rotate(orientation.r_cam_optic.inv())
-        u_active_pixel_pointing_world = u_active_pixel_pointing_cam.rotate(trans_camera_world.R)
-        for vxyz_ray in u_active_pixel_pointing_world:
-            xs = [trans_camera_world.V.x, trans_camera_world.V.x + (vxyz_ray.x * camera_ray_length)]
-            ys = [trans_camera_world.V.y, trans_camera_world.V.y + (vxyz_ray.y * camera_ray_length)]
-            zs = [trans_camera_world.V.z, trans_camera_world.V.z + (vxyz_ray.z * camera_ray_length)]
-            vxyz_ray = Vxyz([xs, ys, zs])
-            vxyz_ray.draw_line(fig_rec, style=rcps.outline(color="pink"))  # Don't label -- too many rays
+    # # Plot rays
+    # if plot_camera_rays:
+    #     if not hasattr(surface, 'slopes'):
+    #         # Then simply draw the camera pixel pointing rays.
+    #         u_active_pixel_pointing_optic_downsample = surface.u_active_pixel_pointing_optic[::camera_ray_downsample]
+    #         u_active_pixel_pointing_cam = u_active_pixel_pointing_optic_downsample.rotate(orientation.r_cam_optic.inv())
+    #         u_active_pixel_pointing_world = u_active_pixel_pointing_cam.rotate(trans_camera_world.R)
+    #         for vxyz_ray in u_active_pixel_pointing_world:
+    #             xs = [trans_camera_world.V.x, trans_camera_world.V.x + (vxyz_ray.x * camera_ray_length)]
+    #             ys = [trans_camera_world.V.y, trans_camera_world.V.y + (vxyz_ray.y * camera_ray_length)]
+    #             zs = [trans_camera_world.V.z, trans_camera_world.V.z + (vxyz_ray.z * camera_ray_length)]
+    #             vxyz_ray = Vxyz([xs, ys, zs])
+    #             vxyz_ray.draw_line(fig_rec, style=rcps.outline(color="pink"))  # Don't label -- too many rays
+    #     else:
+    #         # Draw rays showing the camera-to-mirror-to-screen reflections
+    #         u_active_pixel_pointing_optic = surface.u_active_pixel_pointing_optic
+    #         v_surf_int_pts_optic = surface.v_surf_int_pts_optic
+    #         slopes_optic = surface.slopes
+    #         n_pixel_pointing = u_active_pixel_pointing_optic.len()
+    #         n_intersect_pts = v_surf_int_pts_optic.len()
+    #         n_slopes = slopes_optic.shape[1]
+    #         if n_pixel_pointing != n_intersect_pts:
+    #             lt.error_and_raise(
+    #                 f"ERROR: In figure_intersection_surface_situation_world(), n_pixel_pointing={n_pixel_pointing} does not match n_intersect_pts={n_intersect_pts}"
+    #             )
+    #         if n_pixel_pointing != n_slopes:
+    #             lt.error_and_raise(
+    #                 f"ERROR: In figure_intersection_surface_situation_world(), n_pixel_pointing={n_pixel_pointing} does not match n_slopes={n_slopes}"
+    #             )
+    #         vxyz_cam_world = trans_camera_world.V
+    #         for idx in range(0, n_pixel_pointing, 10000):
+    #             # &&&& DELETE-SCAFFOLDING -- CONSIDER VECTORIZING THIS
+    #             # Fetch needed data.
+    #             uxyz_pixel_ray_optic = u_active_pixel_pointing_optic[idx]
+    #             vxyz_int_pt_optic = v_surf_int_pts_optic[idx]
+    #             slope_x = slopes_optic[0, idx]
+    #             slope_y = slopes_optic[1, idx]
+    #             # Construct, check, and draw camera-to-mirror ray.
+    #             vxyz_int_pt_world = trans_mirror_world.apply(vxyz_int_pt_optic)
+    #             vxyz_camera_to_mirror = vxyz_int_pt_world - vxyz_cam_world
+    #             uxyz_camera_to_mirror = vxyz_camera_to_mirror.normalize()
+    #             # If the input vectors are both unit length, then the cross product equals
+    #             # the sine of the angle.  But if the angle is small, this is simply the
+    #             # angle, in radians.  Since we expect the angle to be very small, we'll
+    #             # skip the arcsin() call here.
+    #             uxyz_pixel_ray_cam = uxyz_pixel_ray_optic.rotate(orientation.r_cam_optic.inv())
+    #             uxyz_pixel_ray_world = uxyz_pixel_ray_cam.rotate(trans_camera_world.R)
+    #             comparison_angle = uxyz_pixel_ray_world.cross(uxyz_camera_to_mirror).magnitude()[0]
+    #             if comparison_angle > 0.0001:  # 0.1 milliradian tolerance
+    #                 lt.error_and_raise(
+    #                     ValueError,
+    #                     f"ERROR: In figure_intersection_surface_situation_world(), comparison_angle={comparison_angle} is not near zero.",
+    #                 )
+    #             camera_to_mirror_xs = [trans_camera_world.V.x, trans_camera_world.V.x + vxyz_camera_to_mirror.x]
+    #             camera_to_mirror_ys = [trans_camera_world.V.y, trans_camera_world.V.y + vxyz_camera_to_mirror.y]
+    #             camera_to_mirror_zs = [trans_camera_world.V.z, trans_camera_world.V.z + vxyz_camera_to_mirror.z]
+    #             vxyz_camera_to_mirror_world = Vxyz([camera_to_mirror_xs, camera_to_mirror_ys, camera_to_mirror_zs])
+    #             vxyz_camera_to_mirror_world.draw_line(fig_rec, style=rcps.outline(color="pink"))
+    #             # Construct, check, and draw mirror surface normal.
+    #             uxyz_normal_optic = Uxyz([-slope_x, -slope_y, 1])
+    #             uxyz_normal_world = uxyz_normal_optic.rotate(trans_mirror_world.R)
+    #             normal_world_xs = [vxyz_int_pt_world.x, vxyz_int_pt_world.x + (uxyz_normal_world.x * 0.2)]
+    #             normal_world_ys = [vxyz_int_pt_world.y, vxyz_int_pt_world.y + (uxyz_normal_world.y * 0.2)]
+    #             normal_world_zs = [vxyz_int_pt_world.z, vxyz_int_pt_world.z + (uxyz_normal_world.z * 0.2)]
+    #             vxyz_normal_world = Vxyz([normal_world_xs, normal_world_ys, normal_world_zs])
+    #             vxyz_normal_world.draw_line(fig_rec, style=rcps.outline(color="pink", linestyle='--', linewidth=0.25))
+    #             # Construct, check, and draw mirror-to-screen ray.
+    #             # Given an incident vector i and a surface normal n, with normalized versions u_i and u_n,
+    #             # respectively, then the formula for the unit-length reflected ray u_r is:
+    #             #
+    #             #    u_r = u_i - [2(u_i dot u_n) u_n]
+    #             #
+    #             # For details, see https://math.stackexchange.com/questions/13261/how-to-get-a-reflection-vector#:~:text=Reflection%20Vector%20Formula:%20The%20reflection%20vector%20(r),the%20formula%20r%20=%20d%20-%202(d%E2%8B%85n)n.
+    #             #
+    #             # Set u_i and u_n, as Vxyz objects so they can be scaled.
+    #             u_i = uxyz_pixel_ray_world.as_Vxyz()
+    #             u_n = uxyz_normal_world.as_Vxyz()
+    #             vxyz_mirror_to_screen = u_i - (u_n * (2 * (u_i.dot(u_n))))
+    #             uxyz_mirror_to_screen = Uxyz(vxyz_mirror_to_screen.data)
+    #             mirror_to_screen_xs1 = [vxyz_int_pt_world.x, vxyz_int_pt_world.x + (uxyz_mirror_to_screen.x * 1.2)]
+    #             mirror_to_screen_ys1 = [vxyz_int_pt_world.y, vxyz_int_pt_world.y + (uxyz_mirror_to_screen.y * 1.2)]
+    #             mirror_to_screen_zs1 = [vxyz_int_pt_world.z, vxyz_int_pt_world.z + (uxyz_mirror_to_screen.z * 1.2)]
+    #             vxyz_mirror_to_screen1_world = Vxyz([mirror_to_screen_xs1, mirror_to_screen_ys1, mirror_to_screen_zs1])
+    #             vxyz_mirror_to_screen1_world.draw_line(fig_rec, style=rcps.outline(color="blue"))
+    #             # Draw reflection points on screen.
+    #             vxyz_reflection_pt = sf2.propagate_rays_to_plane(
+    #                 uxyz_mirror_to_screen, vxyz_int_pt_world, Vxyz([0, 1, 0]), (Uxyz([0, -1, 0]))
+    #             )
+    #             vxyz_reflection_pt.draw_line(fig_rec, style=rcps.marker(color="pink"))
+    #             # Construct and draw reflected line.
+    #             mirror_to_screen_xs = [vxyz_int_pt_world.x, vxyz_reflection_pt.x]
+    #             mirror_to_screen_ys = [vxyz_int_pt_world.y, vxyz_reflection_pt.y]
+    #             mirror_to_screen_zs = [vxyz_int_pt_world.z, vxyz_reflection_pt.z]
+    #             vxyz_mirror_to_screen_world = Vxyz([mirror_to_screen_xs, mirror_to_screen_ys, mirror_to_screen_zs])
+    #             vxyz_mirror_to_screen_world.draw_line(fig_rec, style=rcps.outline(color="magenta"))
 
     # Plot camera-ray-to-mirror intersection points.
     # The trisurf plot is only supported for 3-d axes.
@@ -363,6 +449,90 @@ def figure_intersection_surface_situation_world(
         axis_length=sofast_setup_axis_length,
     )
 
+    # Plot rays
+    if plot_camera_rays:
+        if not hasattr(surface, 'slopes'):
+            # Then simply draw the camera pixel pointing rays.
+            u_active_pixel_pointing_optic_downsample = surface.u_active_pixel_pointing_optic[::camera_ray_downsample]
+            u_active_pixel_pointing_cam = u_active_pixel_pointing_optic_downsample.rotate(orientation.r_cam_optic.inv())
+            u_active_pixel_pointing_world = u_active_pixel_pointing_cam.rotate(trans_camera_world.R)
+            for vxyz_ray in u_active_pixel_pointing_world:
+                xs = [trans_camera_world.V.x, trans_camera_world.V.x + (vxyz_ray.x * camera_ray_length)]
+                ys = [trans_camera_world.V.y, trans_camera_world.V.y + (vxyz_ray.y * camera_ray_length)]
+                zs = [trans_camera_world.V.z, trans_camera_world.V.z + (vxyz_ray.z * camera_ray_length)]
+                vxyz_ray = Vxyz([xs, ys, zs])
+                vxyz_ray.draw_line(fig_rec, style=rcps.outline(color="pink"))  # Don't label -- too many rays
+        else:
+            # Draw rays showing the camera-to-mirror-to-screen reflections.
+            # Find intersection point closest to alignment point.
+            # &&&& DELETE-SCAFFOLDING -- CONSIDER VECTORIZING THIS
+            align_point_world = trans_mirror_world.apply(surface.v_align_point_optic)
+            v_surf_int_pts_world = trans_mirror_world.apply(surface.v_surf_int_pts_optic)
+            n_pts = surface.v_surf_int_pts_optic.len()
+            if n_pts > 0:
+                min_dist_so_far = np.inf
+                min_idx_so_far = -999
+                for idx in range(n_pts):
+                    vxyz_int_pt_world = v_surf_int_pts_world[idx]
+                    dist = (vxyz_int_pt_world - align_point_world).magnitude()
+                    if dist < min_dist_so_far:
+                        min_dist_so_far = dist
+                        min_idx_so_far = idx
+                align_idx_list = [min_idx_so_far]
+                draw_reflection_world(
+                    fig_rec,
+                    align_idx_list,
+                    surface.u_active_pixel_pointing_optic,
+                    surface.v_surf_int_pts_optic,
+                    surface.slopes,
+                    orientation,
+                    trans_camera_world,
+                    trans_mirror_world,
+                    draw_camera_to_mirror=True,
+                    camera_to_mirror_style=rcps.outline(color='magenta', linewidth=0.75),
+                    draw_normal=True,
+                    normal_style=rcps.outline(color='magenta', linewidth=0.35, linestyle='--'),
+                    draw_mirror_to_screen=True,
+                    mirror_to_screen_style=rcps.outline(color='magenta', linewidth=0.75),
+                    draw_screen_pts=True,
+                    screen_pts_style=rcps.marker(color='magenta'),
+                )
+            # Select sample points to draw.
+            idx_list = []
+            for idx in range(0, surface.u_active_pixel_pointing_optic.len(), 5000):
+                idx_list.append(idx)
+            # Draw reflections at selected points, including rays.
+            draw_reflection_world(
+                fig_rec,
+                idx_list,
+                surface.u_active_pixel_pointing_optic,
+                surface.v_surf_int_pts_optic,
+                surface.slopes,
+                orientation,
+                trans_camera_world,
+                trans_mirror_world,
+            )
+            # Select many sample points to draw points on screen.
+            idx_list = []
+            for idx in range(0, surface.u_active_pixel_pointing_optic.len(), 200):
+                idx_list.append(idx)
+            # Draw reflections at selected points, including rays.
+            draw_reflection_world(
+                fig_rec,
+                idx_list,
+                surface.u_active_pixel_pointing_optic,
+                surface.v_surf_int_pts_optic,
+                surface.slopes,
+                orientation,
+                trans_camera_world,
+                trans_mirror_world,
+                draw_camera_to_mirror=False,
+                draw_normal=False,
+                draw_mirror_to_screen=False,
+                draw_screen_pts=True,
+                screen_pts_style=rcps.marker(color='pink', markersize=1.5),
+            )
+
     # Plot high-resolution facet corners, before fit_slopes() execution.
     # Use draw_line(), because we only want one legend entry, not a legend entry for every point.
     if v_facet_corners_hires_1 is not None:
@@ -401,10 +571,8 @@ def figure_intersection_surface_situation_world(
 
     # Plot other points
     # Use draw_line(), because we only want one legend entry, not a legend entry for every point.
-    transformed_align_point = trans_mirror_world.apply(surface.v_align_point_optic)
-    transformed_align_point.draw_line(
-        fig_rec, style=rcps.marker(marker='.', color='m', markersize=5), label="Align Point"
-    )
+    align_point_world = trans_mirror_world.apply(surface.v_align_point_optic)
+    align_point_world.draw_line(fig_rec, style=rcps.marker(marker='.', color='m', markersize=5), label="Align Point")
 
     # Set view direction, if desired.
     if az_el_roll_deg is not None:
@@ -431,6 +599,104 @@ def figure_intersection_surface_situation_world(
         full_title.replace(' ', '_').replace(':', '').replace('(', '').replace(')', '').replace(',', '')
     )
     sdfs.finish_debug_3d_figure(full_title_for_file, 'solver', fig_rec, debug.debug_geometry, axis_prefix=axis_prefix)
+
+
+def draw_reflection_world(
+    fig_rec: rcfg.RenderControlFigure,
+    idx_list: list[int],
+    u_active_pixel_pointing_optic: Vxyz,
+    v_surf_int_pts_optic: Vxyz,
+    slopes_optic: np.ndarray,
+    orientation: SpatialOrientation,
+    trans_camera_world: txyz.TransformXYZ,
+    trans_mirror_world: txyz.TransformXYZ,
+    draw_camera_to_mirror: bool = True,
+    camera_to_mirror_style: rcps.RenderControlPointSeq = rcps.outline(color='pink', linewidth=0.75),
+    draw_normal: bool = True,
+    normal_style: rcps.RenderControlPointSeq = rcps.outline(color='pink', linewidth=0.35, linestyle='--'),
+    draw_mirror_to_screen: bool = True,
+    mirror_to_screen_style: rcps.RenderControlPointSeq = rcps.outline(color='pink', linewidth=0.75),
+    draw_screen_pts: bool = True,
+    screen_pts_style: rcps.RenderControlPointSeq = rcps.marker(color='pink'),
+):
+    n_pixel_pointing = u_active_pixel_pointing_optic.len()
+    n_intersect_pts = v_surf_int_pts_optic.len()
+    n_slopes = slopes_optic.shape[1]
+    if n_pixel_pointing != n_intersect_pts:
+        lt.error_and_raise(
+            ValueError,
+            f"ERROR: In figure_intersection_surface_situation_world(), n_pixel_pointing={n_pixel_pointing} does not match n_intersect_pts={n_intersect_pts}",
+        )
+    if n_pixel_pointing != n_slopes:
+        lt.error_and_raise(
+            ValueError,
+            f"ERROR: In figure_intersection_surface_situation_world(), n_pixel_pointing={n_pixel_pointing} does not match n_slopes={n_slopes}",
+        )
+    vxyz_cam_world = trans_camera_world.V
+    for idx in idx_list:
+        # Fetch needed data.
+        uxyz_pixel_ray_optic = u_active_pixel_pointing_optic[idx]
+        vxyz_int_pt_optic = v_surf_int_pts_optic[idx]
+        slope_x = slopes_optic[0, idx]
+        slope_y = slopes_optic[1, idx]
+        # Convert to world coordinates.
+        vxyz_int_pt_world = trans_mirror_world.apply(vxyz_int_pt_optic)
+        uxyz_pixel_ray_cam = uxyz_pixel_ray_optic.rotate(orientation.r_cam_optic.inv())
+        uxyz_pixel_ray_world = uxyz_pixel_ray_cam.rotate(trans_camera_world.R)
+        # Construct and draw camera-to-mirror ray.
+        if draw_camera_to_mirror:
+            vxyz_camera_to_mirror = vxyz_int_pt_world - vxyz_cam_world
+            # If the input vectors are both unit length, then the cross product equals
+            # the sine of the angle.  But if the angle is small, this is simply the
+            # angle, in radians.  Since we expect the angle to be very small, we'll
+            # skip the arcsin() call here.
+            uxyz_camera_to_mirror = vxyz_camera_to_mirror.normalize()
+            comparison_angle = uxyz_pixel_ray_world.cross(uxyz_camera_to_mirror).magnitude()[0]
+            if comparison_angle > 0.0001:  # 0.1 milliradian tolerance
+                lt.error_and_raise(
+                    ValueError,
+                    f"ERROR: In figure_intersection_surface_situation_world(), comparison_angle={comparison_angle} is not near zero.",
+                )
+            camera_to_mirror_xs = [trans_camera_world.V.x, trans_camera_world.V.x + vxyz_camera_to_mirror.x]
+            camera_to_mirror_ys = [trans_camera_world.V.y, trans_camera_world.V.y + vxyz_camera_to_mirror.y]
+            camera_to_mirror_zs = [trans_camera_world.V.z, trans_camera_world.V.z + vxyz_camera_to_mirror.z]
+            vxyz_camera_to_mirror_world = Vxyz([camera_to_mirror_xs, camera_to_mirror_ys, camera_to_mirror_zs])
+            vxyz_camera_to_mirror_world.draw_line(fig_rec, style=camera_to_mirror_style)
+        # Construct, check, and draw mirror surface normal.
+        uxyz_normal_optic = Uxyz([-slope_x, -slope_y, 1])
+        uxyz_normal_world = uxyz_normal_optic.rotate(trans_mirror_world.R)
+        # Construct, check, and draw mirror-to-screen ray.
+        # Given an incident vector i and a surface normal n, with normalized versions u_i and u_n,
+        # respectively, then the formula for the unit-length reflected ray u_r is:
+        #
+        #    u_r = u_i - [2(u_i dot u_n) u_n]
+        #
+        # For details, see https://math.stackexchange.com/questions/13261/how-to-get-a-reflection-vector#:~:text=Reflection%20Vector%20Formula:%20The%20reflection%20vector%20(r),the%20formula%20r%20=%20d%20-%202(d%E2%8B%85n)n.
+        #
+        # Set u_i and u_n, as Vxyz objects so they can be scaled.
+        u_i = uxyz_pixel_ray_world.as_Vxyz()
+        u_n = uxyz_normal_world.as_Vxyz()
+        vxyz_mirror_to_screen = u_i - (u_n * (2 * (u_i.dot(u_n))))
+        uxyz_mirror_to_screen = Uxyz(vxyz_mirror_to_screen.data)
+        if draw_normal:
+            normal_world_xs = [vxyz_int_pt_world.x, vxyz_int_pt_world.x + (uxyz_normal_world.x * 0.2)]
+            normal_world_ys = [vxyz_int_pt_world.y, vxyz_int_pt_world.y + (uxyz_normal_world.y * 0.2)]
+            normal_world_zs = [vxyz_int_pt_world.z, vxyz_int_pt_world.z + (uxyz_normal_world.z * 0.2)]
+            vxyz_normal_world = Vxyz([normal_world_xs, normal_world_ys, normal_world_zs])
+            vxyz_normal_world.draw_line(fig_rec, style=normal_style)
+        # Draw reflection points on screen.
+        if draw_screen_pts:
+            vxyz_reflection_pt = sf2.propagate_rays_to_plane(
+                uxyz_mirror_to_screen, vxyz_int_pt_world, Vxyz([0, 1, 0]), (Uxyz([0, -1, 0]))
+            )
+            vxyz_reflection_pt.draw_line(fig_rec, style=screen_pts_style)
+        # Construct and draw reflected line.
+        if draw_mirror_to_screen:
+            mirror_to_screen_xs = [vxyz_int_pt_world.x, vxyz_reflection_pt.x]
+            mirror_to_screen_ys = [vxyz_int_pt_world.y, vxyz_reflection_pt.y]
+            mirror_to_screen_zs = [vxyz_int_pt_world.z, vxyz_reflection_pt.z]
+            vxyz_mirror_to_screen_world = Vxyz([mirror_to_screen_xs, mirror_to_screen_ys, mirror_to_screen_zs])
+            vxyz_mirror_to_screen_world.draw_line(fig_rec, style=mirror_to_screen_style)
 
 
 def figure_intersection_surface_situation_optic(
@@ -462,7 +728,7 @@ def figure_intersection_surface_situation_optic(
     az_el_roll_deg = view_spec_az_el_roll_deg[1]
 
     # Create a new figure.
-    full_title = f"Slope Solver (loop_idx={loop_idx:d}): " + title
+    full_title = f"loop={loop_idx:d}: " + title
     axis_prefix = "Optic "
     fig_rec = sdfs.start_debug_3d_figure(
         figure_title=full_title, view_spec=view_spec, figsize=(12, 9), axis_prefix=axis_prefix
@@ -613,7 +879,7 @@ def reproj_snap_aux(
     loop_idx: int,
     debug: SlopeSolverDataDebug,
 ) -> None:
-    figure_title = f"Slope Solver (loop_idx={loop_idx:d}): " + "Reprojected Points, and Snap to Edges"
+    figure_title = f"loop={loop_idx:d}: " + "Reprojected Points, and Snap to Edges"
     fig_rec = sdfs.start_debug_image_figure(figure_title)
     fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     if pts_reproj is not None:
@@ -648,7 +914,12 @@ def reproj_snap_aux(
         )
     # Legend
     fig_rec.view.axis.legend()
-    sdfs.finish_debug_image_figure(figure_title, 'solver', fig_rec, debug.debug_geometry)
+
+    # Save and close.
+    full_title_for_file = (
+        figure_title.replace(' ', '_').replace(':', '').replace('(', '').replace(')', '').replace(',', '')
+    )
+    sdfs.finish_debug_image_figure(full_title_for_file, 'solver', fig_rec, debug.debug_geometry)
 
 
 # INITIAL REPROJECTION SUMMARY, AFTER SNAP TO EDGE (WITHOUT COARSE VERTICES)
@@ -669,7 +940,7 @@ def reproj_snap_2_aux(
     loop_idx: int,
     debug: SlopeSolverDataDebug,
 ) -> None:
-    figure_title = f"Slope Solver (loop_idx={loop_idx:d}): " + "Reprojected Points, and Snap to Edges"
+    figure_title = f"loop={loop_idx:d}: " + "Reprojected Points, and Snap to Edges"
     fig_rec = sdfs.start_debug_image_figure(figure_title)
     fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     if hires_pts_reproj_1 is not None:
@@ -694,7 +965,12 @@ def reproj_snap_2_aux(
         )
     # Legend
     fig_rec.view.axis.legend()
-    sdfs.finish_debug_image_figure(figure_title, 'solver', fig_rec, debug.debug_geometry)
+
+    # Save and close.
+    full_title_for_file = (
+        figure_title.replace(' ', '_').replace(':', '').replace('(', '').replace(')', '').replace(',', '')
+    )
+    sdfs.finish_debug_image_figure(full_title_for_file, 'solver', fig_rec, debug.debug_geometry)
 
 
 # REPROJECTION OF SNAP TO EDGE, SNAP TO SURFACE REPROJECTION
@@ -718,7 +994,7 @@ def reproj_after_snap_snap_aux(
     loop_idx: int,
     debug: SlopeSolverDataDebug,
 ) -> None:
-    figure_title = f"Slope Solver (loop_idx={loop_idx:d}): " + "Snap-to-Edge Points, Snapped to Surface and Reprojected"
+    figure_title = f"loop={loop_idx:d}: " + "Snap-to-Edge Points, Snapped to Surface and Reprojected"
     fig_rec = sdfs.start_debug_image_figure(figure_title)
     fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     sdfs.plot_labeled_points(
@@ -741,7 +1017,12 @@ def reproj_after_snap_snap_aux(
     )
     # Legend
     fig_rec.view.axis.legend()
-    sdfs.finish_debug_image_figure(figure_title, 'solver', fig_rec, debug.debug_geometry)
+
+    # Save and close.
+    full_title_for_file = (
+        figure_title.replace(' ', '_').replace(':', '').replace('(', '').replace(')', '').replace(',', '')
+    )
+    sdfs.finish_debug_image_figure(full_title_for_file, 'solver', fig_rec, debug.debug_geometry)
 
 
 # REPROJECTION OF SNAP TO EDGE, SNAP TO SURFACE REPROJECTION
@@ -766,9 +1047,7 @@ def reproj_after_fit_aux(
     loop_idx: int,
     debug: SlopeSolverDataDebug,
 ) -> None:
-    figure_title = (
-        f"Slope Solver (loop_idx={loop_idx:d}): " + "After Fitting Surface to Slopes, Snapping to Surface, Reprojecting"
-    )
+    figure_title = f"loop={loop_idx:d}: " + "After Fitting Surface to Slopes, Snapping to Surface, Reprojecting"
     fig_rec = sdfs.start_debug_image_figure(figure_title)
     fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     sdfs.plot_labeled_points(
@@ -800,4 +1079,9 @@ def reproj_after_fit_aux(
     )
     # Legend
     fig_rec.view.axis.legend(fontsize='small')
-    sdfs.finish_debug_image_figure(figure_title, 'solver', fig_rec, debug.debug_geometry)
+
+    # Save and close.
+    full_title_for_file = (
+        figure_title.replace(' ', '_').replace(':', '').replace('(', '').replace(')', '').replace(',', '')
+    )
+    sdfs.finish_debug_image_figure(full_title_for_file, 'solver', fig_rec, debug.debug_geometry)

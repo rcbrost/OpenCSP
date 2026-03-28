@@ -52,6 +52,7 @@ class Surface2DParabolic(Surface2DAbstract):
         E = 0
         F = 1 / (4 * initial_focal_lengths_xy[1])
         self.surf_coefs = np.array([A, B, C, D, E, F], dtype=float)
+        # &&&& DELETE-SCAFFOLDING -- FOR OTHER SURFACE TYPES (PLANO, ETC), ENSURE THAT THEY ALSO SET THEIR SLOPE COEFFICIENTS.
         self.slope_coefs = np.array([[B, (2 * C), E], [D, E, (2 * F)]])
         # # Original version
         # self.surf_coefs = np.array(

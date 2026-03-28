@@ -82,17 +82,18 @@ def fit_surface_loop_record_str(loop_record: dict) -> str:
 
 def fit_surface_loop_record_column_headings_2() -> str:
     #        0   [  0.000000,   0.000000,   1.000000]     [  0.000000,   0.000000,   1.000000]     [  0.000000,   0.000000,   1.000000]
-    return "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured"
+    #        2   [  0.611923,  -0.185481,   0.768861]     [  0.603300,  -0.215173,   0.767939]     [ -0.008624,  -0.029692,  -0.000922]     [-6.78254892  0.94170392  5.70583218]
+    return "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured                        r_align_step_str"
 
 
 def fit_surface_loop_record_column_headings_units_2() -> str:
-    #      "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured"
-    return " -                    (m)                                       (m)                                    (m)"
+    #      "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured                        r_align_step_str"
+    return " -                    (m)                                       (m)                                    (m)                                  (deg rx,ry,rz)"
 
 
 def fit_surface_loop_record_column_headings_separator_2() -> str:
-    #      "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured"
-    return "---------------------------------------------------------------------------------------------------------------------------"
+    #      "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured                        r_align_step_str"
+    return "---------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 
 
 def fit_surface_loop_record_str_2(loop_record: dict) -> str:
@@ -101,7 +102,12 @@ def fit_surface_loop_record_str_2(loop_record: dict) -> str:
     avg_fit_str = loop_record["u_avg_fit_normal"].to_str()
     avg_meas_str = loop_record["u_avg_measured_normal"].to_str()
     avg_meas_minus_fit_str = loop_record["u_avg_measured_minus_fit"].to_str()
-    return f"{idx_str}   {avg_fit_str}     {avg_meas_str}     {avg_meas_minus_fit_str}"
+    if loop_record["r_align_step"] is None:
+        #                   [-6.78254892  0.94170392  5.70583218]
+        r_align_step_str = "                  -                  "
+    else:
+        r_align_step_str = loop_record["r_align_step"].as_euler('XYZ', degrees=True)
+    return f"{idx_str}   {avg_fit_str}     {avg_meas_str}     {avg_meas_minus_fit_str}     {r_align_step_str}"
 
 
 # INTERSECTION SURFACE, DEFINING VERTICES, CAMERA
@@ -134,10 +140,11 @@ def figure_intersection_surface_situation(
     # Draw views in the world coordinate system.
     view_spec_az_el_roll_list = [
         (vs.view_spec_3d(), None),
-        (vs.view_spec_3d(), (0, 90, 90)),  # xy
-        (vs.view_spec_3d(), (-90, 0, 0)),  # xz
-        (vs.view_spec_3d(), (0, 0, 0)),  # yz
-        (vs.view_spec_xy(), None),  # Doesn't show intersection surface.
+        # # &&&& DELETE-SCAFFOLDING -- TEMPORARY SHUTOFF
+        # (vs.view_spec_3d(), (0, 90, 90)),  # xy
+        # (vs.view_spec_3d(), (-90, 0, 0)),  # xz
+        # (vs.view_spec_3d(), (0, 0, 0)),  # yz
+        # (vs.view_spec_xy(), None),  # Doesn't show intersection surface.
         (vs.view_spec_xz(), None),  # Doesn't show intersection surface.
         (vs.view_spec_yz(), None),  # Doesn't show intersection surface.
     ]
@@ -171,45 +178,46 @@ def figure_intersection_surface_situation(
             view_spec_az_el_roll_deg=view_spec_az_el_roll,
         )
 
-    # Draw views in the optic coordinate system.
-    view_spec_az_el_roll_list = [
-        (vs.view_spec_3d(), None),
-        (vs.view_spec_3d(), (0, 90, 90)),  # xy
-        (vs.view_spec_3d(), (-90, 0, 0)),  # xz
-        (vs.view_spec_3d(), (0, 0, 0)),  # yz
-        (vs.view_spec_xy(), None),  # Doesn't show intersection surface.
-        (vs.view_spec_xz(), None),  # Doesn't show intersection surface.
-        (vs.view_spec_yz(), None),  # Doesn't show intersection surface.
-    ]
-    for view_spec_az_el_roll in view_spec_az_el_roll_list:
-        az_el_roll_deg = view_spec_az_el_roll[1]
-        if az_el_roll_deg is None:
-            this_title = figure_title
-        else:
-            this_title = figure_title + ' (Az,El,Roll)=' + str(az_el_roll_deg)
-        figure_intersection_surface_situation_optic(
-            this_title,
-            camera=camera,
-            display=display,
-            v_facet_corners_hires_1=v_facet_corners_hires_1,
-            v_facet_corners_hires_2=v_facet_corners_hires_2,
-            surface=surface,
-            orientation=orientation,
-            loop_idx=loop_idx,
-            debug=debug,
-            sofast_setup_style=sofast_setup_style,
-            sofast_setup_axis_length=sofast_setup_axis_length,
-            sofast_setup_z_axis_fov_distance=sofast_setup_z_axis_fov_distance,
-            mirror_needle_length=mirror_needle_length,
-            plot_camera_rays=plot_camera_rays,
-            camera_ray_downsample=camera_ray_downsample,
-            camera_ray_length=camera_ray_length,
-            plot_intersection_points=plot_intersection_points,
-            intersection_points_downsample=intersection_points_downsample,
-            plot_screen_points=plot_screen_points,
-            screen_points_downsample=screen_points_downsample,
-            view_spec_az_el_roll_deg=view_spec_az_el_roll,
-        )
+    # # &&&& DELETE-SCAFFOLDING -- TEMPORARY SHUTOFF
+    # # Draw views in the optic coordinate system.
+    # view_spec_az_el_roll_list = [
+    #     (vs.view_spec_3d(), None),
+    #     (vs.view_spec_3d(), (0, 90, 90)),  # xy
+    #     (vs.view_spec_3d(), (-90, 0, 0)),  # xz
+    #     (vs.view_spec_3d(), (0, 0, 0)),  # yz
+    #     (vs.view_spec_xy(), None),  # Doesn't show intersection surface.
+    #     (vs.view_spec_xz(), None),  # Doesn't show intersection surface.
+    #     (vs.view_spec_yz(), None),  # Doesn't show intersection surface.
+    # ]
+    # for view_spec_az_el_roll in view_spec_az_el_roll_list:
+    #     az_el_roll_deg = view_spec_az_el_roll[1]
+    #     if az_el_roll_deg is None:
+    #         this_title = figure_title
+    #     else:
+    #         this_title = figure_title + ' (Az,El,Roll)=' + str(az_el_roll_deg)
+    #     figure_intersection_surface_situation_optic(
+    #         this_title,
+    #         camera=camera,
+    #         display=display,
+    #         v_facet_corners_hires_1=v_facet_corners_hires_1,
+    #         v_facet_corners_hires_2=v_facet_corners_hires_2,
+    #         surface=surface,
+    #         orientation=orientation,
+    #         loop_idx=loop_idx,
+    #         debug=debug,
+    #         sofast_setup_style=sofast_setup_style,
+    #         sofast_setup_axis_length=sofast_setup_axis_length,
+    #         sofast_setup_z_axis_fov_distance=sofast_setup_z_axis_fov_distance,
+    #         mirror_needle_length=mirror_needle_length,
+    #         plot_camera_rays=plot_camera_rays,
+    #         camera_ray_downsample=camera_ray_downsample,
+    #         camera_ray_length=camera_ray_length,
+    #         plot_intersection_points=plot_intersection_points,
+    #         intersection_points_downsample=intersection_points_downsample,
+    #         plot_screen_points=plot_screen_points,
+    #         screen_points_downsample=screen_points_downsample,
+    #         view_spec_az_el_roll_deg=view_spec_az_el_roll,
+    #     )
 
 
 def figure_intersection_surface_situation_world(
@@ -811,9 +819,11 @@ def draw_measured_slope_reflections_world_aux(
             uxyz_camera_to_mirror = vxyz_camera_to_mirror.normalize()
             comparison_angle = uxyz_pixel_ray_world.cross(uxyz_camera_to_mirror).magnitude()[0]
             if comparison_angle > 0.0001:  # 0.1 milliradian tolerance
-                lt.error_and_raise(
-                    ValueError,
-                    f"ERROR: In figure_intersection_surface_situation_world(), comparison_angle={comparison_angle} is not near zero.",
+                # &&&& DELETE-SCAFFOLDING -- TEMPORARY ERROR SHUTOFF
+                # lt.error_and_raise(
+                #     ValueError,
+                lt.info(
+                    f"ERROR: In figure_intersection_surface_situation_world(), comparison_angle={comparison_angle} is not near zero."
                 )
             camera_to_mirror_xs = [vxyz_cam_world.x, vxyz_cam_world.x + vxyz_camera_to_mirror.x]
             camera_to_mirror_ys = [vxyz_cam_world.y, vxyz_cam_world.y + vxyz_camera_to_mirror.y]

@@ -117,8 +117,10 @@ def finish_debug_3d_figure(
 
     # Construct filename and save figure.
     figure_title_clean = figure_title.replace(' ', '_').replace(',', '')
-    axis_prefix_clean = axis_prefix.replace(' ', '').lower()
-    figure_file_body = f"{debug.figure_idx:02d}_{phase}_{figure_title_clean}_{axis_prefix_clean}"
+    figure_file_body = f"{debug.figure_idx:02d}_{phase}_{figure_title_clean}"
+    if axis_prefix is not None:
+        axis_prefix_clean = axis_prefix.replace(' ', '').lower()
+        figure_file_body += f"_{axis_prefix_clean}"
     debug.figure_idx += 1
     fig_rec.save(
         output_dir=debug.save_dir,

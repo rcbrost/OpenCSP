@@ -315,7 +315,8 @@ def process_single_facet(
     # &&&& DELETE-SCAFFOLDING -- BEGIN PASS-THROUGH HACK 2
     try:
         # Process
-        sofast.process_optic_singlefacet(facet_data, fit_surface)
+        # # &&&& DELETE-SCAFFOLDING -- GEN 2 VERSION:  sofast.process_optic_singlefacet(facet_data, fit_surface)
+        sofast.process_optic_singlefacet_sf2gen3(facet_data, fit_surface)
         # Get measurement statistics
         config = sfcfg.SofastConfiguration()
         config.load_sofast_object(sofast)
@@ -327,7 +328,8 @@ def process_single_facet(
         return
     # # &&&& DELETE-SCAFFOLDING -- MIDDLE PASS-THROUGH HACK 2
     # # Process
-    # sofast.process_optic_singlefacet(facet_data, fit_surface)
+    # # # &&&& DELETE-SCAFFOLDING -- GEN 2 VERSION: sofast.process_optic_singlefacet(facet_data, fit_surface)
+    # sofast.process_optic_singlefacet_sf2gen3(facet_data, fit_surface)
     # # Get measurement statistics
     # config = SofastConfiguration()
     # config.load_sofast_object(sofast)

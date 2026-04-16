@@ -197,7 +197,38 @@ class ProcessSofastFringe(ProcessSofastAbstract):
         # Solve slopes
         self._solve_slopes([surface])
 
-    def process_optic_singlefacet(self, facet_data: DefinitionFacet, surface: Surface2DAbstract) -> None:
+    # def process_optic_singlefacet(self, facet_data: DefinitionFacet, surface: Surface2DAbstract) -> None:
+    #     """
+    #     Processes optic geometry, screen intersection points, and solves
+    #     for slops for single facet optic.
+
+    #     Parameters
+    #     ----------
+    #     facet_data : DefinitionFacet
+    #         Facet data object.
+    #     surface_data : Surface2DAbstract
+    #         Surface type definition.
+    #     """
+    #     # Process optic/setup geometry
+    #     print(
+    #         "In process_optic_singlefacet(), entering _process_optic_singlefacet_geometry(facet_data)..."
+    #     )  # &&&& DELETE-SCAFFOLDING
+    #     self._process_optic_singlefacet_geometry(facet_data)
+    #     print(
+    #         "In process_optic_singlefacet(), returned from _process_optic_singlefacet_geometry(facet_data)."
+    #     )  # &&&& DELETE-SCAFFOLDING
+
+    #     # Process display ray intersection points
+    #     print("In process_optic_singlefacet(), entering _process_display()...")  # &&&& DELETE-SCAFFOLDING
+    #     self._process_display()
+    #     print("In process_optic_singlefacet(), returned from _process_display()...")  # &&&& DELETE-SCAFFOLDING
+
+    #     # Solve slopes
+    #     print("In process_optic_singlefacet(), entering _solve_slopes()...")  # &&&& DELETE-SCAFFOLDING
+    #     self._solve_slopes([surface])
+    #     print("In process_optic_singlefacet(), returned from _solve_slopes().")  # &&&& DELETE-SCAFFOLDING
+
+    def process_optic_singlefacet_sf2gen3(self, facet_data: DefinitionFacet, surface: Surface2DAbstract) -> None:
         """
         Processes optic geometry, screen intersection points, and solves
         for slops for single facet optic.
@@ -211,22 +242,24 @@ class ProcessSofastFringe(ProcessSofastAbstract):
         """
         # Process optic/setup geometry
         print(
-            "In process_optic_singlefacet(), entering _process_optic_singlefacet_geometry(facet_data)..."
+            "In process_optic_singlefacet_sf2gen3(), entering _process_optic_singlefacet_geometry_sf2gen3(facet_data)..."
         )  # &&&& DELETE-SCAFFOLDING
-        self._process_optic_singlefacet_geometry(facet_data)
+        self._process_optic_singlefacet_geometry_sf2gen3(facet_data)
         print(
-            "In process_optic_singlefacet(), returned from _process_optic_singlefacet_geometry(facet_data)."
+            "In process_optic_singlefacet_sf2gen3(), returned from _process_optic_singlefacet_geometry_sf2gen3(facet_data)."
         )  # &&&& DELETE-SCAFFOLDING
 
         # Process display ray intersection points
-        print("In process_optic_singlefacet(), entering _process_display()...")  # &&&& DELETE-SCAFFOLDING
+        print("In process_optic_singlefacet_sf2gen3(), entering _process_display()...")  # &&&& DELETE-SCAFFOLDING
         self._process_display()
-        print("In process_optic_singlefacet(), returned from _process_display()...")  # &&&& DELETE-SCAFFOLDING
+        print("In process_optic_singlefacet_sf2gen3(), returned from _process_display()...")  # &&&& DELETE-SCAFFOLDING
 
         # Solve slopes
-        print("In process_optic_singlefacet(), entering _solve_slopes()...")  # &&&& DELETE-SCAFFOLDING
-        self._solve_slopes([surface])
-        print("In process_optic_singlefacet(), returned from _solve_slopes().")  # &&&& DELETE-SCAFFOLDING
+        print("In process_optic_singlefacet_sf2gen3(), entering _solve_slopes_sf2gen3()...")  # &&&& DELETE-SCAFFOLDING
+        self._solve_slopes_sf2gen3([surface])
+        print(
+            "In process_optic_singlefacet_sf2gen3(), returned from _solve_slopes_sf2gen3()."
+        )  # &&&& DELETE-SCAFFOLDING
 
     def process_optic_multifacet(
         self, facet_data: list[DefinitionFacet], ensemble_data: DefinitionEnsemble, surfaces: list[Surface2DAbstract]
@@ -302,7 +335,61 @@ class ProcessSofastFringe(ProcessSofastAbstract):
         self.data_facet_def = None
         self.data_ensemble_def = None
 
-    def _process_optic_singlefacet_geometry(self, facet_data: DefinitionFacet) -> None:
+    # def _process_optic_singlefacet_geometry(self, facet_data: DefinitionFacet) -> None:
+    #     """
+    #     Processes optic geometry for single facet.
+
+    #     Parameters
+    #     ----------
+    #     facet_data : DefinitionFacet
+    #         Facet data object.
+
+    #     """
+    #     # Save number of facets
+    #     self.num_facets = 1
+    #     self.optic_type = "single"
+
+    #     if self.params.debug_geometry.debug_active:
+    #         lt.info("Sofast image processing debug on.")
+    #     if self.params.debug_slope_solver.debug_active:
+    #         lt.info("SlopeSolver debug on.")
+
+    #     # Calculate raw mask
+    #     params = [
+    #         self.params.mask.hist_thresh,
+    #         self.params.mask.filt_width,
+    #         self.params.mask.filt_thresh,
+    #         self.params.mask.thresh_active_pixels,
+    #     ]
+    #     mask_raw = ip.calc_mask_raw(self.measurement.mask_images, *params)
+
+    #     # If enabled, keep only the largest mask area
+    #     if self.params.mask.keep_largest_area:
+    #         mask_raw2 = ip.keep_largest_mask_area(mask_raw)
+    #         mask_raw = np.logical_and(mask_raw, mask_raw2)
+
+    #     (
+    #         self.data_geometry_general,
+    #         self.data_image_processing_general,
+    #         self.data_geometry_facet,
+    #         self.data_image_processing_facet,
+    #         self.data_error,
+    #     ) = po.process_singlefacet_geometry(
+    #         facet_data,
+    #         mask_raw,
+    #         self.measurement.v_measure_point_facet,
+    #         self.measurement.dist_optic_screen,
+    #         self.orientation,
+    #         self.camera,
+    #         self.params.geometry,
+    #         self.params.debug_geometry,
+    #     )
+
+    #     # Save data
+    #     self.data_facet_def = [facet_data.copy()]
+    #     self.data_ensemble_def = None
+
+    def _process_optic_singlefacet_geometry_sf2gen3(self, facet_data: DefinitionFacet) -> None:
         """
         Processes optic geometry for single facet.
 
@@ -341,7 +428,7 @@ class ProcessSofastFringe(ProcessSofastAbstract):
             self.data_geometry_facet,
             self.data_image_processing_facet,
             self.data_error,
-        ) = po.process_singlefacet_geometry(
+        ) = po.process_singlefacet_geometry_sf2gen3(
             facet_data,
             mask_raw,
             self.measurement.v_measure_point_facet,
@@ -508,7 +595,62 @@ class ProcessSofastFringe(ProcessSofastAbstract):
             )
             self.data_geometry_facet[idx_facet].v_screen_points_facet = v_screen_points_facet
 
-    def _solve_slopes(self, surfaces: list[Surface2DAbstract]) -> None:
+    # def _solve_slopes(self, surfaces: list[Surface2DAbstract]) -> None:
+    #     """
+    #     Solves slopes of each active pixel for each facet.
+
+    #     Parameters
+    #     ----------
+    #     surface_data : list[Surface2DAbstract]
+    #         List of surface definition classes.
+    #     """
+    #     # Check inputs
+    #     if self.data_geometry_facet is None:
+    #         lt.error_and_raise(ValueError, "Not all facets geometrically processed; cannot solve slopes.")
+
+    #     # Loop through all input facets and solve slopes
+    #     self.data_calculation_facet = []
+    #     for facet_idx in range(self.num_facets):
+    #         # Check debug status
+    #         if self.params.debug_slope_solver.debug_active:
+    #             self.params.debug_slope_solver.optic_data = self.data_facet_def[facet_idx]
+
+    #         # Instantiate slope solver object
+    #         kwargs = {
+    #             "v_optic_cam_optic": self.data_geometry_facet[facet_idx].spatial_orientation.v_optic_cam_optic,
+    #             "u_active_pixel_pointing_optic": self.data_geometry_facet[facet_idx].u_pixel_pointing_facet,
+    #             "u_measure_pixel_pointing_optic": self.data_geometry_facet[facet_idx].u_cam_measure_point_facet,
+    #             "v_screen_points_screen": self.data_geometry_facet[facet_idx].v_screen_points_screen,
+    #             "v_screen_points_facet": self.data_geometry_facet[facet_idx].v_screen_points_facet,
+    #             "v_optic_screen_optic": self.data_geometry_facet[facet_idx].spatial_orientation.v_optic_screen_optic,
+    #             "v_align_point_optic": self.data_geometry_facet[facet_idx].v_align_point_facet,
+    #             "dist_optic_screen": self.data_geometry_facet[facet_idx].measure_point_screen_distance,
+    #             "surface": surfaces[facet_idx],
+    #             "debug": self.params.debug_slope_solver,
+    #         }
+
+    #         # Instantiate slope solver
+    #         slope_solver = SlopeSolver(**kwargs)
+
+    #         # &&&& DELETE-SCAFFOLDING -- BEGIN NEW GEN 2 SOLVER ALGORITHM
+    #         # # Perform surface fitting
+    #         # slope_solver.fit_surface()
+
+    #         # # Perform full slope solving
+    #         # slope_solver.solve_slopes()
+    #         # &&&& DELETE-SCAFFOLDING -- NOTE solve_slopes() IS ELIMINATED BY NEW fit_surface_2() ALGORITHM
+
+    #         # Perform surface fitting
+    #         slope_solver.fit_surface_2(self.orientation)
+    #         # &&&& DELETE-SCAFFOLDING -- END NEW GEN 2 SOLVER ALGORITHM
+
+    #         # Save slope data
+    #         self.data_calculation_facet.append(slope_solver.get_data())
+
+    #     # Save input surface parameters data
+    #     self.data_surfaces = surfaces
+
+    def _solve_slopes_sf2gen3(self, surfaces: list[Surface2DAbstract]) -> None:
         """
         Solves slopes of each active pixel for each facet.
 
@@ -545,7 +687,7 @@ class ProcessSofastFringe(ProcessSofastAbstract):
             # Instantiate slope solver
             slope_solver = SlopeSolver(**kwargs)
 
-            # &&&& DELETE-SCAFFOLDING -- BEGIN NEW SOLVER ALGORITHM
+            # &&&& DELETE-SCAFFOLDING -- BEGIN NEW GEN 3 SOLVER ALGORITHM
             # # Perform surface fitting
             # slope_solver.fit_surface()
 
@@ -554,8 +696,8 @@ class ProcessSofastFringe(ProcessSofastAbstract):
             # &&&& DELETE-SCAFFOLDING -- NOTE solve_slopes() IS ELIMINATED BY NEW fit_surface_2() ALGORITHM
 
             # Perform surface fitting
-            slope_solver.fit_surface_2(self.orientation)
-            # &&&& DELETE-SCAFFOLDING -- END NEW SOLVER ALGORITHM
+            slope_solver.fit_surface_sf2gen3(self.orientation)
+            # &&&& DELETE-SCAFFOLDING -- END NEW GEN 3 SOLVER ALGORITHM
 
             # Save slope data
             self.data_calculation_facet.append(slope_solver.get_data())

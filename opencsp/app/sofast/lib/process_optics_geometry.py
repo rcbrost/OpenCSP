@@ -1937,67 +1937,68 @@ def process_singlefacet_geometry_sf2gen3(
         fig_rec.view.axis.legend()
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
-    # Refine locations of optic corners with mask
-    try:
-        prs = [params.perimeter_refine_axial_search_dist, params.perimeter_refine_perpendicular_search_dist]
-        loop_facet_image_refine = ip.refine_mask_perimeter(debug, mask_clean, loop_optic_image_exp, v_edges_image, *prs)
-        data_image_processing_facet.loop_facet_image_refine = loop_facet_image_refine
-    except ValueError as er:
-        lt.critical(repr(er))
-        lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
+    # # Refine locations of optic corners with mask
+    # try:
+    #     prs = [params.perimeter_refine_axial_search_dist, params.perimeter_refine_perpendicular_search_dist]
+    #     loop_facet_image_refine = ip.refine_mask_perimeter(debug, mask_clean, loop_optic_image_exp, v_edges_image, *prs)
+    #     data_image_processing_facet.loop_facet_image_refine = loop_facet_image_refine
+    # except ValueError as er:
+    #     lt.critical(repr(er))
+    #     lt.error_and_raise(ValueError, "SOFAST failed to find the corners of the optic.")
 
-    # Plot refined optic corners
-    if debug.debug_active:
-        figure_title = "Refined Optic Loop, Clean Mask"
-        fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_clean, cmap="gray")
-        # Centroid measured in image.
-        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
-        # Refined positions of optic corners in the image.
-        sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
-        fig_rec.view.draw_pq_list(
-            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
-        )
-        # Expected position of optic centroid in the image.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
-        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
-        fig_rec.view.axis.scatter(
-            *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
-        )
-        fig_rec.view.axis.legend()
-        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+    # # Plot refined optic corners
+    # if debug.debug_active:
+    #     figure_title = "Refined Optic Loop, Clean Mask"
+    #     fig_rec = sdfs.start_debug_image_figure(figure_title)
+    #     fig_rec.view.imshow(mask_clean, cmap="gray")
+    #     # Centroid measured in image.
+    #     fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
+    #     # Refined positions of optic corners in the image.
+    #     sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
+    #     fig_rec.view.draw_pq_list(
+    #         loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+    #     )
+    #     # Expected position of optic centroid in the image.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+    #     expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
+    #     fig_rec.view.axis.scatter(
+    #         *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
+    #     )
+    #     fig_rec.view.axis.legend()
+    #     sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
-    # Plot refined optic corners, against original mask
-    if debug.debug_active:
-        figure_title = "Refined Optic Loop, Original Mask"
-        fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_raw, cmap="gray")
-        # Centroid measured in image.
-        fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
-        # Expected position of optic centroid in the image.
-        # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
-        # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
-        expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
-        fig_rec.view.axis.scatter(
-            *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
-        )
-        # Refined positions of optic corners in the image.
-        sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
-        fig_rec.view.draw_pq_list(
-            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
-        )
-        fig_rec.view.axis.legend()
-        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+    # # Plot refined optic corners, against original mask
+    # if debug.debug_active:
+    #     figure_title = "Refined Optic Loop, Original Mask"
+    #     fig_rec = sdfs.start_debug_image_figure(figure_title)
+    #     fig_rec.view.imshow(mask_raw, cmap="gray")
+    #     # Centroid measured in image.
+    #     fig_rec.view.axis.scatter(*v_mask_centroid_image.data, marker="x", c='red', s=65, label='Clean Mask Centroid')
+    #     # Expected position of optic centroid in the image.
+    #     # &&&& DELETE-SCAFFOLDING -- USED TO BE WITH .INV()
+    #     # expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_B2.inv(), v_cam_optic_cam_exp)
+    #     expected_centroid_4b = camera.project(v_facet_centroid, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp)
+    #     fig_rec.view.axis.scatter(
+    #         *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
+    #     )
+    #     # Refined positions of optic corners in the image.
+    #     sdfs.plot_labeled_points(loop_facet_image_refine.vertices, legend_label='Refined Points Using Camera Pose')
+    #     fig_rec.view.draw_pq_list(
+    #         loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+    #     )
+    #     fig_rec.view.axis.legend()
+    #     sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
-    # Create fitted mask
-    vx = np.arange(mask_clean.shape[1])
-    vy = np.arange(mask_clean.shape[0])
-    mask_fitted = loop_facet_image_refine.as_mask(vx, vy)
-    data_image_processing_facet.mask_fitted = mask_fitted  # &&&& DELETE-SCAFFOLDING -- HOW IS THIS USED?
+    # # Create fitted mask
+    # vx = np.arange(mask_clean.shape[1])
+    # vy = np.arange(mask_clean.shape[0])
+    # mask_fitted = loop_facet_image_refine.as_mask(vx, vy)
+    # data_image_processing_facet.mask_fitted = mask_fitted  # &&&& DELETE-SCAFFOLDING -- HOW IS THIS USED?
 
     # Remove non-active pixels from mask
-    mask_processed = np.logical_and(mask_fitted, mask_clean)
+    # mask_processed = np.logical_and(mask_fitted, mask_clean)# &&&& DELETE-SCAFFOLDING -- ORIGINAL VERSION
+    mask_processed = mask_clean
     data_image_processing_facet.mask_processed = mask_processed  # &&&& DELETE-SCAFFOLDING -- HOW IS THIS USED?
 
     # Plot the four masks for comparison.
@@ -2012,34 +2013,34 @@ def process_singlefacet_geometry_sf2gen3(
         fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_clean, cmap="gray")
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
-        # Fitted
-        figure_title = "Fitted Mask"
-        fig_rec = sdfs.start_debug_image_figure(figure_title)
-        fig_rec.view.imshow(mask_fitted, cmap="gray")
-        sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
+        # # Fitted
+        # figure_title = "Fitted Mask"
+        # fig_rec = sdfs.start_debug_image_figure(figure_title)
+        # fig_rec.view.imshow(mask_fitted, cmap="gray")
+        # sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
         # Processed
         figure_title = "Processed Mask"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_processed, cmap="gray")
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
 
-    # Calculate R/T from found corners
-    # &&&& DELETE-SCAFFOLDING -- CLEAR ONCE CERTIFIED
-    # Original signature.
+    # # Calculate R/T from found corners
+    # # &&&& DELETE-SCAFFOLDING -- CLEAR ONCE CERTIFIED
+    # # Original signature.
+    # # r_optic_cam_refine_1, v_cam_optic_cam_refine_1 = sp.calc_rt_from_img_pts(
+    # #     loop_facet_image_refine.vertices, v_facet_corners, camera,
+    # # )
     # r_optic_cam_refine_1, v_cam_optic_cam_refine_1 = sp.calc_rt_from_img_pts(
-    #     loop_facet_image_refine.vertices, v_facet_corners, camera,
+    #     loop_facet_image_refine.vertices,
+    #     v_facet_corners,
+    #     camera,
+    #     initial_rotation=r_cam_optic_exp_A,
+    #     initial_vxyz=v_cam_optic_origin_cam_exp,
     # )
-    r_optic_cam_refine_1, v_cam_optic_cam_refine_1 = sp.calc_rt_from_img_pts(
-        loop_facet_image_refine.vertices,
-        v_facet_corners,
-        camera,
-        initial_rotation=r_cam_optic_exp_A,
-        initial_vxyz=v_cam_optic_origin_cam_exp,
-    )
 
-    # # # # &&&& DELETE-SCAFFOLDING -- TEMPORARILY IGNORE solvePnP() RESULT
-    # # # r_optic_cam_refine_1 = r_cam_optic_exp_A  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-    # # # v_cam_optic_cam_refine_1 = v_cam_optic_origin_cam_exp  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    # &&&& DELETE-SCAFFOLDING -- SPOOF solvePnP() RESULT; REMOVE THIS WHEN DONE
+    r_optic_cam_refine_1 = r_cam_optic_exp_A  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+    v_cam_optic_cam_refine_1 = v_cam_optic_origin_cam_exp  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
 
     # &&&& DELETE-SCAFFOLDING -- SHOULD THIS NAME BE INVERTED?
     r_cam_optic_refine_1 = r_optic_cam_refine_1.inv()
@@ -2066,7 +2067,7 @@ def process_singlefacet_geometry_sf2gen3(
     if debug.debug_active:
         # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
         pogdo.figure_setup_mirror_refined_by_solvePnP(
-            "Refined Optic Rotation and Translation",
+            "SPOOF Refined Optic Rotation and Translation",
             camera,
             facet_data,
             orientation,
@@ -2079,7 +2080,7 @@ def process_singlefacet_geometry_sf2gen3(
         )
         # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
         pogdo.figure_setup_mirror_refined_by_solvePnP(
-            "Refined Optic Rotation and Translation, Showing Reflection",
+            "SPOOF Refined Optic Rotation and Translation, Showing Reflection",
             camera,
             facet_data,
             orientation,
@@ -2102,7 +2103,7 @@ def process_singlefacet_geometry_sf2gen3(
 
     # Plot reprojected points in comparison to refined optic corners
     if debug.debug_active:
-        figure_title = "Refined Loop Points vs. Reprojected Points 1"
+        figure_title = "SPOOF Refined Loop Points vs. Reprojected Points 1"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         # Centroid measured in image.
@@ -2114,17 +2115,31 @@ def process_singlefacet_geometry_sf2gen3(
         fig_rec.view.axis.scatter(
             *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
         )
-        # Refined positions of optic corners in the image.
+        # # Refined positions of optic corners in the image.
+        # sdfs.plot_labeled_points(
+        #     loop_facet_image_refine.vertices, legend_label='Spoof Refined Image Points Using Camera Pose'
+        # )
+        # fig_rec.view.draw_pq_list(
+        #     loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+        # )
+
+        # Expected positions of optic corners in the image.
         sdfs.plot_labeled_points(
-            loop_facet_image_refine.vertices, legend_label='Refined Image Points Using Camera Pose'
+            loop_optic_image_exp.vertices,
+            legend_label='Spoof Refined Image Points "loop_optic_image_exp" Using Camera Pose',
         )
         fig_rec.view.draw_pq_list(
-            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+            loop_optic_image_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
         )
+
         # Points reprojected using camera pose from solvePnP()
         pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_1)
         sdfs.plot_labeled_points(
-            pts_reproj, marker_size=30, point_color='b', label_color='b', legend_label='Reprojected by solvePnP()'
+            pts_reproj,
+            marker_size=30,
+            point_color='b',
+            label_color='b',
+            legend_label='Reprojected by SPOOFED solvePnP()',
         )
         fig_rec.view.axis.legend()
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
@@ -2201,7 +2216,7 @@ def process_singlefacet_geometry_sf2gen3(
 
     # Plot reprojected points in comparison to refined optic corners
     if debug.debug_active:
-        figure_title = "Refined Loop Points vs. Reprojected Points 1 vs. Reprojected Points 2"
+        figure_title = "SPOOF Refined Loop Points vs. Reprojected Points 1 vs. Reprojected Points 2"
         fig_rec = sdfs.start_debug_image_figure(figure_title)
         fig_rec.view.imshow(mask_raw, cmap="gray")
         # Centroid measured in image.
@@ -2213,17 +2228,26 @@ def process_singlefacet_geometry_sf2gen3(
         fig_rec.view.axis.scatter(
             *expected_centroid_4b.data, marker="+", c='k', s=20, label='Centroid Using Camera Pose'
         )
+        # # Refined positions of optic corners in the image.
+        # sdfs.plot_labeled_points(
+        #     loop_facet_image_refine.vertices, legend_label='Refined Image Points Using Camera Pose'
+        # )
+        # fig_rec.view.draw_pq_list(
+        #     loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+        # )
         # Refined positions of optic corners in the image.
-        sdfs.plot_labeled_points(
-            loop_facet_image_refine.vertices, legend_label='Refined Image Points Using Camera Pose'
-        )
+        sdfs.plot_labeled_points(loop_optic_image_exp.vertices, legend_label='Refined Image Points Using Camera Pose')
         fig_rec.view.draw_pq_list(
-            loop_facet_image_refine.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
+            loop_optic_image_exp.as_xy_list(), close=True, style=rcps.default(marker='arrow', color='magenta')
         )
         # Points reprojected using camera pose from solvePnP().
         pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_1)
         sdfs.plot_labeled_points(
-            pts_reproj, marker_size=30, point_color='b', label_color='b', legend_label='Reprojected by solvePnP()'
+            pts_reproj,
+            marker_size=30,
+            point_color='b',
+            label_color='b',
+            legend_label='Reprojected by SPOOFED solvePnP()',
         )
         # Points reprojected using camera pose from solvePnP() and then refined distance.
         pts_reproj = camera.project(facet_data.v_facet_corners, r_cam_optic_refine_1.inv(), v_cam_optic_cam_refine_2)
@@ -2232,7 +2256,7 @@ def process_singlefacet_geometry_sf2gen3(
             marker_size=30,
             point_color='lightgreen',
             label_color='lightgreen',
-            legend_label='Reprojected by solvePnP(), then Refined Distance',
+            legend_label='Reprojected by SPOOFED solvePnP(), then Refined Distance',
         )
         fig_rec.view.axis.legend()
         sdfs.finish_debug_image_figure(figure_title, 'geometry', fig_rec, debug)
@@ -2241,7 +2265,7 @@ def process_singlefacet_geometry_sf2gen3(
     if debug.debug_active:
         # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
         pogdo.figure_setup_mirror_refined_by_solvePnP(
-            "Refined Optic Rotation and Translation 2",
+            "SPOOF Refined Optic Rotation and Translation 2",
             camera,
             facet_data,
             orientation,
@@ -2254,7 +2278,7 @@ def process_singlefacet_geometry_sf2gen3(
         )
         # &&&& DELETE-SCAFFOLDING -- WITH ROTATION FIXED, THIS NAME IS NOT APPROPRIATE
         pogdo.figure_setup_mirror_refined_by_solvePnP(
-            "Refined Optic Rotation and Translation 2, Showing Reflection",
+            "SPOOF Refined Optic Rotation and Translation 2, Showing Reflection",
             camera,
             facet_data,
             orientation,
@@ -2307,8 +2331,11 @@ def process_singlefacet_geometry_sf2gen3(
         adjusted_dist_optic_screen,
     )
     data_error.error_dist_optic_screen_exp = error_dist_optic_screen_exp
+    # error_reprojection_exp = sp.reprojection_error(
+    #     camera, v_facet_corners, loop_facet_image_refine.vertices, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp
+    # )
     error_reprojection_exp = sp.reprojection_error(
-        camera, v_facet_corners, loop_facet_image_refine.vertices, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp
+        camera, v_facet_corners, loop_optic_image_exp.vertices, r_cam_optic_exp_A, v_cam_optic_origin_cam_exp
     )
     data_error.error_reprojection_exp = error_reprojection_exp
 
@@ -2317,8 +2344,11 @@ def process_singlefacet_geometry_sf2gen3(
         ori.v_cam_screen_cam, v_cam_optic_cam_refine_1 + v_measure_point_optic_cam_refine_1, adjusted_dist_optic_screen
     )
     data_error.error_dist_optic_screen_1 = error_dist_optic_screen_1
+    # error_reprojection_1 = sp.reprojection_error(
+    #     camera, v_facet_corners, loop_facet_image_refine.vertices, r_optic_cam_refine_1, v_cam_optic_cam_refine_1
+    # )
     error_reprojection_1 = sp.reprojection_error(
-        camera, v_facet_corners, loop_facet_image_refine.vertices, r_optic_cam_refine_1, v_cam_optic_cam_refine_1
+        camera, v_facet_corners, loop_optic_image_exp.vertices, r_optic_cam_refine_1, v_cam_optic_cam_refine_1
     )
     data_error.error_reprojection_1 = error_reprojection_1
 
@@ -2327,8 +2357,11 @@ def process_singlefacet_geometry_sf2gen3(
         ori.v_cam_screen_cam, v_cam_optic_cam_refine_2 + v_measure_point_optic_cam_refine_1, adjusted_dist_optic_screen
     )
     data_error.error_dist_optic_screen_2 = error_dist_optic_screen_2
+    # error_reprojection_2 = sp.reprojection_error(
+    #     camera, v_facet_corners, loop_facet_image_refine.vertices, r_optic_cam_refine_1, v_cam_optic_cam_refine_2
+    # )
     error_reprojection_2 = sp.reprojection_error(
-        camera, v_facet_corners, loop_facet_image_refine.vertices, r_optic_cam_refine_1, v_cam_optic_cam_refine_2
+        camera, v_facet_corners, loop_optic_image_exp.vertices, r_optic_cam_refine_1, v_cam_optic_cam_refine_2
     )
     data_error.error_reprojection_2 = error_reprojection_2
 

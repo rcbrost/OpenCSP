@@ -1505,7 +1505,10 @@ def process_singlefacet_geometry_sf2gen3(
     # &&&& DELETE-SCAFFOLDING -- BUT PROVIDE A TOOL TO EXPLORE THE EFFECT OF SLIGHT DISTANCE CHANGES,
     # &&&& DELETE-SCAFFOLDING --   WITH INTERACTIVE FEEDBACK, SINCE THIS WILL LIKELY OFTEN BE AN ISSUE.
     # &&&& DELETE-SCAFFOLDING -- PASS THIS IN?  MAKE PART OF .INI FILE?
-    adjusted_dist_optic_screen = dist_optic_screen * 1.08  # 1.1  # 1.12  # 1.15  # 1.1 # 1.0
+    adjusted_dist_optic_screen = dist_optic_screen * 1.0  # 1.08  # 1.1  # 1.12  # 1.15  # 1.1 # 1.0
+    # &&&& DELETE-SCAFFOLDING -- PASS THIS IN: dist_optic_screen
+    adjusted_dist_optic_screen = 0.97201  # 0.82501
+
     v_cam_optic_centroid_cam_exp = sp.t_from_distance(
         v_mask_centroid_image, adjusted_dist_optic_screen, camera, ori.v_cam_screen_cam
     )
@@ -2165,7 +2168,7 @@ def process_singlefacet_geometry_sf2gen3(
 
     # Refine V with measured optic to display distance
     # We do this because the distance inferred from a camera view of two points seen along camera rays
-    # with a relatively small angle is subject to noise in the point-in-image calaculation, whereas the
+    # with a relatively small angle is subject to noise in the point-in-image calculation, whereas the
     # mirror-to-screen distance is expected to be more accurate as a direct measurement.
     # # &&&& DELETE-SCAFFOLDING -- PREVIOUSLY USED NON-ADJUSTED DISTANCE
     # # We don't use adjusted_dist_optic_screen, because it is more-or-less arbitrary
@@ -2195,7 +2198,7 @@ def process_singlefacet_geometry_sf2gen3(
         dist_optic_screen_refine_2 = (
             ori.v_cam_screen_cam - (v_cam_optic_cam_refine_2 + v_measure_point_optic_cam_refine_1)
         ).magnitude()
-        lt.info('In process_singlefacet_geometry():')
+        lt.info('In process_singlefacet_geometry_sf2gen3():')
         lt.info('  dist_optic_screen          = ' + f"{dist_optic_screen:.6f}")
         lt.info('  adjusted_dist_optic_screen = ' + f"{adjusted_dist_optic_screen:.6f}")
         lt.info('  ori.v_cam_screen_cam       = ' + ori.v_cam_screen_cam.to_str())
@@ -2366,7 +2369,7 @@ def process_singlefacet_geometry_sf2gen3(
     data_error.error_reprojection_2 = error_reprojection_2
 
     if debug.debug_active:
-        lt.info('In process_singlefacet_geometry():')
+        lt.info('In process_singlefacet_geometry_sf2gen3():')
         lt.info('  error_dist_optic_screen_exp = ' + str(error_dist_optic_screen_exp))
         lt.info('  error_dist_optic_screen_1   = ' + str(error_dist_optic_screen_1))
         lt.info('  error_dist_optic_screen_2   = ' + str(error_dist_optic_screen_2))

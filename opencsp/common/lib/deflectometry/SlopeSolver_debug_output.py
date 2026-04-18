@@ -142,9 +142,9 @@ def figure_intersection_surface_situation(
         (vs.view_spec_3d(), None),
         # # &&&& DELETE-SCAFFOLDING -- TEMPORARY SHUTOFF
         # (vs.view_spec_3d(), (0, 90, 90)),  # xy
-        # (vs.view_spec_3d(), (-90, 0, 0)),  # xz
+        (vs.view_spec_3d(), (-90, 0, 0)),  # xz
         # (vs.view_spec_3d(), (0, 0, 0)),  # yz
-        # (vs.view_spec_xy(), None),  # Doesn't show intersection surface.
+        (vs.view_spec_xy(), None),  # Doesn't show intersection surface.
         (vs.view_spec_xz(), None),  # Doesn't show intersection surface.
         (vs.view_spec_yz(), None),  # Doesn't show intersection surface.
     ]

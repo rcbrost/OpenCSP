@@ -861,7 +861,11 @@ class SlopeSolver:
             uy = rotated_u_facet_centroid_normal.y[0]
             uz = rotated_u_facet_centroid_normal.z[0]
             axis = np.array([ux, uy, uz])
-            angle = np.radians(0.0)  # 5.0)
+            # angle = np.radians(0.0)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+            if loop_idx == 1:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+                angle = np.radians(3.5)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+            else:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+                angle = np.radians(0.0)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
             r_cam_correction = Rotation.from_rotvec(angle * axis)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
             r_optic_cam_adjusted = r_cam_correction * r_optic_cam_entering_loop
             r_cam_optic_adjusted = r_optic_cam_adjusted.inv()
@@ -872,23 +876,53 @@ class SlopeSolver:
             r_optic_cam_adjusted = r_cam_optic_adjusted.inv()
 
             v_align_point_optic = self.v_align_point_optic
-            v_align_point_cam = v_align_point_optic.rotate(r_optic_cam_entering_loop)
+            v_align_point_cam_entering_loop = v_align_point_optic.rotate(r_optic_cam_entering_loop)
             v_align_point_cam_adjusted = v_align_point_optic.rotate(r_optic_cam_adjusted)
-            v_align_point_shift_cam = v_align_point_cam_adjusted - v_align_point_cam
-
-            # v_cam_optic_cam_exp = v_cam_optic_centroid_cam_exp - v_facet_centroid.rotate(r_cam_optic_exp_B.inv()) $$$$$$
+            v_align_point_shift_cam = v_align_point_cam_adjusted - v_align_point_cam_entering_loop
 
             # Correction directions:
             #   +x: reprojected facet vertices move right in mask image
             #   +y: reprojected facet vertices move down in mask image
             #   +z: reprojected facet vertice outline gets smaller and appears further away
-            v_correction = Vxyz([0.0, 0.05, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+            if loop_idx == 1:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+                v_correction = Vxyz([0.0, 0.0, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+            elif loop_idx == 2:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+                v_correction = Vxyz([0.022, 0.0, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+            else:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+                v_correction = Vxyz([0.0, 0.0, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
             v_cam_optic_cam_adjusted = v_cam_optic_cam_entering_loop + v_correction - v_align_point_shift_cam
+
+            v_cam_optic_cam_adjusted_2 = sp.refine_v_distance(
+                v_cam_optic_cam_adjusted,
+                self.dist_optic_screen,
+                original_orientation.v_cam_screen_cam,
+                v_align_point_cam_adjusted,
+            )
+            # &&&& DELETE-SCAFFOLDING -- DOCUMENT IMPLICIT ASSUMPTION HERE THAT ALIGNMENT POINT AND MEASURE POINT ARE THE SAME
+            v_optic_screen_entering_loop = original_orientation.v_cam_screen_cam - (
+                v_cam_optic_cam_entering_loop + v_align_point_cam_entering_loop
+            )
+            dist_optic_screen_entering_loop = v_optic_screen_entering_loop.magnitude()
+
+            v_optic_screen_adjusted = original_orientation.v_cam_screen_cam - (
+                v_cam_optic_cam_adjusted + v_align_point_cam_adjusted
+            )
+            dist_optic_screen_adjusted = v_optic_screen_adjusted.magnitude()
+
+            v_optic_screen_adjusted_2 = original_orientation.v_cam_screen_cam - (
+                v_cam_optic_cam_adjusted_2 + v_align_point_cam_adjusted
+            )
+            dist_optic_screen_adjusted_2 = v_optic_screen_adjusted_2.magnitude()
+            lt.info(f'In fit_surface_sf2gen3(loop_idx={loop_idx}):')
+            lt.info('  dist_optic_screen_entering_loop   = ' + str(dist_optic_screen_entering_loop))
+            lt.info('  dist_optic_screen_adjusted        = ' + str(dist_optic_screen_adjusted))
+            lt.info('  dist_optic_screen_adjusted_2      = ' + str(dist_optic_screen_adjusted_2))
 
             # &&&& DELETE-SCAFFOLDING -- CLEANUP NAMES, SEMANTICS
             # Pass result forward.
             r_optic_cam_new = r_cam_optic_adjusted.inv()  # r_optic_cam_adjusted.inv()
-            v_cam_optic_cam_new = v_cam_optic_cam_adjusted
+            # v_cam_optic_cam_new = v_cam_optic_cam_adjusted
+            v_cam_optic_cam_new = v_cam_optic_cam_adjusted_2
             # &&&& DELETE-SCAFFOLDING -- SHOULD THIS NAME BE INVERTED?
             r_cam_optic_new = r_optic_cam_new.inv()
             # Orient optic
@@ -966,226 +1000,236 @@ class SlopeSolver:
                     "After Calculate Intersections", vxyz_corners_sfc, None, self.surface, ori_new, loop_idx, self.debug
                 )
 
-            # #$$$$$$$$$
-            #             # 6. Use intersection points and reflection points RF to compute surface normals at INT points.
-            #             self.surface.calculate_slopes()
-            #             # Check for invalid points
-            #             # &&&& DELETE-SCAFFOLDING -- MOVE INTO CALCULATE_SLOPES() ROUTINE
-            #             num_nans = np.isnan(self.surface.slopes)
-            #             if np.any(num_nans):
-            #                 warnings.warn(
-            #                     f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in slope data in iteration: ({loop_idx:d}).",
-            #                     stacklevel=2,
-            #                 )
+            # &&&& DELETE-SCAFFOLDING -- BEGIN BLOCK OFF NON-POSITION
 
-            #             # &&&& DELETE-SCAFFOLDING -- DOCUMENT NEW APPROACH: ALIGN BASED ON AVERAGE SLOPE.
-            #             u_avg_fit_normal = self.surface.average_fit_normal()
-            #             u_avg_measured_normal = self.surface.average_measured_normal()
-            #             loop_record["u_avg_fit_normal"] = u_avg_fit_normal
-            #             loop_record["u_avg_measured_normal"] = u_avg_measured_normal
-            #             loop_record["u_avg_measured_minus_fit"] = u_avg_measured_normal.as_Vxyz() - u_avg_fit_normal.as_Vxyz()
-            #             print("\nIn fit_surface_sf2gen3(), before alignment rotation:")
-            #             print("   normal_design_at_align_point =", self.surface.normal_design_at_align_point().to_str())
-            #             print("   normal_fit_at_align_point    =", self.surface.normal_fit_at_align_point().to_str())
-            #             print("   u_avg_fit_normal             =", loop_record["u_avg_fit_normal"].to_str())
-            #             print("   u_avg_measured_normal        =", loop_record["u_avg_measured_normal"].to_str())
-            #             print("   Delta: measured minus fit    =", loop_record["u_avg_measured_minus_fit"].to_str())
-            #             print("\n")
+            if True:  # loop_idx > 2:  # &&&& DELETE-SCAFFOLDING -- FIX THIS
+                # 6. Use intersection points and reflection points RF to compute surface normals at INT points.
+                self.surface.calculate_slopes()
+                # Check for invalid points
+                # &&&& DELETE-SCAFFOLDING -- MOVE INTO CALCULATE_SLOPES() ROUTINE
+                num_nans = np.isnan(self.surface.slopes)
+                if np.any(num_nans):
+                    warnings.warn(
+                        f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in slope data in iteration: ({loop_idx:d}).",
+                        stacklevel=2,
+                    )
 
-            #             # &&&& DELETE-SCAFFOLDING -- DOCUMENT NEW APPROACH: ALIGN BASED ON AVERAGE SLOPE.
-            #             # # &&&& DELETE-SCAFFOLDING -- THRESHOLDS SET FOR A SPECIFIC MIRROR EXAMPLE
-            #             if (loop_idx > 1) and (loop_idx <= 7):  # loop_idx = 1 first pass through loop.
-            #                 # Capture current camera rotation and translation.
-            #                 r_cam_optic_new_copy = copy.deepcopy(ori_new.r_cam_optic)
-            #                 v_cam_optic_cam_new_copy = copy.deepcopy(ori_new.v_cam_optic_cam)
-            #                 # Calculate the rotation needed to align the normal vectors
-            #                 # ORIGINAL: WRONG DIRECTION r_align_step = u_avg_fit_normal.align_to(u_avg_measured_normal)  # &&&& DELETE-SCAFFOLDING -- DELETE?
-            #                 r_align_step = u_avg_measured_normal.align_to(u_avg_fit_normal)
-            #                 loop_record["r_align_step"] = r_align_step
-            #                 # # Rotate all points about alignment point.
-            #                 # self.surface.rotate_all(r_align_step)
-            #                 # Update orientation.
-            #                 r_cam_optic_new_2 = r_align_step * r_cam_optic_new_copy
-            #                 v_cam_optic_cam_new_2 = v_cam_optic_cam_new_copy
-            #                 print("\nIn fit_surface_sf2gen3(), alignment rotation:")
-            #                 print("   r_cam_optic_new_copy =", r_cam_optic_new_copy.as_euler('XYZ', degrees=True))
-            #                 print("   r_align_step         =", r_align_step.as_euler('XYZ', degrees=True))
-            #                 print("   r_cam_optic_new_2    =", r_cam_optic_new_2.as_euler('XYZ', degrees=True))
-            #                 print("\n")
-            #                 ori_new = copy.deepcopy(original_orientation)
-            #                 ori_new.orient_optic_cam(r_cam_optic_new_2, v_cam_optic_cam_new_2)
-            #                 loop_record["r_cam_optic"] = ori_new.r_cam_optic
-            #                 loop_record["v_cam_optic_cam"] = ori_new.v_cam_optic_cam
-            #                 # $$$$ BEGIN REPEAT
-            #                 # 4b. Update cached values in surface to match new camera POSE'.
-            #                 #     From Surface2DParabolic.set_spatial_data()
-            #                 #         # Downsample and save measurement data
-            #                 #         self.u_active_pixel_pointing_optic = u_active_pixel_pointing_optic[:: self.downsample]
-            #                 #         self.v_screen_points_optic = v_screen_points_optic[:: self.downsample]
-            #                 #         # Save position data
-            #                 #         self.v_optic_cam_optic = v_optic_cam_optic
-            #                 #         self.u_measure_pixel_pointing_optic = u_measure_pixel_pointing_optic
-            #                 #         self.v_align_point_optic = v_align_point_optic
-            #                 #         self.v_optic_screen_optic = v_optic_screen_optic
-            #                 #         Convert pixel pointing directions to optic coordinates
-            #                 # The pixel pointing directions are rigidly connected to the camera.
-            #                 # So when the camera moves, these vectors change, when expressed in optic cordinates.
-            #                 u_active_pixel_pointing_optic_new = u_pixel_pointing_cam.rotate(ori_new.r_cam_optic)
-            #                 # The screen points are rigidly connected to the screen, which is rigidly connected
-            #                 # to the camera by an unchanging calibration transform.
-            #                 # So when the camera moves, the screen points move, when expressed in optic cordinates.
-            #                 v_screen_points_optic_new = ori_new.trans_screen_optic.apply(self.v_screen_points_screen)
-            #                 v_optic_cam_optic_new = ori_new.v_optic_cam_optic
-            #                 u_measure_pixel_pointing_optic_new = self.surface.u_measure_pixel_pointing_optic.rotate(
-            #                     ori_new.r_cam_optic
-            #                 )
-            #                 v_align_point_optic_new = self.v_align_point_optic  # Align point is defined in optic coords.
-            #                 v_optic_screen_optic_new = ori_new.v_optic_screen_optic
-            #                 # Update surface cache
-            #                 self.surface.u_active_pixel_pointing_optic = u_active_pixel_pointing_optic_new[
-            #                     :: self.surface.downsample
-            #                 ]
-            #                 self.surface.v_screen_points_optic = v_screen_points_optic_new[:: self.surface.downsample]
-            #                 self.surface.v_optic_cam_optic = v_optic_cam_optic_new
-            #                 self.surface.u_measure_pixel_pointing_optic = u_measure_pixel_pointing_optic_new
-            #                 self.surface.v_align_point_optic = v_align_point_optic_new
-            #                 self.surface.v_optic_screen_optic = v_optic_screen_optic_new
-            #                 # 5. Using POSE' project rays from camera to COEFFS surface, finding intersection points INT.
-            #                 # Downsample measurement data
-            #                 u_active_pixel_pointing_optic_new_downsample = u_active_pixel_pointing_optic_new[
-            #                     :: self.surface.downsample
-            #                 ]
-            #                 # Project camera pixel rays and intersect with fit surface
-            #                 self.surface.v_surf_int_pts_optic = self.surface.intersect(
-            #                     u_active_pixel_pointing_optic_new_downsample, ori_new.v_optic_cam_optic
-            #                 )
-            #                 loop_record["n_intersect"] = self.surface.v_surf_int_pts_optic.len()
-            #                 # Check for invalid points
-            #                 # &&&& DELETE-SCAFFOLDING -- MOVE INTO INTERSECT() ROUTINE
-            #                 num_nans = np.isnan(self.surface.v_surf_int_pts_optic.data)
-            #                 if np.any(num_nans):
-            #                     warnings.warn(
-            #                         f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in surface intersection points in iteration: ({loop_idx:d}).",
-            #                         stacklevel=2,
-            #                     )
-            #                 # Plot debug plot
-            #                 if self.debug.debug_active:
-            #                     ssdo.figure_intersection_surface_situation(
-            #                         "After After Align Rotate, Then Calculate Intersections",
-            #                         vxyz_corners_sfc,
-            #                         None,
-            #                         self.surface,
-            #                         ori_new,
-            #                         loop_idx,
-            #                         self.debug,
-            #                     )
+                # &&&& DELETE-SCAFFOLDING -- DOCUMENT NEW APPROACH: ALIGN BASED ON AVERAGE SLOPE.
+                u_avg_fit_normal = self.surface.average_fit_normal()
+                u_avg_measured_normal = self.surface.average_measured_normal()
+                loop_record["u_avg_fit_normal"] = u_avg_fit_normal
+                loop_record["u_avg_measured_normal"] = u_avg_measured_normal
+                loop_record["u_avg_measured_minus_fit"] = u_avg_measured_normal.as_Vxyz() - u_avg_fit_normal.as_Vxyz()
+                print("\nIn fit_surface_sf2gen3(), before alignment rotation:")
+                print("   normal_design_at_align_point =", self.surface.normal_design_at_align_point().to_str())
+                print("   normal_fit_at_align_point    =", self.surface.normal_fit_at_align_point().to_str())
+                print("   u_avg_fit_normal             =", loop_record["u_avg_fit_normal"].to_str())
+                print("   u_avg_measured_normal        =", loop_record["u_avg_measured_normal"].to_str())
+                print("   Delta: measured minus fit    =", loop_record["u_avg_measured_minus_fit"].to_str())
+                print("\n")
 
-            #                 # 6. Use intersection points and reflection points RF to compute surface normals at INT points.
-            #                 self.surface.calculate_slopes()
-            #                 # Check for invalid points
-            #                 # &&&& DELETE-SCAFFOLDING -- MOVE INTO CALCULATE_SLOPES() ROUTINE
-            #                 num_nans = np.isnan(self.surface.slopes)
-            #                 if np.any(num_nans):
-            #                     warnings.warn(
-            #                         f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in slope data in iteration: ({loop_idx:d}).",
-            #                         stacklevel=2,
-            #                     )
-            #                 # Plot debug plot
-            #                 if self.debug.debug_active:
-            #                     ssdo.figure_intersection_surface_situation(
-            #                         "After After Align Rotate, Calculate Intersections, Calculate Slopes",
-            #                         vxyz_corners_sfc,
-            #                         None,
-            #                         self.surface,
-            #                         ori_new,
-            #                         loop_idx,
-            #                         self.debug,
-            #                     )
-            #                 # $$$$ END REPEAT
-            #                 # Update normal summaries.
-            #                 u_avg_fit_normal = self.surface.average_fit_normal()
-            #                 u_avg_measured_normal = self.surface.average_measured_normal()
-            #                 loop_record["u_avg_fit_normal"] = u_avg_fit_normal
-            #                 loop_record["u_avg_measured_normal"] = u_avg_measured_normal
-            #                 loop_record["u_avg_measured_minus_fit"] = u_avg_measured_normal.as_Vxyz() - u_avg_fit_normal.as_Vxyz()
-            #                 print(
-            #                     "\nIn fit_surface_sf2gen3(), after alignment rotation, then calculate intersections, then calculate slopes:"
-            #                 )
-            #                 print("   normal_design_at_align_point =", self.surface.normal_design_at_align_point().to_str())
-            #                 print("   normal_fit_at_align_point    =", self.surface.normal_fit_at_align_point().to_str())
-            #                 print("   u_avg_fit_normal             =", loop_record["u_avg_fit_normal"].to_str())
-            #                 print("   u_avg_measured_normal        =", loop_record["u_avg_measured_normal"].to_str())
-            #                 print("   Delta: measured minus fit    =", loop_record["u_avg_measured_minus_fit"].to_str())
-            #                 print("\n")
-            #             else:
-            #                 loop_record["r_align_step"] = None
+                # &&&& DELETE-SCAFFOLDING -- DOCUMENT NEW APPROACH: ALIGN BASED ON AVERAGE SLOPE.
+                # # &&&& DELETE-SCAFFOLDING -- THRESHOLDS SET FOR A SPECIFIC MIRROR EXAMPLE
+                if (loop_idx > 1) and (loop_idx <= 7):  # loop_idx = 1 first pass through loop.
+                    # Capture current camera rotation and translation.
+                    r_cam_optic_new_copy = copy.deepcopy(ori_new.r_cam_optic)
+                    v_cam_optic_cam_new_copy = copy.deepcopy(ori_new.v_cam_optic_cam)
+                    # Calculate the rotation needed to align the normal vectors
+                    # ORIGINAL: WRONG DIRECTION r_align_step = u_avg_fit_normal.align_to(u_avg_measured_normal)  # &&&& DELETE-SCAFFOLDING -- DELETE?
+                    r_align_step = u_avg_measured_normal.align_to(u_avg_fit_normal)
+                    loop_record["r_align_step"] = r_align_step
+                    # # Rotate all points about alignment point.
+                    # self.surface.rotate_all(r_align_step)
+                    # Update orientation.
+                    r_cam_optic_new_2 = r_align_step * r_cam_optic_new_copy
+                    v_cam_optic_cam_new_2 = v_cam_optic_cam_new_copy
+                    print("\nIn fit_surface_sf2gen3(), alignment rotation:")
+                    print("   r_cam_optic_new_copy =", r_cam_optic_new_copy.as_euler('XYZ', degrees=True))
+                    print("   r_align_step         =", r_align_step.as_euler('XYZ', degrees=True))
+                    print("   r_cam_optic_new_2    =", r_cam_optic_new_2.as_euler('XYZ', degrees=True))
+                    print("\n")
+                    ori_new = copy.deepcopy(original_orientation)
+                    ori_new.orient_optic_cam(r_cam_optic_new_2, v_cam_optic_cam_new_2)
+                    loop_record["r_cam_optic"] = ori_new.r_cam_optic
+                    loop_record["v_cam_optic_cam"] = ori_new.v_cam_optic_cam
+                    # $$$$ BEGIN REPEAT
+                    # 4b. Update cached values in surface to match new camera POSE'.
+                    #     From Surface2DParabolic.set_spatial_data()
+                    #         # Downsample and save measurement data
+                    #         self.u_active_pixel_pointing_optic = u_active_pixel_pointing_optic[:: self.downsample]
+                    #         self.v_screen_points_optic = v_screen_points_optic[:: self.downsample]
+                    #         # Save position data
+                    #         self.v_optic_cam_optic = v_optic_cam_optic
+                    #         self.u_measure_pixel_pointing_optic = u_measure_pixel_pointing_optic
+                    #         self.v_align_point_optic = v_align_point_optic
+                    #         self.v_optic_screen_optic = v_optic_screen_optic
+                    #         Convert pixel pointing directions to optic coordinates
+                    # The pixel pointing directions are rigidly connected to the camera.
+                    # So when the camera moves, these vectors change, when expressed in optic cordinates.
+                    u_active_pixel_pointing_optic_new = u_pixel_pointing_cam.rotate(ori_new.r_cam_optic)
+                    # The screen points are rigidly connected to the screen, which is rigidly connected
+                    # to the camera by an unchanging calibration transform.
+                    # So when the camera moves, the screen points move, when expressed in optic cordinates.
+                    v_screen_points_optic_new = ori_new.trans_screen_optic.apply(self.v_screen_points_screen)
+                    v_optic_cam_optic_new = ori_new.v_optic_cam_optic
+                    u_measure_pixel_pointing_optic_new = self.surface.u_measure_pixel_pointing_optic.rotate(
+                        ori_new.r_cam_optic
+                    )
+                    v_align_point_optic_new = self.v_align_point_optic  # Align point is defined in optic coords.
+                    v_optic_screen_optic_new = ori_new.v_optic_screen_optic
+                    # Update surface cache
+                    self.surface.u_active_pixel_pointing_optic = u_active_pixel_pointing_optic_new[
+                        :: self.surface.downsample
+                    ]
+                    self.surface.v_screen_points_optic = v_screen_points_optic_new[:: self.surface.downsample]
+                    self.surface.v_optic_cam_optic = v_optic_cam_optic_new
+                    self.surface.u_measure_pixel_pointing_optic = u_measure_pixel_pointing_optic_new
+                    self.surface.v_align_point_optic = v_align_point_optic_new
+                    self.surface.v_optic_screen_optic = v_optic_screen_optic_new
+                    # 5. Using POSE' project rays from camera to COEFFS surface, finding intersection points INT.
+                    # Downsample measurement data
+                    u_active_pixel_pointing_optic_new_downsample = u_active_pixel_pointing_optic_new[
+                        :: self.surface.downsample
+                    ]
+                    # Project camera pixel rays and intersect with fit surface
+                    self.surface.v_surf_int_pts_optic = self.surface.intersect(
+                        u_active_pixel_pointing_optic_new_downsample, ori_new.v_optic_cam_optic
+                    )
+                    loop_record["n_intersect"] = self.surface.v_surf_int_pts_optic.len()
+                    # Check for invalid points
+                    # &&&& DELETE-SCAFFOLDING -- MOVE INTO INTERSECT() ROUTINE
+                    num_nans = np.isnan(self.surface.v_surf_int_pts_optic.data)
+                    if np.any(num_nans):
+                        warnings.warn(
+                            f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in surface intersection points in iteration: ({loop_idx:d}).",
+                            stacklevel=2,
+                        )
+                    # Plot debug plot
+                    if self.debug.debug_active:
+                        ssdo.figure_intersection_surface_situation(
+                            "After After Align Rotate, Then Calculate Intersections",
+                            vxyz_corners_sfc,
+                            None,
+                            self.surface,
+                            ori_new,
+                            loop_idx,
+                            self.debug,
+                        )
 
-            #             # # # &&&& DELETE-SCAFFOLDING -- TEMPORARY?
-            #             # # Plot debug plot
-            #             # if self.debug.debug_active:
-            #             #     ssdo.figure_intersection_surface_situation(
-            #             #         "After Alignment Rotation", vxyz_corners_sfc, None, self.surface, ori_new, loop_idx, self.debug
-            #             #     )
+                    # 6. Use intersection points and reflection points RF to compute surface normals at INT points.
+                    self.surface.calculate_slopes()
+                    # Check for invalid points
+                    # &&&& DELETE-SCAFFOLDING -- MOVE INTO CALCULATE_SLOPES() ROUTINE
+                    num_nans = np.isnan(self.surface.slopes)
+                    if np.any(num_nans):
+                        warnings.warn(
+                            f"{num_nans.sum():d} / {num_nans.size:d} values are NANs in slope data in iteration: ({loop_idx:d}).",
+                            stacklevel=2,
+                        )
+                    # Plot debug plot
+                    if self.debug.debug_active:
+                        ssdo.figure_intersection_surface_situation(
+                            "After After Align Rotate, Calculate Intersections, Calculate Slopes",
+                            vxyz_corners_sfc,
+                            None,
+                            self.surface,
+                            ori_new,
+                            loop_idx,
+                            self.debug,
+                        )
+                    # $$$$ END REPEAT
+                    # Update normal summaries.
+                    u_avg_fit_normal = self.surface.average_fit_normal()
+                    u_avg_measured_normal = self.surface.average_measured_normal()
+                    loop_record["u_avg_fit_normal"] = u_avg_fit_normal
+                    loop_record["u_avg_measured_normal"] = u_avg_measured_normal
+                    loop_record["u_avg_measured_minus_fit"] = (
+                        u_avg_measured_normal.as_Vxyz() - u_avg_fit_normal.as_Vxyz()
+                    )
+                    print(
+                        "\nIn fit_surface_sf2gen3(), after alignment rotation, then calculate intersections, then calculate slopes:"
+                    )
+                    print("   normal_design_at_align_point =", self.surface.normal_design_at_align_point().to_str())
+                    print("   normal_fit_at_align_point    =", self.surface.normal_fit_at_align_point().to_str())
+                    print("   u_avg_fit_normal             =", loop_record["u_avg_fit_normal"].to_str())
+                    print("   u_avg_measured_normal        =", loop_record["u_avg_measured_normal"].to_str())
+                    print("   Delta: measured minus fit    =", loop_record["u_avg_measured_minus_fit"].to_str())
+                    print("\n")
+                else:
+                    loop_record["r_align_step"] = None
 
-            #             # 7. Using surface normals at points, compute regression fit for slope coefficients.
-            #             # 8. Convert fit slope coefficients to new surface COEFFS' = c0', c1x', c2x2', c3y', c4xy', c5y2'.
-            #             # # &&&& DELETE-SCAFFOLDING -- THRESHOLDS SET FOR A SPECIFIC MIRROR EXAMPLE
-            #             if loop_idx > 7:
-            #                 self.surface.fit_slopes()
-            #             loop_record["surf_coefs"] = self.surface.surf_coefs
-            #             loop_record["slope_coefs"] = self.surface.slope_coefs
+                # # # &&&& DELETE-SCAFFOLDING -- TEMPORARY?
+                # # Plot debug plot
+                # if self.debug.debug_active:
+                #     ssdo.figure_intersection_surface_situation(
+                #         "After Alignment Rotation", vxyz_corners_sfc, None, self.surface, ori_new, loop_idx, self.debug
+                #     )
 
-            #             # Set the fine facet boundary z values to lie on the new fit surface.
-            #             z_facet_corners_hires_4 = sf2.coef_to_points(vxyz_corners_sfc, self.surface.surf_coefs, 2)
-            #             v_facet_corners_hires_4 = copy.deepcopy(vxyz_corners_sfc)
-            #             v_facet_corners_hires_4.data[2, :] = z_facet_corners_hires_4
-            #             # Check fine facet boundary z values.
-            #             v_facet_corners_hires_4_minus_1 = v_facet_corners_hires_4 - vxyz_corners_sfc
-            #             largest_change = abs(v_facet_corners_hires_4_minus_1.data[2, :]).max()
-            #             # &&&& DELETE-SCAFFOLDING -- FIX CONTAINING ROUTINE NAME IN MESSAGE BELOW
-            #             lt.info(
-            #                 f"In fit_surface_sf2gen3(), maximum z difference between high-resolution corners before and after fit = {largest_change} m."
-            #             )
+                # 7. Using surface normals at points, compute regression fit for slope coefficients.
+                # 8. Convert fit slope coefficients to new surface COEFFS' = c0', c1x', c2x2', c3y', c4xy', c5y2'.
+                # # &&&& DELETE-SCAFFOLDING -- THRESHOLDS SET FOR A SPECIFIC MIRROR EXAMPLE
+                if loop_idx > 7:
+                    self.surface.fit_slopes()
+                loop_record["surf_coefs"] = self.surface.surf_coefs
+                loop_record["slope_coefs"] = self.surface.slope_coefs
 
-            #             # High-resolution points reprojected (after snap to new fit surface).
-            #             # &&&& DELETE-SCAFFOLDING -- MOVE REPROJECTION INTO DEBUG FIGURE ROUTINE
-            #             hires_pts_reproj_4 = self.debug.debug_geometry.camera.project(
-            #                 v_facet_corners_hires_4, ori_new.r_cam_optic.inv(), ori_new.v_cam_optic_cam
-            #             )
-            #             # Plot reprojected points over mask image
-            #             if self.debug.debug_active:
-            #                 ssdo.reproj_after_fit(
-            #                     vxy_corners_sfc_reproj_snap, vxy_corners_sfc_reproj_new, hires_pts_reproj_4, loop_idx, self.debug
-            #                 )
-            #             # Plot debug plot
-            #             if self.debug.debug_active:
-            #                 ssdo.figure_intersection_surface_situation(
-            #                     "After Slope Fit",
-            #                     vxyz_corners_sfc,
-            #                     v_facet_corners_hires_4,
-            #                     self.surface,
-            #                     ori_new,
-            #                     loop_idx,
-            #                     self.debug,
-            #                 )
+                # Set the fine facet boundary z values to lie on the new fit surface.
+                z_facet_corners_hires_4 = sf2.coef_to_points(vxyz_corners_sfc, self.surface.surf_coefs, 2)
+                v_facet_corners_hires_4 = copy.deepcopy(vxyz_corners_sfc)
+                v_facet_corners_hires_4.data[2, :] = z_facet_corners_hires_4
+                # Check fine facet boundary z values.
+                v_facet_corners_hires_4_minus_1 = v_facet_corners_hires_4 - vxyz_corners_sfc
+                largest_change = abs(v_facet_corners_hires_4_minus_1.data[2, :]).max()
+                # &&&& DELETE-SCAFFOLDING -- FIX CONTAINING ROUTINE NAME IN MESSAGE BELOW
+                lt.info(
+                    f"In fit_surface_sf2gen3(), maximum z difference between high-resolution corners before and after fit = {largest_change} m."
+                )
 
-            #             # Summarize loop progress.
-            #             if self.debug.debug_active:
-            #                 lt.info("\nIn fit_surface_sf2gen3(), loop_record_list:")
-            #                 lt.info(ssdo.fit_surface_loop_record_column_headings())
-            #                 lt.info(ssdo.fit_surface_loop_record_column_headings_units())
-            #                 lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
-            #                 for loop_record in loop_record_list:
-            #                     lt.info(ssdo.fit_surface_loop_record_str(loop_record))
-            #                 lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
+                # High-resolution points reprojected (after snap to new fit surface).
+                # &&&& DELETE-SCAFFOLDING -- MOVE REPROJECTION INTO DEBUG FIGURE ROUTINE
+                hires_pts_reproj_4 = self.debug.debug_geometry.camera.project(
+                    v_facet_corners_hires_4, ori_new.r_cam_optic.inv(), ori_new.v_cam_optic_cam
+                )
+                # Plot reprojected points over mask image
+                if self.debug.debug_active:
+                    ssdo.reproj_after_fit(
+                        vxy_corners_sfc_reproj_snap,
+                        vxy_corners_sfc_reproj_new,
+                        hires_pts_reproj_4,
+                        loop_idx,
+                        self.debug,
+                    )
+                # Plot debug plot
+                if self.debug.debug_active:
+                    ssdo.figure_intersection_surface_situation(
+                        "After Slope Fit",
+                        vxyz_corners_sfc,
+                        v_facet_corners_hires_4,
+                        self.surface,
+                        ori_new,
+                        loop_idx,
+                        self.debug,
+                    )
 
-            #                 lt.info("\nIn fit_surface_sf2gen3(), loop_record_list 2:")
-            #                 lt.info(ssdo.fit_surface_loop_record_column_headings_2())
-            #                 lt.info(ssdo.fit_surface_loop_record_column_headings_units_2())
-            #                 lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
-            #                 for loop_record in loop_record_list:
-            #                     lt.info(ssdo.fit_surface_loop_record_str_2(loop_record))
-            #                 lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+                # Summarize loop progress.
+                if self.debug.debug_active:
+                    lt.info("\nIn fit_surface_sf2gen3(), loop_record_list:")
+                    lt.info(ssdo.fit_surface_loop_record_column_headings())
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_units())
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
+                    for loop_record in loop_record_list:
+                        lt.info(ssdo.fit_surface_loop_record_str(loop_record))
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
+
+                    lt.info("\nIn fit_surface_sf2gen3(), loop_record_list 2:")
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_2())
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_units_2())
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+                    for loop_record in loop_record_list:
+                        lt.info(ssdo.fit_surface_loop_record_str_2(loop_record))
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+
+            # &&&& DELETE-SCAFFOLDING -- END BLOCK OFF NON-POSITION
 
             # Check loop termination.
             if loop_idx >= 20:  # 12:  # 7:  # 1:  # 20:  # &&&& DELETE-SCAFFOLDING -- NEEDS BETTER LOOP EXIT CONTROL.

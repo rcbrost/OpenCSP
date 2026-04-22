@@ -1507,7 +1507,7 @@ def process_singlefacet_geometry_sf2gen3(
     # &&&& DELETE-SCAFFOLDING -- PASS THIS IN?  MAKE PART OF .INI FILE?
     adjusted_dist_optic_screen = dist_optic_screen * 1.0  # 1.08  # 1.1  # 1.12  # 1.15  # 1.1 # 1.0
     # &&&& DELETE-SCAFFOLDING -- PASS THIS IN: dist_optic_screen
-    adjusted_dist_optic_screen = 0.97201  # 0.82501
+    adjusted_dist_optic_screen = 0.96001  # 0.82501
 
     v_cam_optic_centroid_cam_exp = sp.t_from_distance(
         v_mask_centroid_image, adjusted_dist_optic_screen, camera, ori.v_cam_screen_cam

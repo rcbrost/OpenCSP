@@ -1093,6 +1093,7 @@ def reproj_snap_aux(
 # INITIAL REPROJECTION SUMMARY, AFTER SNAP TO EDGE (WITHOUT COARSE VERTICES)
 
 
+# &&&& DELETE-SCAFFOLDING -- CHOOSE A BETTER NAME FOR THIS ROUTINE?
 def reproj_snap_2(
     hires_pts_reproj_1: Vxy, hires_pts_reproj_snap_1: Vxy, loop_idx: int, debug: SlopeSolverDataDebug
 ) -> None:
@@ -1109,6 +1110,83 @@ def reproj_snap_2_aux(
     debug: SlopeSolverDataDebug,
 ) -> None:
     figure_title = f"loop={loop_idx:d}: " + "Reprojected Points, and Snap to Edges"
+    fig_rec = sdfs.start_debug_image_figure(figure_title)
+    fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
+    if hires_pts_reproj_1 is not None:
+        sdfs.plot_labeled_points(
+            hires_pts_reproj_1,
+            marker_size=12,
+            point_color='blue',
+            label_points=label_points,
+            label_color='blue',
+            label_size="xx-small",
+            legend_label='High-Resolution Points, Before Modification',
+        )
+    if hires_pts_reproj_snap_1 is not None:
+        sdfs.plot_labeled_points(
+            hires_pts_reproj_snap_1,
+            marker_size=8,
+            point_color='magenta',
+            label_points=label_points,
+            label_color='magenta',
+            label_size="xx-small",
+            legend_label='High-Resolution Points, Snapped to Image Edge',
+        )
+    # Legend
+    fig_rec.view.axis.legend()
+
+    # Save and close.
+    full_title_for_file = (
+        figure_title.replace(' ', '_').replace(':', '').replace('(', '').replace(')', '').replace(',', '')
+    )
+    sdfs.finish_debug_image_figure(full_title_for_file, 'solver', fig_rec, debug.debug_geometry)
+
+
+# INITIAL REPROJECTION SUMMARY, DURING CAMERA POSE (DX,DY,DTHETA) SEARCH
+
+
+# &&&& DELETE-SCAFFOLDING -- CHOOSE A BETTER NAME FOR THIS ROUTINE?
+def reproj_snap_3(
+    hires_pts_reproj_1: Vxy,
+    hires_pts_reproj_snap_1: Vxy,
+    status_str: str | None,
+    camera_dx_dy_dtheta: tuple[float, float, float],
+    rms: float,
+    debug: SlopeSolverDataDebug,
+) -> None:
+    reproj_snap_3_aux(
+        hires_pts_reproj_1,
+        hires_pts_reproj_snap_1,
+        label_points=True,
+        status_str=status_str,
+        camera_dx_dy_dtheta=camera_dx_dy_dtheta,
+        rms=rms,
+        debug=debug,
+    )
+    # reproj_snap_3_aux(
+    #     hires_pts_reproj_1, None, label_points=False, camera_dx_dy_dtheta=camera_dx_dy_dtheta, rms=rms, debug=debug
+    # )
+    # reproj_snap_3_aux(
+    #     None, hires_pts_reproj_snap_1, label_points=False, camera_dx_dy_dtheta=camera_dx_dy_dtheta, rms=rms, debug=debug
+    # )
+
+
+def reproj_snap_3_aux(
+    hires_pts_reproj_1: Vxy | None,
+    hires_pts_reproj_snap_1: Vxy | None,
+    label_points: bool,
+    status_str: str | None,
+    camera_dx_dy_dtheta: tuple[float, float, float],
+    rms: float,
+    debug: SlopeSolverDataDebug,
+) -> None:
+    dx = camera_dx_dy_dtheta[0]
+    dy = camera_dx_dy_dtheta[1]
+    dtheta = camera_dx_dy_dtheta[2]
+    dx_dy_dtheta_str = f"({dx:.3f}m, {dy:.3f}m, {np.degrees(dtheta):.2f}deg)"
+    figure_title = f"dx_dy_dth={dx_dy_dtheta_str}, rms={rms:.4f}pix"
+    if status_str is not None:
+        figure_title = status_str + figure_title
     fig_rec = sdfs.start_debug_image_figure(figure_title)
     fig_rec.view.imshow(debug.debug_geometry.mask_processed, cmap="gray")
     if hires_pts_reproj_1 is not None:

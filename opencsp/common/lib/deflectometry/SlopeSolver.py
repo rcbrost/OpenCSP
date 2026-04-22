@@ -829,7 +829,7 @@ class SlopeSolver:
             sfc_pt_reproj_pt_snapped_pt_list = ip.snap_points_to_nearest_edge(
                 vxyz_corners_sfc, vxy_corners_sfc_reproj, mask_processed, search_spiral
             )
-            vxyz_corners_sfc_matched = Vxyz.from_list([a[0] for a in sfc_pt_reproj_pt_snapped_pt_list])
+            # vxyz_corners_sfc_matched = Vxyz.from_list([a[0] for a in sfc_pt_reproj_pt_snapped_pt_list])
             vxy_corners_sfc_reproj_matched = Vxy.from_list([a[1] for a in sfc_pt_reproj_pt_snapped_pt_list])
             vxy_corners_sfc_reproj_snap = Vxy.from_list([a[2] for a in sfc_pt_reproj_pt_snapped_pt_list])
             # Plot reprojected points over mask image
@@ -838,93 +838,35 @@ class SlopeSolver:
                     vxy_corners_sfc_reproj_matched, vxy_corners_sfc_reproj_snap, loop_idx=loop_idx, debug=self.debug
                 )
 
-            # 4. Use refined image points to call solvePnP() and compute a refined camera POSE'.
-            # # &&&& DELETE-SCAFFOLDING -- ORIGINAL VERSION
-            # r_optic_cam_new, v_cam_optic_cam_new = sp.calc_rt_from_img_pts(
-            #     vxy_corners_sfc_reproj_snap,
-            #     vxyz_corners_sfc_matched,
-            #     camera,
-            #     initial_rotation=r_cam_optic_entering_loop,
-            #     initial_vxyz=v_cam_optic_cam_entering_loop,
-            # )
-            # # # &&&& DELETE-SCAFFOLDING -- WORKS, BUT SENSE REVERSED.
-            # r_optic_cam_entering_loop = r_cam_optic_entering_loop.inv()
-            # r_correction = Rotation.from_euler('z', 10.0, degrees=True)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-            # r_optic_cam_adjusted = r_optic_cam_entering_loop * r_correction
+            # &&&& DELETE-SCAFFOLDING -- IMPROVE THIS LOOP CONTROL
+            # ********
+            lt.info(f'In fit_surface_sf2gen3, loop_idx={loop_idx}:')
+            if loop_idx == 1:
+                # &&&& DELETE-SCAFFOLDING -- RENAME THESE VARIABLES, MOST LIKELY
+                r_cam_optic_new, v_cam_optic_cam_new, camera_view_alignment_rms_error = (
+                    self.find_best_camera_pose_preserving_aim_and_distance(
+                        r_cam_optic_entering_loop,
+                        v_cam_optic_cam_entering_loop,
+                        original_orientation,
+                        vxyz_corners_sfc,
+                        mask_processed,
+                        search_spiral,
+                    )
+                )
+                lt.info(
+                    f'In fit_surface_sf2gen3, final reproject-to-mask-edges alignment error={camera_view_alignment_rms_error}:'
+                )
+            else:
+                # &&&& DELETE-SCAFFOLDING -- RENAME THESE VARIABLES, MOST LIKELY
+                r_cam_optic_new = r_cam_optic_entering_loop
+                v_cam_optic_cam_new = v_cam_optic_cam_entering_loop
 
-            # Desired rotation about camera optical optical axis, therefore in camera coordinates.
-            # r_cam_correction = Rotation.from_euler('z', 5.0, degrees=True)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-            u_facet_centroid_normal = self.debug.debug_geometry.facet_data.u_facet_centroid_normal
-            r_optic_cam_entering_loop = r_cam_optic_entering_loop.inv()
-            rotated_u_facet_centroid_normal = u_facet_centroid_normal.rotate(r_optic_cam_entering_loop)
-            ux = rotated_u_facet_centroid_normal.x[0]
-            uy = rotated_u_facet_centroid_normal.y[0]
-            uz = rotated_u_facet_centroid_normal.z[0]
-            axis = np.array([ux, uy, uz])
-            # angle = np.radians(0.0)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-            if loop_idx == 1:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-                angle = np.radians(3.5)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-            else:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-                angle = np.radians(0.0)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-            r_cam_correction = Rotation.from_rotvec(angle * axis)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
-            r_optic_cam_adjusted = r_cam_correction * r_optic_cam_entering_loop
-            r_cam_optic_adjusted = r_optic_cam_adjusted.inv()
-            # r_cam_optic_adjusted = r_cam_optic_entering_loop * r_cam_correction
-            # r_cam_optic_adjusted = r_cam_optic_entering_loop
-
-            r_optic_cam_entering_loop = r_cam_optic_entering_loop.inv()
-            r_optic_cam_adjusted = r_cam_optic_adjusted.inv()
-
-            v_align_point_optic = self.v_align_point_optic
-            v_align_point_cam_entering_loop = v_align_point_optic.rotate(r_optic_cam_entering_loop)
-            v_align_point_cam_adjusted = v_align_point_optic.rotate(r_optic_cam_adjusted)
-            v_align_point_shift_cam = v_align_point_cam_adjusted - v_align_point_cam_entering_loop
-
-            # Correction directions:
-            #   +x: reprojected facet vertices move right in mask image
-            #   +y: reprojected facet vertices move down in mask image
-            #   +z: reprojected facet vertice outline gets smaller and appears further away
-            if loop_idx == 1:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-                v_correction = Vxyz([0.0, 0.0, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-            elif loop_idx == 2:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-                v_correction = Vxyz([0.022, 0.0, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-            else:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-                v_correction = Vxyz([0.0, 0.0, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
-            v_cam_optic_cam_adjusted = v_cam_optic_cam_entering_loop + v_correction - v_align_point_shift_cam
-
-            v_cam_optic_cam_adjusted_2 = sp.refine_v_distance(
-                v_cam_optic_cam_adjusted,
-                self.dist_optic_screen,
-                original_orientation.v_cam_screen_cam,
-                v_align_point_cam_adjusted,
-            )
-            # &&&& DELETE-SCAFFOLDING -- DOCUMENT IMPLICIT ASSUMPTION HERE THAT ALIGNMENT POINT AND MEASURE POINT ARE THE SAME
-            v_optic_screen_entering_loop = original_orientation.v_cam_screen_cam - (
-                v_cam_optic_cam_entering_loop + v_align_point_cam_entering_loop
-            )
-            dist_optic_screen_entering_loop = v_optic_screen_entering_loop.magnitude()
-
-            v_optic_screen_adjusted = original_orientation.v_cam_screen_cam - (
-                v_cam_optic_cam_adjusted + v_align_point_cam_adjusted
-            )
-            dist_optic_screen_adjusted = v_optic_screen_adjusted.magnitude()
-
-            v_optic_screen_adjusted_2 = original_orientation.v_cam_screen_cam - (
-                v_cam_optic_cam_adjusted_2 + v_align_point_cam_adjusted
-            )
-            dist_optic_screen_adjusted_2 = v_optic_screen_adjusted_2.magnitude()
-            lt.info(f'In fit_surface_sf2gen3(loop_idx={loop_idx}):')
-            lt.info('  dist_optic_screen_entering_loop   = ' + str(dist_optic_screen_entering_loop))
-            lt.info('  dist_optic_screen_adjusted        = ' + str(dist_optic_screen_adjusted))
-            lt.info('  dist_optic_screen_adjusted_2      = ' + str(dist_optic_screen_adjusted_2))
-
-            # &&&& DELETE-SCAFFOLDING -- CLEANUP NAMES, SEMANTICS
-            # Pass result forward.
-            r_optic_cam_new = r_cam_optic_adjusted.inv()  # r_optic_cam_adjusted.inv()
-            # v_cam_optic_cam_new = v_cam_optic_cam_adjusted
-            v_cam_optic_cam_new = v_cam_optic_cam_adjusted_2
-            # &&&& DELETE-SCAFFOLDING -- SHOULD THIS NAME BE INVERTED?
-            r_cam_optic_new = r_optic_cam_new.inv()
+            # ********
+            # # # &&&& DELETE-SCAFFOLDING -- OBSOLETE CODE
+            # r_cam_optic_new = r_cam_optic_adjusted
+            # v_cam_optic_cam_new = v_cam_optic_cam_adjusted_2
+            # # &&&& DELETE-SCAFFOLDING -- SHOULD THIS NAME BE INVERTED?
+            # r_cam_optic_new = r_optic_cam_new.inv()
             # Orient optic
             # &&&& DELETE-SCAFFOLDING -- TEMPORARY, OR DOCUMENT
             # # &&&& DELETE-SCAFFOLDING -- ORIGINAL GEN 2 VERSION
@@ -1261,3 +1203,848 @@ class SlopeSolver:
         self._data.slopes_facet_xy = slopes_facet_xy
 
     # &&&& DELETE-SCAFFOLDING -- END NEW GEN 3 SOLVER ALGORITHM
+
+    def adjust_camera_pose_preserving_aim_and_distance(
+        self,
+        camera_pose_dx_dy_dtheta: tuple[float, float, float],
+        r_cam_optic_entering_loop: Rotation,
+        v_cam_optic_cam_entering_loop: Vxyz,
+        original_orientation: SpatialOrientation,
+    ):
+        # 4. Use refined image points to call solvePnP() and compute a refined camera POSE'.
+        # # &&&& DELETE-SCAFFOLDING -- ORIGINAL VERSION
+        # r_optic_cam_new, v_cam_optic_cam_new = sp.calc_rt_from_img_pts(
+        #     vxy_corners_sfc_reproj_snap,
+        #     vxyz_corners_sfc_matched,
+        #     camera,
+        #     initial_rotation=r_cam_optic_entering_loop,
+        #     initial_vxyz=v_cam_optic_cam_entering_loop,
+        # )
+        # # # &&&& DELETE-SCAFFOLDING -- WORKS, BUT SENSE REVERSED.
+        # r_optic_cam_entering_loop = r_cam_optic_entering_loop.inv()
+        # r_correction = Rotation.from_euler('z', 10.0, degrees=True)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        # r_optic_cam_adjusted = r_optic_cam_entering_loop * r_correction
+
+        # Desired rotation about camera optical optical axis, therefore in camera coordinates.
+        # r_cam_correction = Rotation.from_euler('z', 5.0, degrees=True)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        u_facet_centroid_normal = self.debug.debug_geometry.facet_data.u_facet_centroid_normal
+        r_optic_cam_entering_loop = r_cam_optic_entering_loop.inv()
+        rotated_u_facet_centroid_normal = u_facet_centroid_normal.rotate(r_optic_cam_entering_loop)
+        ux = rotated_u_facet_centroid_normal.x[0]
+        uy = rotated_u_facet_centroid_normal.y[0]
+        uz = rotated_u_facet_centroid_normal.z[0]
+        axis = np.array([ux, uy, uz])
+        # # &&&& DELETE-SCAFFOLDING -- OBSOLETE CODE BLOCK
+        # # angle = np.radians(0.0)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        # if loop_idx == 1:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        #     # angle = np.radians(3.5)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        #     angle = camera_pose_dtheta  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        # else:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        #     angle = np.radians(0.0)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        angle = camera_pose_dx_dy_dtheta[2]
+        r_cam_correction = Rotation.from_rotvec(angle * axis)  # &&&& DELETE-SCAFFOLDING -- TEMPORARY
+        r_optic_cam_adjusted = r_cam_correction * r_optic_cam_entering_loop
+        r_cam_optic_adjusted = r_optic_cam_adjusted.inv()
+        # r_cam_optic_adjusted = r_cam_optic_entering_loop * r_cam_correction
+        # r_cam_optic_adjusted = r_cam_optic_entering_loop
+
+        r_optic_cam_entering_loop = r_cam_optic_entering_loop.inv()
+        r_optic_cam_adjusted = r_cam_optic_adjusted.inv()
+
+        v_align_point_optic = self.v_align_point_optic
+        v_align_point_cam_entering_loop = v_align_point_optic.rotate(r_optic_cam_entering_loop)
+        v_align_point_cam_adjusted = v_align_point_optic.rotate(r_optic_cam_adjusted)
+        v_align_point_shift_cam = v_align_point_cam_adjusted - v_align_point_cam_entering_loop
+
+        # Correction directions:
+        #   +x: reprojected facet vertices move right in mask image
+        #   +y: reprojected facet vertices move down in mask image
+        #   +z: reprojected facet vertice outline gets smaller and appears further away
+        # # &&&& DELETE-SCAFFOLDING -- OBSOLETE CODE BLOCK
+        # if loop_idx == 1:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        #     v_correction = Vxyz([0.0, 0.0, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        # elif loop_idx == 2:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        #     # v_correction = Vxyz([0.022, 0.0, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        #     v_correction = Vxyz(
+        #         [camera_pose_dx, camera_pose_dy, 0.0]
+        #     )  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        # else:  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        #     v_correction = Vxyz([0.0, 0.0, 0.0])  # meters  # &&&& DELETE-SCAFFOLDING -- TEMPORARY MANUAL SETTING
+        v_correction = Vxyz([camera_pose_dx_dy_dtheta[0], camera_pose_dx_dy_dtheta[1], 0.0])  # meters
+        v_cam_optic_cam_adjusted = v_cam_optic_cam_entering_loop + v_correction - v_align_point_shift_cam
+
+        v_cam_optic_cam_adjusted_2 = sp.refine_v_distance(
+            v_cam_optic_cam_adjusted,
+            self.dist_optic_screen,
+            original_orientation.v_cam_screen_cam,
+            v_align_point_cam_adjusted,
+        )
+        # &&&& DELETE-SCAFFOLDING -- DOCUMENT IMPLICIT ASSUMPTION HERE THAT ALIGNMENT POINT AND MEASURE POINT ARE THE SAME
+        v_optic_screen_entering_loop = original_orientation.v_cam_screen_cam - (
+            v_cam_optic_cam_entering_loop + v_align_point_cam_entering_loop
+        )
+        dist_optic_screen_entering_loop = v_optic_screen_entering_loop.magnitude()
+
+        v_optic_screen_adjusted = original_orientation.v_cam_screen_cam - (
+            v_cam_optic_cam_adjusted + v_align_point_cam_adjusted
+        )
+        dist_optic_screen_adjusted = v_optic_screen_adjusted.magnitude()
+
+        v_optic_screen_adjusted_2 = original_orientation.v_cam_screen_cam - (
+            v_cam_optic_cam_adjusted_2 + v_align_point_cam_adjusted
+        )
+        dist_optic_screen_adjusted_2 = v_optic_screen_adjusted_2.magnitude()
+
+        # # Keep for detailed testing.
+        # if self.debug.debug_active:
+        #     lt.info('In adjust_camera_pose_preserving_aim_and_distance:')
+        #     lt.info('  dist_optic_screen_entering_loop   = ' + str(dist_optic_screen_entering_loop))
+        #     lt.info('  dist_optic_screen_adjusted        = ' + str(dist_optic_screen_adjusted))
+        #     lt.info('  dist_optic_screen_adjusted_2      = ' + str(dist_optic_screen_adjusted_2))
+
+        # &&&& DELETE-SCAFFOLDING -- CLEANUP NAMES, SEMANTICS
+        # Pass result forward.
+        # # &&&& DELETE-SCAFFOLDING -- DELETE ONCE TESTED
+        # r_optic_cam_new = r_cam_optic_adjusted.inv()  # r_optic_cam_adjusted.inv()
+        # v_cam_optic_cam_new = v_cam_optic_cam_adjusted  # &&&& DELETE-SCAFFOLDING -- DELETE THIS
+
+        # # &&&& DELETE-SCAFFOLDING -- DELETE ONCE TESTED
+        # # &&&& DELETE-SCAFFOLDING -- SHOULD THIS NAME BE INVERTED?
+        # r_cam_optic_new = r_optic_cam_new.inv()
+
+        # Return.
+        # &&&& DELETE-SCAFFOLDING -- DELETE ONCE TESTED
+        # return r_optic_cam_new, v_cam_optic_cam_adjusted_2
+        return r_cam_optic_adjusted, v_cam_optic_cam_adjusted_2
+
+    def compute_pose_alignment_error_for_proposed_camera_adjustment(
+        self,
+        camera_dx_dy_dtheta: tuple[float, float, float],
+        # # &&&& DELETE-SCAFFOLDING -- DELETE ONCE TESTED
+        # camera_dx_dy_dtheta_array: np.ndarray,
+        r_cam_optic_input: Rotation,
+        v_cam_optic_cam_input: Vxyz,
+        orientation: SpatialOrientation,
+        vxyz_corners_sfc: Vxyz,
+        mask_processed: np.ndarray,
+        search_spiral: list[tuple[int, int, float]],
+        output_debug_figure: bool,
+        debug_figure_status_str: str | None = None,
+    ):
+        r_cam_optic_adjusted, v_cam_optic_cam_adjusted = self.adjust_camera_pose_preserving_aim_and_distance(
+            camera_dx_dy_dtheta, r_cam_optic_input, v_cam_optic_cam_input, orientation
+        )
+
+        # 2. Use camera model and current POSE estimate to project 3-d vertices onto image.
+        vxy_corners_sfc_reproj = self.debug.debug_geometry.camera.project(
+            vxyz_corners_sfc, r_cam_optic_adjusted.inv(), v_cam_optic_cam_adjusted
+        )
+
+        # 3. Refine projected image points by snapping onto edges in mask image.
+        sfc_pt_reproj_pt_snapped_pt_list = ip.snap_points_to_nearest_edge(
+            vxyz_corners_sfc, vxy_corners_sfc_reproj, mask_processed, search_spiral
+        )
+
+        # Compute alignment error.
+        # This is the root-mean-square (RMS) distance of the input points (considered to be error),
+        # compared to the mask edge points (considered to be truth, in this calculation).
+        distance_squared_sum = 0.0
+        n = 0
+        for world_image_snapped in sfc_pt_reproj_pt_snapped_pt_list:
+            # world_xyz = world_image_snapped[0]
+            image_xy = world_image_snapped[1]
+            snapped_xy = world_image_snapped[2]
+            image_x = image_xy.x[0]
+            image_y = image_xy.y[0]
+            snapped_x = snapped_xy.x[0]
+            snapped_y = snapped_xy.y[0]
+            dx = snapped_x - image_x
+            dy = snapped_y - image_y
+            distance = np.sqrt((dx * dx) + (dy * dy))
+            distance_squared_sum += distance * distance
+            n += 1
+        mean_distance_squared = distance_squared_sum / n
+        rms = np.sqrt(mean_distance_squared)
+
+        # Debugging output.
+        # Plot reprojected points over mask image
+        if self.debug.debug_active and output_debug_figure:
+            # vxyz_corners_sfc_matched = Vxyz.from_list([a[0] for a in sfc_pt_reproj_pt_snapped_pt_list])
+            vxy_corners_sfc_reproj_matched = Vxy.from_list([a[1] for a in sfc_pt_reproj_pt_snapped_pt_list])
+            vxy_corners_sfc_reproj_snap = Vxy.from_list([a[2] for a in sfc_pt_reproj_pt_snapped_pt_list])
+            ssdo.reproj_snap_3(
+                vxy_corners_sfc_reproj_matched,
+                vxy_corners_sfc_reproj_snap,
+                status_str=debug_figure_status_str,
+                camera_dx_dy_dtheta=camera_dx_dy_dtheta,
+                rms=rms,
+                debug=self.debug,
+            )
+
+        # Return.
+        return rms
+
+    def optimize_camera_pose_preserving_aim_and_distance(
+        self,
+        r_cam_optic_input: Rotation,
+        v_cam_optic_cam_input: Vxyz,
+        orientation: SpatialOrientation,
+        vxyz_corners_sfc: Vxyz,
+        mask_processed: np.ndarray,
+        search_spiral: list[tuple[int, int, float]],
+    ):
+
+        # &&&& DELETE-SCAFFOLDING -- WHERE SHOULD THIS COMENT BLOCK GO?
+        #
+        # &&&& DELETE-SCAFFOLDING -- FLESH OUT AND FINISH THIS COMENT BLOCK
+        #
+        # &&&& DELETE-SCAFFOLDING -- DISCUSS SCIPY APPROACH, USING SCIPY.OPTIMIZE.MINIMIZE (SEE IMPORTS).  WHY IT FAILED DUE TO (A) UNDERLYING FUNCTION WAS NOT WELL-DEFINED OUTISDE OF SMALL WINDOW, AS ALL POINTS COULD DISAPPEAR, CAUSING A DIVIDE-BY-ZERO ERROR.  (B) UNDERLYING FUNCTION WAS NOT MONOTONIC -- AS POINTS EXITED IMAGE, DISTANCES COULD GET SMALLER. (C) SCIPY WOULD PRODUCE A LARGE STEP, E.G. DX=1.0 M, WHICH HIT THESE PROBLEMS. (D) NOTE THAT FUNCTION HAD DIFFERENT UNITS -- RMS IS IN PIXEL SPACE, BUT (DX,DY,DTHETA) ARE IN METERS AND RADIANS.
+        #
+        # &&&& DELETE-SCAFFOLDING -- DISCUSS OPENCV APPROACH, USING cv2.estimateAffinePartial2D (GOOGLE SEARCH "REGISTERING TWO IMAGES TRANSLATION AND ROTATION"). WHY IT WOULD FAIL -- IT SOLVES PROBLEM PURELY IN PIXEL SPACE, BUT (DX,DY,DTHETA) ARE IN 3-D SPACE, WITH DIFFERENT UNITS. THE RESULTING POSE REGISTRATION IN PIXEL SPACE WOULD NOT GIVE A RESULT THAT COULD IMMEDIATELY BE USED.  IT WOULD NEED TO BE CONVERTED TO (DX,DY,DTHETA), WHICH IS NOT STRAIGHTFORWARD.  FURTHER, THE SHAPE OF THE MOVING REPROJECTED IMAGE IS NOT CONSTANT.  DUE TO PARALLAX EFFECTS AND UNEQUAL CAMERA-TO-MIRROR DISTANCES, IT MORPHS SHAPE AS (DX,DY,DTHETA) CHANGES, BUT AN IMAGE REGISTRATION APPRAOCH DOES NOT RECOGNIZE THIS.
+        #
+        # &&&& DELETE-SCAFFOLDING -- DISCUSS CUSTOM APPROACH, USED HERE. WHY IT WAS PURSUED (SEE ABOVE), AND ITS OWN WEAKNESSES.  IN PARTICULAR, THE UNDERLYING FUNCTION'S NON-MONOTONE BEHAVIOR IS A HAZARD.  THE SMALL-STEP ALGORITHM MAY PROVE VULNERABLE TO THIS, AND THUS IT MAY STILL BE WORTHWHILE TO MAKE THE UNDERLYING FUNCITON MONTONE AND RELIABLE.
+        #
+        # &&&& DELETE-SCAFFOLDING -- NTOE STILL MIGHT BE A MUCH BETTER SOLUTION. LIST AS A SOFAST ISSUE.
+        #
+        # We seek the (dx,dy,dtheta) point which shifts the camera to minimize the error between
+        # reprojected points and the mask edges.
+        #
+        # A Golden Section search is tempting (https://en.wikipedia.org/wiki/Golden-section_search),
+        # because it is simple, reliable, and robust -- like binary search.  But this will break
+        # down when multiple degrees of freedom are considered.  For example, consider a well-behaved
+        # problem where a fairly symmetric paraboloid is the shape of the function to find the minimum.
+        # Using a single-degree of freedom Golden Section search on x and y won't converge to the
+        # minimum, but a secussesive series of alternating degrees of freedom could -- eventually.
+        # Adding a third rotational degree of freedom further compliates things.  But reasoning
+        # about this search becomes more difficult in challenging cases, such as a search space
+        # with a shape that is effectievly similar to a parbolioid with strong astigmatism
+        # that is rotated slightly.
+        #
+        # This is further complicated by the unusual nature of the search space gradients, since
+        # the scale factor between pixels and 3-d world motions is an unkown factor which is
+        # not even constant across points, due to differences in camera-to-object distance.
+        # Thus we'll use a general-purpose minimizaiton approach, which considers all three
+        # degrees of freedom (x,y,theta) simultaneously, and does not require a gradient
+        # function.  Due to the underlying mathematical complexity, we'll prefer a simple,
+        # more robust algorithmic method.
+        #
+        # # &&&& DELETE-SCAFFOLDING -- SCIPY APPROACH. DEPRECATED (SEE ABOVE).
+        # #
+        # # See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
+        # #
+        # # Calculate scale so that align-point to screen matches measurement
+        # args = (r_cam_optic_input, v_cam_optic_cam_input, orientation, vxyz_corners_sfc, mask_processed, search_spiral)
+        # out = minimize(
+        #     self.compute_pose_alignment_error_for_proposed_camera_adjustment, np.array([0.0, 0.0, 0.0]), args=args
+        # )
+        # optimal_dx_dy_dtheta_array = out.x[0]
+        #         # Calculate scale so that align-point to screen matches measurement
+        #         args = (
+        #             dist_optic_screen,
+        #             v_align_point_optic,
+        #             v_optic_cam_optic,
+        #             v_optic_screen_optic,
+        #             v_meas_pts_surf_int_optic,
+        #         )
+        #         out = minimize(sf2.dist_optic_screen_error, np.array([1.0]), args=args)
+        #         scale = out.x[0]
+
+        # # &&&& DELETE-SCAFFOLDING -- MANUAL APPROACH. OBSOLETE.
+        # #
+        # camera_pose_dx = 0.022
+        # camera_pose_dy = 0.0
+        # camera_pose_dtheta = np.radians(3.5)
+        # # # &&&& DELETE-SCAFFOLDING -- DELETE ONCE TESTED
+        # # camera_pose_dx_dy_dtheta_array = np.array([camera_pose_dx, camera_pose_dy, camera_pose_dtheta])
+        # camera_pose_dx_dy_dtheta = (camera_pose_dx, camera_pose_dy, camera_pose_dtheta)
+        # camera_view_alignment_rms_error = self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+        #     camera_pose_dx_dy_dtheta,
+        #     r_cam_optic_input,
+        #     v_cam_optic_cam_input,
+        #     orientation,
+        #     vxyz_corners_sfc,
+        #     mask_processed,
+        #     search_spiral,
+        # )
+        # return camera_pose_dx_dy_dtheta, camera_view_alignment_rms_error
+
+        current_best_dx = 0.0  # m
+        current_best_dy = 0.0  # m
+        current_best_dtheta = 0.0  # radians
+        current_best_dx_dy_dtheta = (current_best_dx, current_best_dy, current_best_dtheta)
+        current_best_rms_error = self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+            current_best_dx_dy_dtheta,
+            r_cam_optic_input,
+            v_cam_optic_cam_input,
+            orientation,
+            vxyz_corners_sfc,
+            mask_processed,
+            search_spiral,
+            output_debug_figure=True,  # Draw the initial condition (if debug=True).
+        )
+        if self.debug.debug_active:
+            lt.info(
+                f'In optimize_camera_pose_preserving_aim_and_distance(), current_best_dx_dy_dtheta={current_best_dx_dy_dtheta}; current_best_rms_error={current_best_rms_error}pix'
+            )
+
+        # Search for best translation of distance r.
+        r = 0.01  # 0.002 # m
+        beta_step = np.radians(30.0)
+        while True:
+            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+                self.find_best_camera_translation_of_distance_r(
+                    current_best_dx_dy_dtheta,
+                    current_best_rms_error,
+                    r,
+                    beta_step,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                )
+            )
+            if self.debug.debug_active:
+                lt.info(
+                    f'In optimize_camera_pose_preserving_aim_and_distance(), after trans r={r}m, '
+                    f'best_dx_dy_dth = ({current_best_dx_dy_dtheta[0]:.3f}, {current_best_dx_dy_dtheta[1]:.3f}, {np.degrees(current_best_dx_dy_dtheta[2]):.4f}, ), '
+                    f'best_rms = {current_best_rms_error:.5f}, '
+                    f'better_found = {better_solution_found}'
+                )
+            if not better_solution_found:
+                break
+        # Debugging output.
+        if self.debug.debug_active:
+            # Force output of debugging figure, which requires some recomputation.
+            # Don't capture the returned values.
+            self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                current_best_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=True,
+                debug_figure_status_str=f'r={r}m ',
+            )
+
+        # Search for best rotation of step dtheta_step.
+        dtheta_step = np.radians(1.0)
+        abs_max_delta_dtheta = np.radians(10.0)
+        while True:
+            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+                self.find_best_camera_rotation_of_dtheta_step(
+                    current_best_dx_dy_dtheta,
+                    current_best_rms_error,
+                    dtheta_step,
+                    abs_max_delta_dtheta,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                )
+            )
+            if self.debug.debug_active:
+                lt.info(
+                    f'In optimize_camera_pose_preserving_aim_and_distance(), after rot dth_step={np.degrees(dtheta_step)}deg, '
+                    f'best_dx_dy_dth = ({current_best_dx_dy_dtheta[0]:.3f}, {current_best_dx_dy_dtheta[1]:.3f}, {np.degrees(current_best_dx_dy_dtheta[2]):.4f}, ), '
+                    f'best_rms = {current_best_rms_error:.5f}, '
+                    f'better_found = {better_solution_found}'
+                )
+            if not better_solution_found:
+                break
+        # Debugging output.
+        if self.debug.debug_active:
+            # Force output of debugging figure, which requires some recomputation.
+            # Don't capture the returned values.
+            self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                current_best_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=True,
+                debug_figure_status_str=f'dth_step={np.degrees(dtheta_step)}deg ',
+            )
+
+        # Search for best translation of distance r.
+        r = 0.005  # 0.002 # m
+        beta_step = np.radians(30.0)
+        while True:
+            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+                self.find_best_camera_translation_of_distance_r(
+                    current_best_dx_dy_dtheta,
+                    current_best_rms_error,
+                    r,
+                    beta_step,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                )
+            )
+            if self.debug.debug_active:
+                lt.info(
+                    f'In optimize_camera_pose_preserving_aim_and_distance(), after trans r={r}m, '
+                    f'best_dx_dy_dth = ({current_best_dx_dy_dtheta[0]:.3f}, {current_best_dx_dy_dtheta[1]:.3f}, {np.degrees(current_best_dx_dy_dtheta[2]):.4f}, ), '
+                    f'best_rms = {current_best_rms_error:.5f}, '
+                    f'better_found = {better_solution_found}'
+                )
+            if not better_solution_found:
+                break
+        # Debugging output.
+        if self.debug.debug_active:
+            # Force output of debugging figure, which requires some recomputation.
+            # Don't capture the returned values.
+            self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                current_best_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=True,
+                debug_figure_status_str=f'r={r}m ',
+            )
+
+        # Search for best rotation of step dtheta_step.
+        dtheta_step = np.radians(0.5)
+        abs_max_delta_dtheta = np.radians(2.5)
+        while True:
+            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+                self.find_best_camera_rotation_of_dtheta_step(
+                    current_best_dx_dy_dtheta,
+                    current_best_rms_error,
+                    dtheta_step,
+                    abs_max_delta_dtheta,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                )
+            )
+            if self.debug.debug_active:
+                lt.info(
+                    f'In optimize_camera_pose_preserving_aim_and_distance(), after rot dth_step={np.degrees(dtheta_step)}deg, '
+                    f'best_dx_dy_dth = ({current_best_dx_dy_dtheta[0]:.3f}, {current_best_dx_dy_dtheta[1]:.3f}, {np.degrees(current_best_dx_dy_dtheta[2]):.4f}, ), '
+                    f'best_rms = {current_best_rms_error:.5f}, '
+                    f'better_found = {better_solution_found}'
+                )
+            if not better_solution_found:
+                break
+        # Debugging output.
+        if self.debug.debug_active:
+            # Force output of debugging figure, which requires some recomputation.
+            # Don't capture the returned values.
+            self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                current_best_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=True,
+                debug_figure_status_str=f'dth_step={np.degrees(dtheta_step)}deg ',
+            )
+
+        # Search for best translation of distance r.
+        r = 0.0025  # 0.002 # m
+        beta_step = np.radians(30.0)
+        while True:
+            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+                self.find_best_camera_translation_of_distance_r(
+                    current_best_dx_dy_dtheta,
+                    current_best_rms_error,
+                    r,
+                    beta_step,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                )
+            )
+            if self.debug.debug_active:
+                lt.info(
+                    f'In optimize_camera_pose_preserving_aim_and_distance(), after trans r={r}m, '
+                    f'best_dx_dy_dth = ({current_best_dx_dy_dtheta[0]:.3f}, {current_best_dx_dy_dtheta[1]:.3f}, {np.degrees(current_best_dx_dy_dtheta[2]):.4f}, ), '
+                    f'best_rms = {current_best_rms_error:.5f}, '
+                    f'better_found = {better_solution_found}'
+                )
+            if not better_solution_found:
+                break
+        # Debugging output.
+        if self.debug.debug_active:
+            # Force output of debugging figure, which requires some recomputation.
+            # Don't capture the returned values.
+            self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                current_best_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=True,
+                debug_figure_status_str=f'r={r}m ',
+            )
+
+        # Search for best rotation of step dtheta_step.
+        dtheta_step = np.radians(0.25)
+        abs_max_delta_dtheta = np.radians(1.25)
+        while True:
+            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+                self.find_best_camera_rotation_of_dtheta_step(
+                    current_best_dx_dy_dtheta,
+                    current_best_rms_error,
+                    dtheta_step,
+                    abs_max_delta_dtheta,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                )
+            )
+            if self.debug.debug_active:
+                lt.info(
+                    f'In optimize_camera_pose_preserving_aim_and_distance(), after rot dth_step={np.degrees(dtheta_step)}deg, '
+                    f'best_dx_dy_dth = ({current_best_dx_dy_dtheta[0]:.3f}, {current_best_dx_dy_dtheta[1]:.3f}, {np.degrees(current_best_dx_dy_dtheta[2]):.4f}, ), '
+                    f'best_rms = {current_best_rms_error:.5f}, '
+                    f'better_found = {better_solution_found}'
+                )
+            if not better_solution_found:
+                break
+        # Debugging output.
+        if self.debug.debug_active:
+            # Force output of debugging figure, which requires some recomputation.
+            # Don't capture the returned values.
+            self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                current_best_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=True,
+                debug_figure_status_str=f'dth_step={np.degrees(dtheta_step)}deg ',
+            )
+
+        # Search for best translation of distance r.
+        r = 0.001  # 0.002 # m
+        beta_step = np.radians(30.0)
+        while True:
+            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+                self.find_best_camera_translation_of_distance_r(
+                    current_best_dx_dy_dtheta,
+                    current_best_rms_error,
+                    r,
+                    beta_step,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                )
+            )
+            if self.debug.debug_active:
+                lt.info(
+                    f'In optimize_camera_pose_preserving_aim_and_distance(), after trans r={r}m, '
+                    f'best_dx_dy_dth = ({current_best_dx_dy_dtheta[0]:.3f}, {current_best_dx_dy_dtheta[1]:.3f}, {np.degrees(current_best_dx_dy_dtheta[2]):.4f}, ), '
+                    f'best_rms = {current_best_rms_error:.5f}, '
+                    f'better_found = {better_solution_found}'
+                )
+            if not better_solution_found:
+                break
+        # Debugging output.
+        if self.debug.debug_active:
+            # Force output of debugging figure, which requires some recomputation.
+            # Don't capture the returned values.
+            self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                current_best_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=True,
+                debug_figure_status_str=f'r={r}m ',
+            )
+
+        # Search for best rotation of step dtheta_step.
+        dtheta_step = np.radians(0.1)
+        abs_max_delta_dtheta = np.radians(0.5)
+        while True:
+            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+                self.find_best_camera_rotation_of_dtheta_step(
+                    current_best_dx_dy_dtheta,
+                    current_best_rms_error,
+                    dtheta_step,
+                    abs_max_delta_dtheta,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                )
+            )
+            if self.debug.debug_active:
+                lt.info(
+                    f'In optimize_camera_pose_preserving_aim_and_distance(), after rot dth_step={np.degrees(dtheta_step)}deg, '
+                    f'best_dx_dy_dth = ({current_best_dx_dy_dtheta[0]:.3f}, {current_best_dx_dy_dtheta[1]:.3f}, {np.degrees(current_best_dx_dy_dtheta[2]):.4f}, ), '
+                    f'best_rms = {current_best_rms_error:.5f}, '
+                    f'better_found = {better_solution_found}'
+                )
+            if not better_solution_found:
+                break
+        # Debugging output.
+        if self.debug.debug_active:
+            # Force output of debugging figure, which requires some recomputation.
+            # Don't capture the returned values.
+            self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                current_best_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=True,
+                debug_figure_status_str=f'dth_step={np.degrees(dtheta_step)}deg ',
+            )
+
+        # Return.
+        if self.debug.debug_active:
+            lt.info(
+                f'In optimize_camera_pose_preserving_aim_and_distance(), final best_dx_dy_dtheta={current_best_dx_dy_dtheta}; final best_rms_error={current_best_rms_error:.4f}pix'
+            )
+        return current_best_dx_dy_dtheta, current_best_rms_error
+
+    def find_best_camera_translation_of_distance_r(
+        self,
+        current_best_dx_dy_dtheta: tuple[float, float, float],
+        current_best_rms_error: float,
+        r: float,
+        beta_step: float,
+        r_cam_optic_input: Rotation,
+        v_cam_optic_cam_input: Vxyz,
+        orientation: SpatialOrientation,
+        vxyz_corners_sfc: Vxyz,
+        mask_processed: np.ndarray,
+        search_spiral: list[tuple[int, int, float]],
+    ):
+        current_best_dx = current_best_dx_dy_dtheta[0]
+        current_best_dy = current_best_dx_dy_dtheta[1]
+        current_best_dtheta = current_best_dx_dy_dtheta[2]
+        beta = 0.0  # radians
+        beta_limit = 2.0 * np.pi
+        better_solution_found = False
+        while beta < beta_limit:
+            delta_dx = r * np.cos(beta)
+            delta_dy = r * np.sin(beta)
+            delta_dtheta = 0.0
+            this_dx = current_best_dx + delta_dx
+            this_dy = current_best_dy + delta_dy
+            this_dtheta = current_best_dtheta + delta_dtheta
+            this_dx_dy_dtheta = (this_dx, this_dy, this_dtheta)
+            this_rms_error = self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                this_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=False,  # Change to True for in-loop progress figures.
+            )
+            # # Keep for detailed testing.
+            # if self.debug.debug_active:
+            #     lt.info(
+            #         f'In find_best_camera_translation_of_distance_r(), r={r}m; beta={np.degrees(beta):.2f}; this_dx_dy_dtheta={this_dx_dy_dtheta}; this_rms={this_rms_error}pix'
+            #     )
+            if this_rms_error < current_best_rms_error:
+                if better_solution_found == False:
+                    # We have a better solution, and we haven't seen another one during this loop.
+                    better_dx_dy_dtheta = this_dx_dy_dtheta
+                    better_rms_error = this_rms_error
+                    better_solution_found = True
+                elif this_rms_error < better_rms_error:
+                    # We have a better solution than the better solution previously found in this loop.
+                    better_dx_dy_dtheta = this_dx_dy_dtheta
+                    better_rms_error = this_rms_error
+                else:
+                    # No action required.
+                    pass
+            # Increment loop variable.
+            beta += beta_step
+        # If a better solution was found, update our current best.
+        # Note that we didn't do this sooner, because the current best was used
+        # to compute the relative positions.
+        if better_solution_found == True:
+            current_best_dx_dy_dtheta = better_dx_dy_dtheta
+            current_best_rms_error = better_rms_error
+
+        # Return.
+        return current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found
+
+    def find_best_camera_rotation_of_dtheta_step(
+        self,
+        current_best_dx_dy_dtheta: tuple[float, float, float],
+        current_best_rms_error: float,
+        dtheta_step: float,
+        abs_max_delta_dtheta: float,
+        r_cam_optic_input: Rotation,
+        v_cam_optic_cam_input: Vxyz,
+        orientation: SpatialOrientation,
+        vxyz_corners_sfc: Vxyz,
+        mask_processed: np.ndarray,
+        search_spiral: list[tuple[int, int, float]],
+    ):
+        current_best_dx = current_best_dx_dy_dtheta[0]
+        current_best_dy = current_best_dx_dy_dtheta[1]
+        current_best_dtheta = current_best_dx_dy_dtheta[2]
+
+        # Search in positive direction.
+        better_solution_found = False
+        delta_dtheta = 0.0
+        while delta_dtheta < abs_max_delta_dtheta:
+            delta_dx = 0.0
+            delta_dy = 0.0
+            # We started at 0.0, which has already been checked.
+            # So increment the loop variable at the top of the loop.
+            delta_dtheta += dtheta_step
+            this_dx = current_best_dx + delta_dx
+            this_dy = current_best_dy + delta_dy
+            this_dtheta = current_best_dtheta + delta_dtheta
+            this_dx_dy_dtheta = (this_dx, this_dy, this_dtheta)
+            this_rms_error = self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                this_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=False,  # Change to True for in-loop progress figures.
+            )
+            # # Keep for detailed testing.
+            # if self.debug.debug_active:
+            #     lt.info(
+            #         f'In find_best_camera_rotation_of_dtheta_step(), delta_dth={np.degrees(delta_dtheta):.2f}; this_dx_dy_dth={this_dx_dy_dtheta}; this_rms={this_rms_error}pix'
+            #     )
+            if this_rms_error < current_best_rms_error:
+                if better_solution_found is False:
+                    # We have a better solution, and we haven't seen another one during this loop.
+                    better_dx_dy_dtheta = this_dx_dy_dtheta
+                    better_rms_error = this_rms_error
+                    better_solution_found = True
+                elif this_rms_error < better_rms_error:
+                    # We have a better solution than the better solution previously found in this loop.
+                    better_dx_dy_dtheta = this_dx_dy_dtheta
+                    better_rms_error = this_rms_error
+                else:
+                    # Our rms error function has some noise, due to the disappearance and
+                    # appearance of matching points.  So even if we have found a better
+                    # solution, we'll keep going until we hit the search window limit.
+                    pass
+        # If a better solution was found, update our current best.
+        # Note that we didn't do this sooner, because the current best was used
+        # to compute the relative positions.
+        if better_solution_found is True:
+            current_best_dx_dy_dtheta = better_dx_dy_dtheta
+            current_best_rms_error = better_rms_error
+
+        # Search in negative direction.
+        delta_dtheta = 0.0
+        while delta_dtheta > -abs_max_delta_dtheta:
+            delta_dx = 0.0
+            delta_dy = 0.0
+            # We started at 0.0, which has already been checked.
+            # So increment the loop variable at the top of the loop.
+            delta_dtheta -= dtheta_step
+            this_dx = current_best_dx + delta_dx
+            this_dy = current_best_dy + delta_dy
+            this_dtheta = current_best_dtheta + delta_dtheta
+            this_dx_dy_dtheta = (this_dx, this_dy, this_dtheta)
+            this_rms_error = self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                this_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=False,  # Change to True for in-loop progress figures.
+            )
+            # # Keep for detailed testing.
+            # if self.debug.debug_active:
+            #     lt.info(
+            #         f'In find_best_camera_rotation_of_dtheta_step(), delta_dth={np.degrees(delta_dtheta):.2f}; this_dx_dy_dth={this_dx_dy_dtheta}; this_rms={this_rms_error}pix'
+            #     )
+            if this_rms_error < current_best_rms_error:
+                if better_solution_found is False:
+                    # We have a better solution, and we haven't seen another one during this loop.
+                    better_dx_dy_dtheta = this_dx_dy_dtheta
+                    better_rms_error = this_rms_error
+                    better_solution_found = True
+                elif this_rms_error < better_rms_error:
+                    # We have a better solution than the better solution previously found in this loop.
+                    better_dx_dy_dtheta = this_dx_dy_dtheta
+                    better_rms_error = this_rms_error
+                else:
+                    # Our rms error function has some noise, due to the disappearance and
+                    # appearance of matching points.  So even if we have found a better
+                    # solution, we'll keep going until we hit the search window limit.
+                    pass
+        # If a better solution was found, update our current best.
+        # Note that we didn't do this sooner, because the current best was used
+        # to compute the relative positions.
+        if better_solution_found == True:
+            current_best_dx_dy_dtheta = better_dx_dy_dtheta
+            current_best_rms_error = better_rms_error
+
+        # Return.
+        return current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found
+
+    def find_best_camera_pose_preserving_aim_and_distance(
+        self,
+        r_cam_optic_entering_loop: Rotation,
+        v_cam_optic_cam_entering_loop: Vxyz,
+        original_orientation: SpatialOrientation,
+        vxyz_corners_sfc: Vxyz,
+        mask_processed: np.ndarray,
+        search_spiral: list[tuple[int, int, float]],
+    ):
+        optimized_dx_dy_dtheta, camera_view_alignment_rms_error = self.optimize_camera_pose_preserving_aim_and_distance(
+            r_cam_optic_entering_loop,
+            v_cam_optic_cam_entering_loop,
+            original_orientation,
+            vxyz_corners_sfc,
+            mask_processed,
+            search_spiral,
+        )
+
+        r_cam_optic_adjusted, v_cam_optic_cam_adjusted = self.adjust_camera_pose_preserving_aim_and_distance(
+            optimized_dx_dy_dtheta, r_cam_optic_entering_loop, v_cam_optic_cam_entering_loop, original_orientation
+        )
+
+        # Return.
+        return r_cam_optic_adjusted, v_cam_optic_cam_adjusted, camera_view_alignment_rms_error

@@ -434,7 +434,7 @@ class ProcessSofastFringe(ProcessSofastAbstract):
             self.measurement.v_measure_point_facet,
             # self.measurement.dist_optic_screen,
             # 0.82501,  # &&&& DELETE-SCAFFOLDING -- PASS THIS IN: dist_optic_screen
-            0.97201,  # &&&& DELETE-SCAFFOLDING -- PASS THIS IN: dist_optic_screen
+            0.96001,  # &&&& DELETE-SCAFFOLDING -- PASS THIS IN: dist_optic_screen
             self.orientation,
             self.camera,
             self.params.geometry,

@@ -584,7 +584,7 @@ class SlopeSolver:
     #             # Plot debug plot
     #             if self.debug.debug_active:
     #                 ssdo.figure_intersection_surface_situation(
-    #                     "After After Align Rotate, Then Calculate Intersections",
+    #                     "After Align Rotate, Then Calculate Intersections",
     #                     vxyz_corners_sfc,
     #                     None,
     #                     self.surface,
@@ -606,7 +606,7 @@ class SlopeSolver:
     #             # Plot debug plot
     #             if self.debug.debug_active:
     #                 ssdo.figure_intersection_surface_situation(
-    #                     "After After Align Rotate, Calculate Intersections, Calculate Slopes",
+    #                     "After Align Rotate, Calculate Intersections, Calculate Slopes",
     #                     vxyz_corners_sfc,
     #                     None,
     #                     self.surface,
@@ -791,10 +791,13 @@ class SlopeSolver:
         # Keep track of loop progress.
         loop_record_0 = {
             "loop_idx": loop_idx,
+            "loop_action_list": ["initial condition"],
             "surf_coefs": self.surface.surf_coefs,
             "slope_coefs": self.surface.slope_coefs,
             "r_cam_optic": r_cam_optic_entering_loop,
             "v_cam_optic_cam": v_cam_optic_cam_entering_loop,
+            "pose_rms": None,
+            "pose_dist_optic_screen": None,
             "vxyz_corners": vxyz_corners_entering_loop,
             "vxyz_corner_change": (vxyz_corners_entering_loop - vxyz_corners_entering_loop),  # Zero change.
             "n_intersect": 0,
@@ -808,7 +811,7 @@ class SlopeSolver:
         # Main loop.
         while True:
             loop_idx += 1
-            loop_record = {"loop_idx": loop_idx}
+            loop_record = {"loop_idx": loop_idx, "loop_action_list": []}
             loop_record_list.append(loop_record)
 
             # 1. Project facet boundary vertices along z onto surface equation COEFFS ==> 3-d facet vertices V'.
@@ -841,9 +844,10 @@ class SlopeSolver:
             # &&&& DELETE-SCAFFOLDING -- IMPROVE THIS LOOP CONTROL
             # ********
             lt.info(f'In fit_surface_sf2gen3, loop_idx={loop_idx}:')
-            if loop_idx == 1:
+            if (loop_idx == 1) or (loop_idx == 11):
+                loop_record["loop_action_list"].append("find_best_camera_pose_preserving_aim_and_distance")
                 # &&&& DELETE-SCAFFOLDING -- RENAME THESE VARIABLES, MOST LIKELY
-                r_cam_optic_new, v_cam_optic_cam_new, camera_view_alignment_rms_error = (
+                r_cam_optic_new, v_cam_optic_cam_new, camera_view_alignment_rms_error, camera_view_dist_optic_screen = (
                     self.find_best_camera_pose_preserving_aim_and_distance(
                         r_cam_optic_entering_loop,
                         v_cam_optic_cam_entering_loop,
@@ -853,8 +857,11 @@ class SlopeSolver:
                         search_spiral,
                     )
                 )
+                loop_record["pose_rms"] = camera_view_alignment_rms_error
+                loop_record["pose_dist_optic_screen"] = camera_view_dist_optic_screen
                 lt.info(
-                    f'In fit_surface_sf2gen3, final reproject-to-mask-edges alignment error={camera_view_alignment_rms_error}:'
+                    f'In fit_surface_sf2gen3, final reproject-to-mask-edges alignment error={camera_view_alignment_rms_error}.'
+                    f'In fit_surface_sf2gen3, final reproject-to-mask-edges dist_optic_screen={camera_view_dist_optic_screen}.'
                 )
             else:
                 # &&&& DELETE-SCAFFOLDING -- RENAME THESE VARIABLES, MOST LIKELY
@@ -876,6 +883,7 @@ class SlopeSolver:
             # &&&& DELETE-SCAFFOLDING -- TEMPORARY, OR DOCUMENT
             # &&&& DELETE-SCAFFOLDING -- "< 1000" IS TEMPORARY
             if loop_idx < 1000:  # loop_idx = 1 first pass through lopp.
+                loop_record["loop_action_list"].append("orient_optic_cam")
                 ori_new = copy.copy(original_orientation)
                 ori_new.orient_optic_cam(r_cam_optic_new, v_cam_optic_cam_new)
             loop_record["r_cam_optic"] = ori_new.r_cam_optic
@@ -924,6 +932,7 @@ class SlopeSolver:
             # Downsample measurement data
             u_active_pixel_pointing_optic_new_downsample = u_active_pixel_pointing_optic_new[:: self.surface.downsample]
             # Project camera pixel rays and intersect with fit surface
+            loop_record["loop_action_list"].append("intersect camera rays")
             self.surface.v_surf_int_pts_optic = self.surface.intersect(
                 u_active_pixel_pointing_optic_new_downsample, ori_new.v_optic_cam_optic
             )
@@ -945,6 +954,7 @@ class SlopeSolver:
             # &&&& DELETE-SCAFFOLDING -- BEGIN BLOCK OFF NON-POSITION
 
             if True:  # loop_idx > 2:  # &&&& DELETE-SCAFFOLDING -- FIX THIS
+                loop_record["loop_action_list"].append("calculate_slopes")
                 # 6. Use intersection points and reflection points RF to compute surface normals at INT points.
                 self.surface.calculate_slopes()
                 # Check for invalid points
@@ -973,6 +983,7 @@ class SlopeSolver:
                 # &&&& DELETE-SCAFFOLDING -- DOCUMENT NEW APPROACH: ALIGN BASED ON AVERAGE SLOPE.
                 # # &&&& DELETE-SCAFFOLDING -- THRESHOLDS SET FOR A SPECIFIC MIRROR EXAMPLE
                 if (loop_idx > 1) and (loop_idx <= 7):  # loop_idx = 1 first pass through loop.
+                    loop_record["loop_action_list"].append("align fit and measured average slopes")
                     # Capture current camera rotation and translation.
                     r_cam_optic_new_copy = copy.deepcopy(ori_new.r_cam_optic)
                     v_cam_optic_cam_new_copy = copy.deepcopy(ori_new.v_cam_optic_cam)
@@ -990,6 +1001,7 @@ class SlopeSolver:
                     print("   r_align_step         =", r_align_step.as_euler('XYZ', degrees=True))
                     print("   r_cam_optic_new_2    =", r_cam_optic_new_2.as_euler('XYZ', degrees=True))
                     print("\n")
+                    loop_record["loop_action_list"].append("orient_optic_cam_2")
                     ori_new = copy.deepcopy(original_orientation)
                     ori_new.orient_optic_cam(r_cam_optic_new_2, v_cam_optic_cam_new_2)
                     loop_record["r_cam_optic"] = ori_new.r_cam_optic
@@ -1034,6 +1046,7 @@ class SlopeSolver:
                         :: self.surface.downsample
                     ]
                     # Project camera pixel rays and intersect with fit surface
+                    loop_record["loop_action_list"].append("intersect camera rays for new pose")
                     self.surface.v_surf_int_pts_optic = self.surface.intersect(
                         u_active_pixel_pointing_optic_new_downsample, ori_new.v_optic_cam_optic
                     )
@@ -1049,7 +1062,7 @@ class SlopeSolver:
                     # Plot debug plot
                     if self.debug.debug_active:
                         ssdo.figure_intersection_surface_situation(
-                            "After After Align Rotate, Then Calculate Intersections",
+                            "After Align Rotate, Then Calculate Intersections",
                             vxyz_corners_sfc,
                             None,
                             self.surface,
@@ -1059,6 +1072,7 @@ class SlopeSolver:
                         )
 
                     # 6. Use intersection points and reflection points RF to compute surface normals at INT points.
+                    loop_record["loop_action_list"].append("calculate_slopes_after_align")
                     self.surface.calculate_slopes()
                     # Check for invalid points
                     # &&&& DELETE-SCAFFOLDING -- MOVE INTO CALCULATE_SLOPES() ROUTINE
@@ -1071,7 +1085,7 @@ class SlopeSolver:
                     # Plot debug plot
                     if self.debug.debug_active:
                         ssdo.figure_intersection_surface_situation(
-                            "After After Align Rotate, Calculate Intersections, Calculate Slopes",
+                            "After Align Rotate, Calculate Intersections, Calculate Slopes",
                             vxyz_corners_sfc,
                             None,
                             self.surface,
@@ -1110,12 +1124,14 @@ class SlopeSolver:
                 # 7. Using surface normals at points, compute regression fit for slope coefficients.
                 # 8. Convert fit slope coefficients to new surface COEFFS' = c0', c1x', c2x2', c3y', c4xy', c5y2'.
                 # # &&&& DELETE-SCAFFOLDING -- THRESHOLDS SET FOR A SPECIFIC MIRROR EXAMPLE
-                if loop_idx > 7:
+                if (loop_idx > 7) and (loop_idx != 11):
+                    loop_record["loop_action_list"].append("fit_slopes")
                     self.surface.fit_slopes()
                 loop_record["surf_coefs"] = self.surface.surf_coefs
                 loop_record["slope_coefs"] = self.surface.slope_coefs
 
                 # Set the fine facet boundary z values to lie on the new fit surface.
+                loop_record["loop_action_list"].append("facet corner z values to new surface")
                 z_facet_corners_hires_4 = sf2.coef_to_points(vxyz_corners_sfc, self.surface.surf_coefs, 2)
                 v_facet_corners_hires_4 = copy.deepcopy(vxyz_corners_sfc)
                 v_facet_corners_hires_4.data[2, :] = z_facet_corners_hires_4
@@ -1129,6 +1145,7 @@ class SlopeSolver:
 
                 # High-resolution points reprojected (after snap to new fit surface).
                 # &&&& DELETE-SCAFFOLDING -- MOVE REPROJECTION INTO DEBUG FIGURE ROUTINE
+                loop_record["loop_action_list"].append("project updated facet corners to image")
                 hires_pts_reproj_4 = self.debug.debug_geometry.camera.project(
                     v_facet_corners_hires_4, ori_new.r_cam_optic.inv(), ori_new.v_cam_optic_cam
                 )
@@ -1155,21 +1172,51 @@ class SlopeSolver:
 
                 # Summarize loop progress.
                 if self.debug.debug_active:
-                    lt.info("\nIn fit_surface_sf2gen3(), loop_record_list:")
-                    lt.info(ssdo.fit_surface_loop_record_column_headings())
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_units())
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
-                    for loop_record in loop_record_list:
-                        lt.info(ssdo.fit_surface_loop_record_str(loop_record))
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
+                    # lt.info("\nIn fit_surface_sf2gen3(), loop_record_list:")
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings())
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_units())
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
+                    # for loop_record in loop_record_list:
+                    #     lt.info(ssdo.fit_surface_loop_record_str(loop_record))
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
 
-                    lt.info("\nIn fit_surface_sf2gen3(), loop_record_list 2:")
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_2())
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_units_2())
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+                    # lt.info("\nIn fit_surface_sf2gen3(), loop_record_list 2:")
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_2())
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_units_2())
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+                    # for loop_record in loop_record_list:
+                    #     lt.info(ssdo.fit_surface_loop_record_str_2(loop_record))
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+
+                    # lt.info("\nIn fit_surface_sf2gen3(), loop_record_action_list (only selected):")
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_action())
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
+                    # for loop_record in loop_record_list:
+                    #     lt.info(ssdo.fit_surface_loop_record_str_action(loop_record, only_loop_select_actions=True))
+                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
+
+                    lt.info("\nIn fit_surface_sf2gen3(), loop_record_action_list:")
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_action())
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
                     for loop_record in loop_record_list:
-                        lt.info(ssdo.fit_surface_loop_record_str_2(loop_record))
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+                        lt.info(ssdo.fit_surface_loop_record_str_action(loop_record))
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
+
+                    lt.info("\nIn fit_surface_sf2gen3(), Loop convergence parameters:")
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_5())
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_units_5())
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_5())
+                    for loop_record in loop_record_list:
+                        lt.info(ssdo.fit_surface_loop_record_str_5(loop_record))
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_5())
+
+                    lt.info("\nIn fit_surface_sf2gen3(), Loop solution health parameters:")
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_6())
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_units_6())
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_6())
+                    for loop_record in loop_record_list:
+                        lt.info(ssdo.fit_surface_loop_record_str_6(loop_record))
+                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_6())
 
             # &&&& DELETE-SCAFFOLDING -- END BLOCK OFF NON-POSITION
 
@@ -1283,17 +1330,17 @@ class SlopeSolver:
         v_optic_screen_entering_loop = original_orientation.v_cam_screen_cam - (
             v_cam_optic_cam_entering_loop + v_align_point_cam_entering_loop
         )
-        dist_optic_screen_entering_loop = v_optic_screen_entering_loop.magnitude()
+        dist_optic_screen_entering_loop = v_optic_screen_entering_loop.magnitude()[0]
 
         v_optic_screen_adjusted = original_orientation.v_cam_screen_cam - (
             v_cam_optic_cam_adjusted + v_align_point_cam_adjusted
         )
-        dist_optic_screen_adjusted = v_optic_screen_adjusted.magnitude()
+        dist_optic_screen_adjusted = v_optic_screen_adjusted.magnitude()[0]
 
         v_optic_screen_adjusted_2 = original_orientation.v_cam_screen_cam - (
             v_cam_optic_cam_adjusted_2 + v_align_point_cam_adjusted
         )
-        dist_optic_screen_adjusted_2 = v_optic_screen_adjusted_2.magnitude()
+        dist_optic_screen_adjusted_2 = v_optic_screen_adjusted_2.magnitude()[0]
 
         # # Keep for detailed testing.
         # if self.debug.debug_active:
@@ -1315,7 +1362,7 @@ class SlopeSolver:
         # Return.
         # &&&& DELETE-SCAFFOLDING -- DELETE ONCE TESTED
         # return r_optic_cam_new, v_cam_optic_cam_adjusted_2
-        return r_cam_optic_adjusted, v_cam_optic_cam_adjusted_2
+        return r_cam_optic_adjusted, v_cam_optic_cam_adjusted_2, dist_optic_screen_adjusted_2
 
     def compute_pose_alignment_error_for_proposed_camera_adjustment(
         self,
@@ -1331,8 +1378,10 @@ class SlopeSolver:
         output_debug_figure: bool,
         debug_figure_status_str: str | None = None,
     ):
-        r_cam_optic_adjusted, v_cam_optic_cam_adjusted = self.adjust_camera_pose_preserving_aim_and_distance(
-            camera_dx_dy_dtheta, r_cam_optic_input, v_cam_optic_cam_input, orientation
+        r_cam_optic_adjusted, v_cam_optic_cam_adjusted, dist_optic_screen_adjusted = (
+            self.adjust_camera_pose_preserving_aim_and_distance(
+                camera_dx_dy_dtheta, r_cam_optic_input, v_cam_optic_cam_input, orientation
+            )
         )
 
         # 2. Use camera model and current POSE estimate to project 3-d vertices onto image.
@@ -1382,7 +1431,7 @@ class SlopeSolver:
             )
 
         # Return.
-        return rms
+        return rms, dist_optic_screen_adjusted
 
     def optimize_camera_pose_preserving_aim_and_distance(
         self,
@@ -1472,29 +1521,32 @@ class SlopeSolver:
         current_best_dy = 0.0  # m
         current_best_dtheta = 0.0  # radians
         current_best_dx_dy_dtheta = (current_best_dx, current_best_dy, current_best_dtheta)
-        current_best_rms_error = self.compute_pose_alignment_error_for_proposed_camera_adjustment(
-            current_best_dx_dy_dtheta,
-            r_cam_optic_input,
-            v_cam_optic_cam_input,
-            orientation,
-            vxyz_corners_sfc,
-            mask_processed,
-            search_spiral,
-            output_debug_figure=True,  # Draw the initial condition (if debug=True).
+        current_best_rms_error, current_best_dist_optic_screen = (
+            self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                current_best_dx_dy_dtheta,
+                r_cam_optic_input,
+                v_cam_optic_cam_input,
+                orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+                output_debug_figure=True,  # Draw the initial condition (if debug=True).
+            )
         )
         if self.debug.debug_active:
             lt.info(
-                f'In optimize_camera_pose_preserving_aim_and_distance(), current_best_dx_dy_dtheta={current_best_dx_dy_dtheta}; current_best_rms_error={current_best_rms_error}pix'
+                f'In optimize_camera_pose_preserving_aim_and_distance(), current_best_dx_dy_dtheta={current_best_dx_dy_dtheta}; current_best_rms_error={current_best_rms_error}pix; current_best_dist_optic_screen={current_best_dist_optic_screen:.4f}'
             )
 
         # Search for best translation of distance r.
         r = 0.01  # 0.002 # m
         beta_step = np.radians(30.0)
         while True:
-            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+            current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_translation_of_distance_r(
                     current_best_dx_dy_dtheta,
                     current_best_rms_error,
+                    current_best_dist_optic_screen,
                     r,
                     beta_step,
                     r_cam_optic_input,
@@ -1534,10 +1586,11 @@ class SlopeSolver:
         dtheta_step = np.radians(1.0)
         abs_max_delta_dtheta = np.radians(10.0)
         while True:
-            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+            current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_rotation_of_dtheta_step(
                     current_best_dx_dy_dtheta,
                     current_best_rms_error,
+                    current_best_dist_optic_screen,
                     dtheta_step,
                     abs_max_delta_dtheta,
                     r_cam_optic_input,
@@ -1577,10 +1630,11 @@ class SlopeSolver:
         r = 0.005  # 0.002 # m
         beta_step = np.radians(30.0)
         while True:
-            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+            current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_translation_of_distance_r(
                     current_best_dx_dy_dtheta,
                     current_best_rms_error,
+                    current_best_dist_optic_screen,
                     r,
                     beta_step,
                     r_cam_optic_input,
@@ -1620,10 +1674,11 @@ class SlopeSolver:
         dtheta_step = np.radians(0.5)
         abs_max_delta_dtheta = np.radians(2.5)
         while True:
-            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+            current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_rotation_of_dtheta_step(
                     current_best_dx_dy_dtheta,
                     current_best_rms_error,
+                    current_best_dist_optic_screen,
                     dtheta_step,
                     abs_max_delta_dtheta,
                     r_cam_optic_input,
@@ -1663,10 +1718,11 @@ class SlopeSolver:
         r = 0.0025  # 0.002 # m
         beta_step = np.radians(30.0)
         while True:
-            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+            current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_translation_of_distance_r(
                     current_best_dx_dy_dtheta,
                     current_best_rms_error,
+                    current_best_dist_optic_screen,
                     r,
                     beta_step,
                     r_cam_optic_input,
@@ -1706,10 +1762,11 @@ class SlopeSolver:
         dtheta_step = np.radians(0.25)
         abs_max_delta_dtheta = np.radians(1.25)
         while True:
-            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+            current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_rotation_of_dtheta_step(
                     current_best_dx_dy_dtheta,
                     current_best_rms_error,
+                    current_best_dist_optic_screen,
                     dtheta_step,
                     abs_max_delta_dtheta,
                     r_cam_optic_input,
@@ -1749,10 +1806,11 @@ class SlopeSolver:
         r = 0.001  # 0.002 # m
         beta_step = np.radians(30.0)
         while True:
-            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+            current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_translation_of_distance_r(
                     current_best_dx_dy_dtheta,
                     current_best_rms_error,
+                    current_best_dist_optic_screen,
                     r,
                     beta_step,
                     r_cam_optic_input,
@@ -1792,10 +1850,11 @@ class SlopeSolver:
         dtheta_step = np.radians(0.1)
         abs_max_delta_dtheta = np.radians(0.5)
         while True:
-            current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found = (
+            current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_rotation_of_dtheta_step(
                     current_best_dx_dy_dtheta,
                     current_best_rms_error,
+                    current_best_dist_optic_screen,
                     dtheta_step,
                     abs_max_delta_dtheta,
                     r_cam_optic_input,
@@ -1836,12 +1895,13 @@ class SlopeSolver:
             lt.info(
                 f'In optimize_camera_pose_preserving_aim_and_distance(), final best_dx_dy_dtheta={current_best_dx_dy_dtheta}; final best_rms_error={current_best_rms_error:.4f}pix'
             )
-        return current_best_dx_dy_dtheta, current_best_rms_error
+        return current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen
 
     def find_best_camera_translation_of_distance_r(
         self,
         current_best_dx_dy_dtheta: tuple[float, float, float],
         current_best_rms_error: float,
+        current_best_dist_optic_screen: float,
         r: float,
         beta_step: float,
         r_cam_optic_input: Rotation,
@@ -1865,15 +1925,17 @@ class SlopeSolver:
             this_dy = current_best_dy + delta_dy
             this_dtheta = current_best_dtheta + delta_dtheta
             this_dx_dy_dtheta = (this_dx, this_dy, this_dtheta)
-            this_rms_error = self.compute_pose_alignment_error_for_proposed_camera_adjustment(
-                this_dx_dy_dtheta,
-                r_cam_optic_input,
-                v_cam_optic_cam_input,
-                orientation,
-                vxyz_corners_sfc,
-                mask_processed,
-                search_spiral,
-                output_debug_figure=False,  # Change to True for in-loop progress figures.
+            this_rms_error, this_dist_optic_screen_adjusted = (
+                self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                    this_dx_dy_dtheta,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                    output_debug_figure=False,  # Change to True for in-loop progress figures.
+                )
             )
             # # Keep for detailed testing.
             # if self.debug.debug_active:
@@ -1885,11 +1947,13 @@ class SlopeSolver:
                     # We have a better solution, and we haven't seen another one during this loop.
                     better_dx_dy_dtheta = this_dx_dy_dtheta
                     better_rms_error = this_rms_error
+                    better_dist_optic_screen_adjusted = this_dist_optic_screen_adjusted
                     better_solution_found = True
                 elif this_rms_error < better_rms_error:
                     # We have a better solution than the better solution previously found in this loop.
                     better_dx_dy_dtheta = this_dx_dy_dtheta
                     better_rms_error = this_rms_error
+                    better_dist_optic_screen_adjusted = this_dist_optic_screen_adjusted
                 else:
                     # No action required.
                     pass
@@ -1901,14 +1965,16 @@ class SlopeSolver:
         if better_solution_found == True:
             current_best_dx_dy_dtheta = better_dx_dy_dtheta
             current_best_rms_error = better_rms_error
+            current_best_dist_optic_screen = better_dist_optic_screen_adjusted
 
         # Return.
-        return current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found
+        return current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found
 
     def find_best_camera_rotation_of_dtheta_step(
         self,
         current_best_dx_dy_dtheta: tuple[float, float, float],
         current_best_rms_error: float,
+        current_best_dist_optic_screen: float,
         dtheta_step: float,
         abs_max_delta_dtheta: float,
         r_cam_optic_input: Rotation,
@@ -1935,15 +2001,17 @@ class SlopeSolver:
             this_dy = current_best_dy + delta_dy
             this_dtheta = current_best_dtheta + delta_dtheta
             this_dx_dy_dtheta = (this_dx, this_dy, this_dtheta)
-            this_rms_error = self.compute_pose_alignment_error_for_proposed_camera_adjustment(
-                this_dx_dy_dtheta,
-                r_cam_optic_input,
-                v_cam_optic_cam_input,
-                orientation,
-                vxyz_corners_sfc,
-                mask_processed,
-                search_spiral,
-                output_debug_figure=False,  # Change to True for in-loop progress figures.
+            this_rms_error, this_dist_optic_screen_adjusted = (
+                self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                    this_dx_dy_dtheta,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                    output_debug_figure=False,  # Change to True for in-loop progress figures.
+                )
             )
             # # Keep for detailed testing.
             # if self.debug.debug_active:
@@ -1955,11 +2023,13 @@ class SlopeSolver:
                     # We have a better solution, and we haven't seen another one during this loop.
                     better_dx_dy_dtheta = this_dx_dy_dtheta
                     better_rms_error = this_rms_error
+                    better_dist_optic_screen_adjusted = this_dist_optic_screen_adjusted
                     better_solution_found = True
                 elif this_rms_error < better_rms_error:
                     # We have a better solution than the better solution previously found in this loop.
                     better_dx_dy_dtheta = this_dx_dy_dtheta
                     better_rms_error = this_rms_error
+                    better_dist_optic_screen_adjusted = this_dist_optic_screen_adjusted
                 else:
                     # Our rms error function has some noise, due to the disappearance and
                     # appearance of matching points.  So even if we have found a better
@@ -1971,6 +2041,7 @@ class SlopeSolver:
         if better_solution_found is True:
             current_best_dx_dy_dtheta = better_dx_dy_dtheta
             current_best_rms_error = better_rms_error
+            current_best_dist_optic_screen = better_dist_optic_screen_adjusted
 
         # Search in negative direction.
         delta_dtheta = 0.0
@@ -1984,15 +2055,17 @@ class SlopeSolver:
             this_dy = current_best_dy + delta_dy
             this_dtheta = current_best_dtheta + delta_dtheta
             this_dx_dy_dtheta = (this_dx, this_dy, this_dtheta)
-            this_rms_error = self.compute_pose_alignment_error_for_proposed_camera_adjustment(
-                this_dx_dy_dtheta,
-                r_cam_optic_input,
-                v_cam_optic_cam_input,
-                orientation,
-                vxyz_corners_sfc,
-                mask_processed,
-                search_spiral,
-                output_debug_figure=False,  # Change to True for in-loop progress figures.
+            this_rms_error, this_dist_optic_screen_adjusted = (
+                self.compute_pose_alignment_error_for_proposed_camera_adjustment(
+                    this_dx_dy_dtheta,
+                    r_cam_optic_input,
+                    v_cam_optic_cam_input,
+                    orientation,
+                    vxyz_corners_sfc,
+                    mask_processed,
+                    search_spiral,
+                    output_debug_figure=False,  # Change to True for in-loop progress figures.
+                )
             )
             # # Keep for detailed testing.
             # if self.debug.debug_active:
@@ -2004,11 +2077,13 @@ class SlopeSolver:
                     # We have a better solution, and we haven't seen another one during this loop.
                     better_dx_dy_dtheta = this_dx_dy_dtheta
                     better_rms_error = this_rms_error
+                    better_dist_optic_screen_adjusted = this_dist_optic_screen_adjusted
                     better_solution_found = True
                 elif this_rms_error < better_rms_error:
                     # We have a better solution than the better solution previously found in this loop.
                     better_dx_dy_dtheta = this_dx_dy_dtheta
                     better_rms_error = this_rms_error
+                    better_dist_optic_screen_adjusted = this_dist_optic_screen_adjusted
                 else:
                     # Our rms error function has some noise, due to the disappearance and
                     # appearance of matching points.  So even if we have found a better
@@ -2020,9 +2095,10 @@ class SlopeSolver:
         if better_solution_found == True:
             current_best_dx_dy_dtheta = better_dx_dy_dtheta
             current_best_rms_error = better_rms_error
+            current_best_dist_optic_screen = better_dist_optic_screen_adjusted
 
         # Return.
-        return current_best_dx_dy_dtheta, current_best_rms_error, better_solution_found
+        return current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found
 
     def find_best_camera_pose_preserving_aim_and_distance(
         self,
@@ -2033,18 +2109,32 @@ class SlopeSolver:
         mask_processed: np.ndarray,
         search_spiral: list[tuple[int, int, float]],
     ):
-        optimized_dx_dy_dtheta, camera_view_alignment_rms_error = self.optimize_camera_pose_preserving_aim_and_distance(
-            r_cam_optic_entering_loop,
-            v_cam_optic_cam_entering_loop,
-            original_orientation,
-            vxyz_corners_sfc,
-            mask_processed,
-            search_spiral,
+        optimized_dx_dy_dtheta, camera_view_alignment_rms_error, camera_view_dist_optic_screen = (
+            self.optimize_camera_pose_preserving_aim_and_distance(
+                r_cam_optic_entering_loop,
+                v_cam_optic_cam_entering_loop,
+                original_orientation,
+                vxyz_corners_sfc,
+                mask_processed,
+                search_spiral,
+            )
         )
 
-        r_cam_optic_adjusted, v_cam_optic_cam_adjusted = self.adjust_camera_pose_preserving_aim_and_distance(
-            optimized_dx_dy_dtheta, r_cam_optic_entering_loop, v_cam_optic_cam_entering_loop, original_orientation
+        r_cam_optic_adjusted, v_cam_optic_cam_adjusted, dist_optic_screen_adjusted = (
+            self.adjust_camera_pose_preserving_aim_and_distance(
+                optimized_dx_dy_dtheta, r_cam_optic_entering_loop, v_cam_optic_cam_entering_loop, original_orientation
+            )
         )
+        # Check that these are the same.
+        if camera_view_dist_optic_screen != dist_optic_screen_adjusted:
+            lt.error(
+                "In find_best_camera_pose_preserving_aim_and_distance(), camera_view_dist_optic_screen={camera_view_dist_optic_screen} and dist_optic_screen_adjusted={dist_optic_screen_adjusted} are not equal."
+            )
 
         # Return.
-        return r_cam_optic_adjusted, v_cam_optic_cam_adjusted, camera_view_alignment_rms_error
+        return (
+            r_cam_optic_adjusted,
+            v_cam_optic_cam_adjusted,
+            camera_view_alignment_rms_error,
+            camera_view_dist_optic_screen,
+        )

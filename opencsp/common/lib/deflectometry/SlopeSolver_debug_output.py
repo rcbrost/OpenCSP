@@ -74,7 +74,7 @@ def fit_surface_loop_record_str(loop_record: dict) -> str:
     norm_tc_str = f"{norm_tc:7.4f}"
     # Number of intersection points
     n_int_str = f"{loop_record['n_intersect']:7d}"
-    return f"{idx_str}  {c0_str} {c1x_str} {c2x2_str} {c3y_str} {c4xy_str} {c5y2_str}   {Dcorner_min_str}    {Dcorner_max_str}   {rcx_str} {rcy_str} {rcz_str} {tcx_str} {tcy_str} {tcz_str} {norm_tc_str}  {n_int_str}"
+    return f"{idx_str}  {c0_str} {c1x_str} {c2x2_str} {c3y_str} {c4xy_str} {c5y2_str}   {Dcorner_min_str}    {Dcorner_max_str}   {rcx_str} {rcy_str} {rcz_str} WHAT?? {tcx_str} {tcy_str} {tcz_str} {norm_tc_str}  {n_int_str}"
 
 
 # SOLVER LOOP PROGRESS SUMMARY 2
@@ -108,6 +108,200 @@ def fit_surface_loop_record_str_2(loop_record: dict) -> str:
     else:
         r_align_step_str = loop_record["r_align_step"].as_euler('XYZ', degrees=True)
     return f"{idx_str}   {avg_fit_str}     {avg_meas_str}     {avg_meas_minus_fit_str}     {r_align_step_str}"
+
+
+# SOLVER LOOP PROGRESS SUMMARY - ACTIONS
+
+
+def fit_surface_loop_record_column_headings_action() -> str:
+    return "idx  actions"
+
+
+def fit_surface_loop_record_column_headings_separator_action() -> str:
+    return "--------------------------------------------------------------------------------------------------------------------------------------------"
+
+
+def fit_surface_loop_record_str_action(loop_record: dict, only_loop_select_actions=False) -> str:
+    # Action list
+    # # &&&& DELETE-SCAFFOLDING -- DELETE AFTER TESTING
+    # action_list_str = str(loop_record["loop_action_list"])
+    action_list = loop_record["loop_action_list"]
+    # Add items.
+    # Loop index.
+    action_list_str = f"{loop_record['loop_idx']:2d}"
+    # Pose refinement.
+    action_list_str += "   "
+    if "find_best_camera_pose_preserving_aim_and_distance" in action_list:
+        action_list_str += "ref_pos"
+    else:
+        action_list_str += "   -   "
+    if not only_loop_select_actions:
+        # Orient mirror and camera.
+        action_list_str += "   "
+        if "orient_optic_cam" in action_list:
+            action_list_str += "orient"
+        else:
+            action_list_str += "  -   "
+    if not only_loop_select_actions:
+        # Intersect camera rays with optical surface.
+        action_list_str += "   "
+        if "intersect camera rays" in action_list:
+            action_list_str += "int_ray"
+        else:
+            action_list_str += "   -   "
+    if not only_loop_select_actions:
+        # Calculate slopes.
+        action_list_str += "   "
+        if "calculate_slopes" in action_list:
+            action_list_str += "clc_slp"
+        else:
+            action_list_str += "   -   "
+    # Align slopes.
+    action_list_str += "   "
+    if "align fit and measured average slopes" in action_list:
+        action_list_str += "align_slope"
+    else:
+        action_list_str += "     -     "
+    if not only_loop_select_actions:
+        # Orient mirror and camera.
+        action_list_str += "   "
+        if "orient_optic_cam_2" in action_list:
+            action_list_str += "orient_2"
+        else:
+            action_list_str += "   -    "
+    if not only_loop_select_actions:
+        # Intersect camera rays with optical surface, for new camera pose.
+        action_list_str += "   "
+        if "intersect camera rays for new pose" in action_list:
+            action_list_str += "int_ray_2"
+        else:
+            action_list_str += "    -    "
+    if not only_loop_select_actions:
+        # Calculate slopes, after align fit and measured.
+        action_list_str += "   "
+        if "calculate_slopes_after_align" in action_list:
+            action_list_str += "clc_slp_2"
+        else:
+            action_list_str += "    -    "
+    # Fit optical surface model to calculated slopes.
+    action_list_str += "   "
+    if "fit_slopes" in action_list:
+        action_list_str += "fit_slp"
+    else:
+        action_list_str += "   -   "
+    if not only_loop_select_actions:
+        # Snap facet corners to new embedding surface model.
+        action_list_str += "   "
+        if "facet corner z values to new surface" in action_list:
+            action_list_str += "z_2_sfc"
+        else:
+            action_list_str += "   -   "
+    if not only_loop_select_actions:
+        # Project facet corners to image.
+        action_list_str += "   "
+        if "project updated facet corners to image" in action_list:
+            action_list_str += "proj_2_img"
+        else:
+            action_list_str += "    -     "
+
+    return action_list_str
+
+
+# SOLVER LOOP PROGRESS SUMMARY - CONVERGENCE PARAMETERS
+
+
+def fit_surface_loop_record_column_headings_5() -> str:
+    return "idx  actions                          pose_rms         avg_fit_minus_measured             r_align_step_str          D_corner"
+
+
+def fit_surface_loop_record_column_headings_units_5() -> str:
+    #      "idx  actions                          pose_rms         avg_fit_minus_measured             r_align_step_str          D_corner"
+    return " -      -                              (pix)                    (m)                        (deg rx,ry,rz)              (m)"
+
+
+def fit_surface_loop_record_column_headings_separator_5() -> str:
+    return "-----------------------------------------------------------------------------------------------------------------------------"
+
+
+def fit_surface_loop_record_str_5(loop_record: dict) -> str:
+    # Loop index and action list
+    line_str = fit_surface_loop_record_str_action(loop_record, only_loop_select_actions=True)
+
+    # Camera pose reprojection RMS error.
+    line_str += "  "
+    if ('pose_rms' not in loop_record) or (loop_record['pose_rms'] is None):
+        #             4.3489
+        line_str += "   -   "
+    else:
+        line_str += f"{loop_record['pose_rms']:7.4f}"
+
+    # Average surface normals
+    line_str += "  "
+    line_str += loop_record["u_avg_measured_minus_fit"].to_str()
+    line_str += "  "
+    if loop_record["r_align_step"] is None:
+        #            [-0.03693,0.007841, 0.03119]
+        line_str += "             -              "
+    else:
+        euler_angles = loop_record["r_align_step"].as_euler('XYZ', degrees=True)
+        line_str += f"[{euler_angles[0]:8.4},{euler_angles[1]:8.4},{euler_angles[2]:8.4}]"
+
+    # Change in corners
+    line_str += "  "
+    vxyz_corner_change = loop_record['vxyz_corner_change']
+    change_min = vxyz_corner_change.data[2, :].min()
+    change_max = vxyz_corner_change.data[2, :].max()
+    abs_change_max = max(abs(change_min), abs(change_max))
+    line_str += f"{abs_change_max:9.6f}"
+
+    # Return
+    return line_str
+
+
+# SOLVER LOOP PROGRESS SUMMARY -- SOLUTION HEALTH PARAMETERS
+
+
+def fit_surface_loop_record_column_headings_6() -> str:
+    return "idx  actions                            c0      c1x    c2x2     c3y    c4xy    c5y2     rcx     rcy     rcz     tcx     tcy     tcz     |s2m|      n_int"
+
+
+def fit_surface_loop_record_column_headings_units_6() -> str:
+    #      "idx  actions                            c0      c1x    c2x2     c3y    c4xy    c5y2     rcx     rcy     rcz     tcx     tcy     tcz     |s2m|      n_int"
+    return " -      -                               (m)      -     (1/m)     -     (1/m)   (1/m)    (Rodriguez vector)      (m)     (m)     (m)      (m)         -"
+
+
+def fit_surface_loop_record_column_headings_separator_6() -> str:
+    #      "idx  actions                            c0      c1x    c2x2     c3y    c4xy    c5y2     rcx     rcy     rcz     tcx     tcy     tcz     |s2m|      n_int"
+    return "---------------------------------------------------------------------------------------------------------------------------------------------------------"
+
+
+def fit_surface_loop_record_str_6(loop_record: dict) -> str:
+    # Loop index and action list
+    line_str = fit_surface_loop_record_str_action(loop_record, only_loop_select_actions=True)
+
+    # Camera pose reprojection RMS error.
+    # Surface coefficients
+    line_str += f" {loop_record['surf_coefs'][0]:7.4f}"  # c0_str
+    line_str += f" {loop_record['surf_coefs'][1]:7.4f}"  # c1x_str
+    line_str += f" {loop_record['surf_coefs'][2]:7.4f}"  # c2x2_str
+    line_str += f" {loop_record['surf_coefs'][3]:7.4f}"  # c3y_str
+    line_str += f" {loop_record['surf_coefs'][4]:7.4f}"  # c4xy_str
+    line_str += f" {loop_record['surf_coefs'][5]:7.4f}"  # c5y2_str
+    # Camera pose
+    line_str += f" {loop_record['r_cam_optic'].as_rotvec()[0]:7.4f}"  # rcx_str
+    line_str += f" {loop_record['r_cam_optic'].as_rotvec()[1]:7.4f}"  # rcy_str
+    line_str += f" {loop_record['r_cam_optic'].as_rotvec()[2]:7.4f}"  # rcz_str
+    line_str += f" {loop_record['v_cam_optic_cam'].x[0]:7.4f}"  # tcx_str
+    line_str += f" {loop_record['v_cam_optic_cam'].y[0]:7.4f}"  # tcy_str
+    line_str += f" {loop_record['v_cam_optic_cam'].z[0]:7.4f}"  # tcz_str
+    # Screen-to-mirror distance
+    if ('pose_dist_optic_screen' not in loop_record) or (loop_record['pose_dist_optic_screen'] is None):
+        line_str += "      -    "  # norm_s2m_str
+    else:
+        line_str += f" {loop_record['pose_dist_optic_screen']:9.5f}m"  # norm_s2m_str
+    # Number of intersection points
+    line_str += f" {loop_record['n_intersect']:8d}"  # n_int_str
+    return line_str
 
 
 # INTERSECTION SURFACE, DEFINING VERTICES, CAMERA

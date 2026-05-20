@@ -23,23 +23,22 @@ import opencsp.common.lib.render_control.RenderControlPointSeq as rcps
 import opencsp.common.lib.render_control.RenderControlSofastSetup as rcssp
 import opencsp.common.lib.tool.log_tools as lt
 
-
 # SOLVER LOOP PROGRESS SUMMARY
 
 
 def fit_surface_loop_record_column_headings() -> str:
-    #       22  7777777 7777777 7777777 7777777 7777777 7777777   999999999    999999999   7777777 7777777 7777777 7777777 7777777 7777777 7777777
-    return "idx    c0     c1x     c2x2    c3y    c4xy    c5y2    Dcorner_min  Dcorner_max    rcx     rcy     rcz     tcx     tcy     tcz     |tc|    n_int"
+    #       22.22.22  7777777 7777777 7777777 7777777 7777777 7777777   999999999    999999999   7777777 7777777 7777777 7777777 7777777 7777777 7777777
+    return "idx          c0     c1x     c2x2    c3y    c4xy    c5y2    Dcorner_min  Dcorner_max    rcx     rcy     rcz     tcx     tcy     tcz     |tc|    n_int"
 
 
 def fit_surface_loop_record_column_headings_units() -> str:
-    #      "idx    c0     c1x     c2x2    c3y    c4xy    c5y2    Dcorner_min  Dcorner_max    rcx     rcy     rcz     tcx     tcy     tcz     |tc|    n_int"
-    return " -     (m)     -      (1/m)    -     (1/m)   (1/m)       (m)          (m)         (Rodriguez vector)     (m)     (m)     (m)     (m)       -"
+    #      "idx          c0     c1x     c2x2    c3y    c4xy    c5y2    Dcorner_min  Dcorner_max    rcx     rcy     rcz     tcx     tcy     tcz     |tc|    n_int"
+    return " -           (m)     -      (1/m)    -     (1/m)   (1/m)       (m)          (m)         (Rodriguez vector)     (m)     (m)     (m)     (m)       -"
 
 
 def fit_surface_loop_record_column_headings_separator() -> str:
-    #      "idx    c0     c1x     c2x2    c3y    c4xy    c5y2    Dcorner_min  Dcorner_max    rcx     rcy     rcz     tcx     tcy     tcz     |tc|    n_int"
-    return "----------------------------------------------------------------------------------------------------------------------------------------------"
+    #      "idx          c0     c1x     c2x2    c3y    c4xy    c5y2    Dcorner_min  Dcorner_max    rcx     rcy     rcz     tcx     tcy     tcz     |tc|    n_int"
+    return "----------------------------------------------------------------------------------------------------------------------------------------------------"
 
 
 def fit_surface_loop_record_str(loop_record: dict) -> str:
@@ -81,19 +80,19 @@ def fit_surface_loop_record_str(loop_record: dict) -> str:
 
 
 def fit_surface_loop_record_column_headings_2() -> str:
-    #        0   [  0.000000,   0.000000,   1.000000]     [  0.000000,   0.000000,   1.000000]     [  0.000000,   0.000000,   1.000000]
-    #        2   [  0.611923,  -0.185481,   0.768861]     [  0.603300,  -0.215173,   0.767939]     [ -0.008624,  -0.029692,  -0.000922]     [-6.78254892  0.94170392  5.70583218]
-    return "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured                        r_align_step_str"
+    #        0.00.00   [  0.000000,   0.000000,   1.000000]     [  0.000000,   0.000000,   1.000000]     [  0.000000,   0.000000,   1.000000]
+    #        2.00.00   [  0.611923,  -0.185481,   0.768861]     [  0.603300,  -0.215173,   0.767939]     [ -0.008624,  -0.029692,  -0.000922]     [-6.78254892  0.94170392  5.70583218]
+    return "idx                       avg_fit                                avg_measured                      avg_fit_minus_measured                        r_align_step_str"
 
 
 def fit_surface_loop_record_column_headings_units_2() -> str:
-    #      "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured                        r_align_step_str"
-    return " -                    (m)                                       (m)                                    (m)                                  (deg rx,ry,rz)"
+    #      "idx                       avg_fit                                avg_measured                      avg_fit_minus_measured                        r_align_step_str"
+    return " -                          (m)                                       (m)                                    (m)                                  (deg rx,ry,rz)"
 
 
 def fit_surface_loop_record_column_headings_separator_2() -> str:
-    #      "idx                 avg_fit                                avg_measured                      avg_fit_minus_measured                        r_align_step_str"
-    return "---------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+    #      "idx                       avg_fit                                avg_measured                      avg_fit_minus_measured                        r_align_step_str"
+    return "---------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 
 
 def fit_surface_loop_record_str_2(loop_record: dict) -> str:
@@ -114,11 +113,11 @@ def fit_surface_loop_record_str_2(loop_record: dict) -> str:
 
 
 def fit_surface_loop_record_column_headings_action() -> str:
-    return "idx  actions"
+    return "idx        actions"
 
 
 def fit_surface_loop_record_column_headings_separator_action() -> str:
-    return "--------------------------------------------------------------------------------------------------------------------------------------------"
+    return "--------------------------------------------------------------------------------------------------------------------------------------------------"
 
 
 def fit_surface_loop_record_str_action(loop_record: dict, only_loop_select_actions=False) -> str:
@@ -129,12 +128,27 @@ def fit_surface_loop_record_str_action(loop_record: dict, only_loop_select_actio
     # Add items.
     # Loop index.
     action_list_str = f"{loop_record['loop_idx']:2d}"
+    # Subloop index.
+    if "subloop_idx" in loop_record.keys():
+        action_list_str += f".{loop_record['subloop_idx']:02d}"
+    else:
+        action_list_str += "   "
+    # Subsubloop index.
+    if "subsubloop_idx" in loop_record.keys():
+        action_list_str += f".{loop_record['subsubloop_idx']:02d}"
+    else:
+        action_list_str += "   "
     # Pose refinement.
     action_list_str += "   "
     if "find_best_camera_pose_preserving_aim_and_distance" in action_list:
-        action_list_str += "ref_pos"
+        action_list_str += "ref_pos              "
+    elif "find_best_camera_translation_of_distance_r" in action_list:
+        action_list_str += f"ref_tr(r={(1000*loop_record['r']):4.1f}mm)     "
+    elif "find_best_camera_rotation_of_dtheta_step" in action_list:
+        action_list_str += f"ref_rot(dth={(1000*loop_record['dtheta_step']):4.1f}mrad)"
     else:
-        action_list_str += "   -   "
+        #                   ref_rot(dth= 1.7mrad)
+        action_list_str += "          -          "
     if not only_loop_select_actions:
         # Orient mirror and camera.
         action_list_str += "   "
@@ -211,25 +225,40 @@ def fit_surface_loop_record_str_action(loop_record: dict, only_loop_select_actio
 
 
 def fit_surface_loop_record_column_headings_5() -> str:
-    return "idx  actions                          pose_rms         avg_fit_minus_measured             r_align_step_str          D_corner"
+    return "idx        actions                                           best_dx_dy    best_dth  image_rms         avg_fit_minus_measured             r_align_step_str          D_corner"
 
 
 def fit_surface_loop_record_column_headings_units_5() -> str:
-    #      "idx  actions                          pose_rms         avg_fit_minus_measured             r_align_step_str          D_corner"
-    return " -      -                              (pix)                    (m)                        (deg rx,ry,rz)              (m)"
+    #      "idx        actions                                           best_dx_dy    best_dth  image_rms         avg_fit_minus_measured             r_align_step_str          D_corner"
+    return " -            -                                                 (mm)        (mrad)     (pix)                    (m)                        (deg rx,ry,rz)              (m)"
 
 
 def fit_surface_loop_record_column_headings_separator_5() -> str:
-    return "-----------------------------------------------------------------------------------------------------------------------------"
+    return "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 
 
 def fit_surface_loop_record_str_5(loop_record: dict) -> str:
     # Loop index and action list
     line_str = fit_surface_loop_record_str_action(loop_record, only_loop_select_actions=True)
 
+    # Camera pose adjustment.
+    line_str += "  "
+    if "current_best_dx_dy_dtheta" not in loop_record:
+        #            [ 23.16,  -4.13]   52.36
+        line_str += "       -             -  "
+    else:
+        best_dx_dy_dtheta = loop_record["current_best_dx_dy_dtheta"]
+        best_dx = best_dx_dy_dtheta[0]
+        best_dy = best_dx_dy_dtheta[1]
+        best_dth = best_dx_dy_dtheta[2]
+        line_str += f"[{(1000*best_dx):6.2f}, {(1000*best_dy):6.2f}]"
+        line_str += "  "
+        line_str += f"{(1000*best_dth):6.2f}"
+
     # Camera pose reprojection RMS error.
     line_str += "  "
-    if ('pose_rms' not in loop_record) or (loop_record['pose_rms'] is None):
+    line_str += "  "  # Add clearance for column heading.
+    if ("pose_rms" not in loop_record) or (loop_record["pose_rms"] is None):
         #             4.3489
         line_str += "   -   "
     else:
@@ -237,22 +266,29 @@ def fit_surface_loop_record_str_5(loop_record: dict) -> str:
 
     # Average surface normals
     line_str += "  "
-    line_str += loop_record["u_avg_measured_minus_fit"].to_str()
+    if "u_avg_measured_minus_fit" not in loop_record:
+        #            [  0.000000,   0.000000,   1.000000]
+        line_str += "                   -                "
+    else:
+        line_str += loop_record["u_avg_measured_minus_fit"].to_str()
     line_str += "  "
-    if loop_record["r_align_step"] is None:
+    if ("r_align_step" not in loop_record) or (loop_record["r_align_step"] is None):
         #            [-0.03693,0.007841, 0.03119]
         line_str += "             -              "
     else:
         euler_angles = loop_record["r_align_step"].as_euler('XYZ', degrees=True)
-        line_str += f"[{euler_angles[0]:8.4},{euler_angles[1]:8.4},{euler_angles[2]:8.4}]"
+        line_str += f"[{euler_angles[0]:8.4f},{euler_angles[1]:8.4f},{euler_angles[2]:8.4f}]"
 
     # Change in corners
     line_str += "  "
-    vxyz_corner_change = loop_record['vxyz_corner_change']
-    change_min = vxyz_corner_change.data[2, :].min()
-    change_max = vxyz_corner_change.data[2, :].max()
-    abs_change_max = max(abs(change_min), abs(change_max))
-    line_str += f"{abs_change_max:9.6f}"
+    if "vxyz_corner_change" not in loop_record:
+        line_str += "    -    "
+    else:
+        vxyz_corner_change = loop_record["vxyz_corner_change"]
+        change_min = vxyz_corner_change.data[2, :].min()
+        change_max = vxyz_corner_change.data[2, :].max()
+        abs_change_max = max(abs(change_min), abs(change_max))
+        line_str += f"{abs_change_max:9.6f}"
 
     # Return
     return line_str
@@ -262,17 +298,17 @@ def fit_surface_loop_record_str_5(loop_record: dict) -> str:
 
 
 def fit_surface_loop_record_column_headings_6() -> str:
-    return "idx  actions                            c0      c1x    c2x2     c3y    c4xy    c5y2     rcx     rcy     rcz     tcx     tcy     tcz     |s2m|      n_int"
+    return "idx        actions                                          c0      c1x    c2x2     c3y    c4xy    c5y2     rcx     rcy     rcz     tcx     tcy     tcz     |s2m|      n_int"
 
 
 def fit_surface_loop_record_column_headings_units_6() -> str:
-    #      "idx  actions                            c0      c1x    c2x2     c3y    c4xy    c5y2     rcx     rcy     rcz     tcx     tcy     tcz     |s2m|      n_int"
-    return " -      -                               (m)      -     (1/m)     -     (1/m)   (1/m)    (Rodriguez vector)      (m)     (m)     (m)      (m)         -"
+    #      "idx        actions                                          c0      c1x    c2x2     c3y    c4xy    c5y2     rcx     rcy     rcz     tcx     tcy     tcz     |s2m|      n_int"
+    return " -            -                                             (m)      -     (1/m)     -     (1/m)   (1/m)    (Rodriguez vector)      (m)     (m)     (m)      (m)         -"
 
 
 def fit_surface_loop_record_column_headings_separator_6() -> str:
-    #      "idx  actions                            c0      c1x    c2x2     c3y    c4xy    c5y2     rcx     rcy     rcz     tcx     tcy     tcz     |s2m|      n_int"
-    return "---------------------------------------------------------------------------------------------------------------------------------------------------------"
+    #      "idx        actions                                          c0      c1x    c2x2     c3y    c4xy    c5y2     rcx     rcy     rcz     tcx     tcy     tcz     |s2m|      n_int"
+    return "-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
 
 
 def fit_surface_loop_record_str_6(loop_record: dict) -> str:
@@ -281,26 +317,47 @@ def fit_surface_loop_record_str_6(loop_record: dict) -> str:
 
     # Camera pose reprojection RMS error.
     # Surface coefficients
-    line_str += f" {loop_record['surf_coefs'][0]:7.4f}"  # c0_str
-    line_str += f" {loop_record['surf_coefs'][1]:7.4f}"  # c1x_str
-    line_str += f" {loop_record['surf_coefs'][2]:7.4f}"  # c2x2_str
-    line_str += f" {loop_record['surf_coefs'][3]:7.4f}"  # c3y_str
-    line_str += f" {loop_record['surf_coefs'][4]:7.4f}"  # c4xy_str
-    line_str += f" {loop_record['surf_coefs'][5]:7.4f}"  # c5y2_str
+    if "surf_coefs" not in loop_record:
+        line_str += "    -   "  # c0_str
+        line_str += "    -   "  # c1x_str
+        line_str += "    -   "  # c2x2_str
+        line_str += "    -   "  # c3y_str
+        line_str += "    -   "  # c4xy_str
+        line_str += "    -   "  # c5y2_str
+    else:
+        line_str += f" {loop_record['surf_coefs'][0]:7.4f}"  # c0_str
+        line_str += f" {loop_record['surf_coefs'][1]:7.4f}"  # c1x_str
+        line_str += f" {loop_record['surf_coefs'][2]:7.4f}"  # c2x2_str
+        line_str += f" {loop_record['surf_coefs'][3]:7.4f}"  # c3y_str
+        line_str += f" {loop_record['surf_coefs'][4]:7.4f}"  # c4xy_str
+        line_str += f" {loop_record['surf_coefs'][5]:7.4f}"  # c5y2_str
     # Camera pose
-    line_str += f" {loop_record['r_cam_optic'].as_rotvec()[0]:7.4f}"  # rcx_str
-    line_str += f" {loop_record['r_cam_optic'].as_rotvec()[1]:7.4f}"  # rcy_str
-    line_str += f" {loop_record['r_cam_optic'].as_rotvec()[2]:7.4f}"  # rcz_str
-    line_str += f" {loop_record['v_cam_optic_cam'].x[0]:7.4f}"  # tcx_str
-    line_str += f" {loop_record['v_cam_optic_cam'].y[0]:7.4f}"  # tcy_str
-    line_str += f" {loop_record['v_cam_optic_cam'].z[0]:7.4f}"  # tcz_str
+    if "r_cam_optic" not in loop_record:
+        line_str += f"    -   "  # rcx_str
+        line_str += f"    -   "  # rcy_str
+        line_str += f"    -   "  # rcz_str
+    else:
+        line_str += f" {loop_record['r_cam_optic'].as_rotvec()[0]:7.4f}"  # rcx_str
+        line_str += f" {loop_record['r_cam_optic'].as_rotvec()[1]:7.4f}"  # rcy_str
+        line_str += f" {loop_record['r_cam_optic'].as_rotvec()[2]:7.4f}"  # rcz_str
+    if "v_cam_optic_cam" not in loop_record:
+        line_str += "    -   "  # tcx_str
+        line_str += "    -   "  # tcy_str
+        line_str += "    -   "  # tcz_str
+    else:
+        line_str += f" {loop_record['v_cam_optic_cam'].x[0]:7.4f}"  # tcx_str
+        line_str += f" {loop_record['v_cam_optic_cam'].y[0]:7.4f}"  # tcy_str
+        line_str += f" {loop_record['v_cam_optic_cam'].z[0]:7.4f}"  # tcz_str
     # Screen-to-mirror distance
-    if ('pose_dist_optic_screen' not in loop_record) or (loop_record['pose_dist_optic_screen'] is None):
+    if ("pose_dist_optic_screen" not in loop_record) or (loop_record["pose_dist_optic_screen"] is None):
         line_str += "      -    "  # norm_s2m_str
     else:
         line_str += f" {loop_record['pose_dist_optic_screen']:9.5f}m"  # norm_s2m_str
     # Number of intersection points
-    line_str += f" {loop_record['n_intersect']:8d}"  # n_int_str
+    if "n_intersect" not in loop_record:
+        line_str += f"      -    "
+    else:
+        line_str += f" {loop_record['n_intersect']:8d}"  # n_int_str
     return line_str
 
 

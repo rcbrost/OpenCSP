@@ -812,7 +812,8 @@ class SlopeSolver:
         while True:
             loop_idx += 1
             loop_record = {"loop_idx": loop_idx, "loop_action_list": []}
-            loop_record_list.append(loop_record)
+            # &&&& DELETE-SCAFFOLDING -- THIS IS MOVED TO END, DELETE ONCE STABLE
+            # loop_record_list.append(loop_record)
 
             # 1. Project facet boundary vertices along z onto surface equation COEFFS ==> 3-d facet vertices V'.
             z_corners_sfc = sf2.coef_to_points(vxyz_corners_entering_loop, self.surface.surf_coefs, 2)
@@ -855,6 +856,8 @@ class SlopeSolver:
                         vxyz_corners_sfc,
                         mask_processed,
                         search_spiral,
+                        loop_idx,
+                        loop_record_list,
                     )
                 )
                 loop_record["pose_rms"] = camera_view_alignment_rms_error
@@ -1170,53 +1173,58 @@ class SlopeSolver:
                         self.debug,
                     )
 
-                # Summarize loop progress.
-                if self.debug.debug_active:
-                    # lt.info("\nIn fit_surface_sf2gen3(), loop_record_list:")
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings())
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_units())
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
-                    # for loop_record in loop_record_list:
-                    #     lt.info(ssdo.fit_surface_loop_record_str(loop_record))
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
+            # Store the progress of this loop iteration.
+            # We store this at teh end of the loop, because it shows the result of the loop.
+            # And there might be sub-loops iterating above.
+            loop_record_list.append(loop_record)
 
-                    # lt.info("\nIn fit_surface_sf2gen3(), loop_record_list 2:")
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_2())
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_units_2())
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
-                    # for loop_record in loop_record_list:
-                    #     lt.info(ssdo.fit_surface_loop_record_str_2(loop_record))
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+            # Summarize loop progress.
+            if self.debug.debug_active:
+                # lt.info("\nIn fit_surface_sf2gen3(), loop_record_list:")
+                # lt.info(ssdo.fit_surface_loop_record_column_headings())
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_units())
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
+                # for loop_record in loop_record_list:
+                #     lt.info(ssdo.fit_surface_loop_record_str(loop_record))
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_separator())
 
-                    # lt.info("\nIn fit_surface_sf2gen3(), loop_record_action_list (only selected):")
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_action())
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
-                    # for loop_record in loop_record_list:
-                    #     lt.info(ssdo.fit_surface_loop_record_str_action(loop_record, only_loop_select_actions=True))
-                    # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
+                # lt.info("\nIn fit_surface_sf2gen3(), loop_record_list 2:")
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_2())
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_units_2())
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
+                # for loop_record in loop_record_list:
+                #     lt.info(ssdo.fit_surface_loop_record_str_2(loop_record))
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_2())
 
-                    lt.info("\nIn fit_surface_sf2gen3(), loop_record_action_list:")
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_action())
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
-                    for loop_record in loop_record_list:
-                        lt.info(ssdo.fit_surface_loop_record_str_action(loop_record))
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
+                # lt.info("\nIn fit_surface_sf2gen3(), loop_record_action_list (only selected):")
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_action())
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
+                # for loop_record in loop_record_list:
+                #     lt.info(ssdo.fit_surface_loop_record_str_action(loop_record, only_loop_select_actions=True))
+                # lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
 
-                    lt.info("\nIn fit_surface_sf2gen3(), Loop convergence parameters:")
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_5())
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_units_5())
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_5())
-                    for loop_record in loop_record_list:
-                        lt.info(ssdo.fit_surface_loop_record_str_5(loop_record))
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_5())
+                lt.info("\nIn fit_surface_sf2gen3(), loop_record_action_list:")
+                lt.info(ssdo.fit_surface_loop_record_column_headings_action())
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
+                for loop_record in loop_record_list:
+                    lt.info(ssdo.fit_surface_loop_record_str_action(loop_record))
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator_action())
 
-                    lt.info("\nIn fit_surface_sf2gen3(), Loop solution health parameters:")
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_6())
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_units_6())
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_6())
-                    for loop_record in loop_record_list:
-                        lt.info(ssdo.fit_surface_loop_record_str_6(loop_record))
-                    lt.info(ssdo.fit_surface_loop_record_column_headings_separator_6())
+                lt.info("\nIn fit_surface_sf2gen3(), Loop convergence parameters:")
+                lt.info(ssdo.fit_surface_loop_record_column_headings_5())
+                lt.info(ssdo.fit_surface_loop_record_column_headings_units_5())
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator_5())
+                for loop_record in loop_record_list:
+                    lt.info(ssdo.fit_surface_loop_record_str_5(loop_record))
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator_5())
+
+                lt.info("\nIn fit_surface_sf2gen3(), Loop solution health parameters:")
+                lt.info(ssdo.fit_surface_loop_record_column_headings_6())
+                lt.info(ssdo.fit_surface_loop_record_column_headings_units_6())
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator_6())
+                for loop_record in loop_record_list:
+                    lt.info(ssdo.fit_surface_loop_record_str_6(loop_record))
+                lt.info(ssdo.fit_surface_loop_record_column_headings_separator_6())
 
             # &&&& DELETE-SCAFFOLDING -- END BLOCK OFF NON-POSITION
 
@@ -1441,6 +1449,8 @@ class SlopeSolver:
         vxyz_corners_sfc: Vxyz,
         mask_processed: np.ndarray,
         search_spiral: list[tuple[int, int, float]],
+        loop_idx: int,
+        loop_record_list: list[dict],
     ):
 
         # &&&& DELETE-SCAFFOLDING -- WHERE SHOULD THIS COMENT BLOCK GO?
@@ -1538,9 +1548,13 @@ class SlopeSolver:
                 f'In optimize_camera_pose_preserving_aim_and_distance(), current_best_dx_dy_dtheta={current_best_dx_dy_dtheta}; current_best_rms_error={current_best_rms_error}pix; current_best_dist_optic_screen={current_best_dist_optic_screen:.4f}'
             )
 
+        # First resolution.
+        subloop_idx = 1
+
         # Search for best translation of distance r.
         r = 0.01  # 0.002 # m
         beta_step = np.radians(30.0)
+        subsubloop_idx = 1
         while True:
             current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_translation_of_distance_r(
@@ -1557,6 +1571,19 @@ class SlopeSolver:
                     search_spiral,
                 )
             )
+            subloop_record = {
+                "loop_idx": loop_idx,
+                "subloop_idx": subloop_idx,
+                "subsubloop_idx": subsubloop_idx,
+                "loop_action_list": ["find_best_camera_translation_of_distance_r"],
+                "r": r,
+                "beta_step": beta_step,
+                "current_best_dx_dy_dtheta": current_best_dx_dy_dtheta,
+                "pose_rms": current_best_rms_error,
+                "pose_dist_optic_screen": current_best_dist_optic_screen,
+                "better_solution_found": better_solution_found,
+            }
+            loop_record_list.append(subloop_record)
             if self.debug.debug_active:
                 lt.info(
                     f'In optimize_camera_pose_preserving_aim_and_distance(), after trans r={r}m, '
@@ -1566,6 +1593,8 @@ class SlopeSolver:
                 )
             if not better_solution_found:
                 break
+            else:
+                subsubloop_idx += 1
         # Debugging output.
         if self.debug.debug_active:
             # Force output of debugging figure, which requires some recomputation.
@@ -1585,6 +1614,7 @@ class SlopeSolver:
         # Search for best rotation of step dtheta_step.
         dtheta_step = np.radians(1.0)
         abs_max_delta_dtheta = np.radians(10.0)
+        subsubloop_idx += 1
         while True:
             current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_rotation_of_dtheta_step(
@@ -1601,6 +1631,19 @@ class SlopeSolver:
                     search_spiral,
                 )
             )
+            subloop_record = {
+                "loop_idx": loop_idx,
+                "subloop_idx": subloop_idx,
+                "subsubloop_idx": subsubloop_idx,
+                "loop_action_list": ["find_best_camera_rotation_of_dtheta_step"],
+                "dtheta_step": dtheta_step,
+                "abs_max_delta_dtheta": abs_max_delta_dtheta,
+                "current_best_dx_dy_dtheta": current_best_dx_dy_dtheta,
+                "pose_rms": current_best_rms_error,
+                "pose_dist_optic_screen": current_best_dist_optic_screen,
+                "better_solution_found": better_solution_found,
+            }
+            loop_record_list.append(subloop_record)
             if self.debug.debug_active:
                 lt.info(
                     f'In optimize_camera_pose_preserving_aim_and_distance(), after rot dth_step={np.degrees(dtheta_step)}deg, '
@@ -1610,6 +1653,8 @@ class SlopeSolver:
                 )
             if not better_solution_found:
                 break
+            else:
+                subsubloop_idx += 1
         # Debugging output.
         if self.debug.debug_active:
             # Force output of debugging figure, which requires some recomputation.
@@ -1626,9 +1671,13 @@ class SlopeSolver:
                 debug_figure_status_str=f'dth_step={np.degrees(dtheta_step)}deg ',
             )
 
+        # Next resolution.
+        subloop_idx += 1
+
         # Search for best translation of distance r.
         r = 0.005  # 0.002 # m
         beta_step = np.radians(30.0)
+        subsubloop_idx = 1
         while True:
             current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_translation_of_distance_r(
@@ -1645,6 +1694,19 @@ class SlopeSolver:
                     search_spiral,
                 )
             )
+            subloop_record = {
+                "loop_idx": loop_idx,
+                "subloop_idx": subloop_idx,
+                "subsubloop_idx": subsubloop_idx,
+                "loop_action_list": ["find_best_camera_translation_of_distance_r"],
+                "r": r,
+                "beta_step": beta_step,
+                "current_best_dx_dy_dtheta": current_best_dx_dy_dtheta,
+                "pose_rms": current_best_rms_error,
+                "pose_dist_optic_screen": current_best_dist_optic_screen,
+                "better_solution_found": better_solution_found,
+            }
+            loop_record_list.append(subloop_record)
             if self.debug.debug_active:
                 lt.info(
                     f'In optimize_camera_pose_preserving_aim_and_distance(), after trans r={r}m, '
@@ -1654,6 +1716,8 @@ class SlopeSolver:
                 )
             if not better_solution_found:
                 break
+            else:
+                subsubloop_idx += 1
         # Debugging output.
         if self.debug.debug_active:
             # Force output of debugging figure, which requires some recomputation.
@@ -1673,6 +1737,7 @@ class SlopeSolver:
         # Search for best rotation of step dtheta_step.
         dtheta_step = np.radians(0.5)
         abs_max_delta_dtheta = np.radians(2.5)
+        subsubloop_idx += 1
         while True:
             current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_rotation_of_dtheta_step(
@@ -1689,6 +1754,19 @@ class SlopeSolver:
                     search_spiral,
                 )
             )
+            subloop_record = {
+                "loop_idx": loop_idx,
+                "subloop_idx": subloop_idx,
+                "subsubloop_idx": subsubloop_idx,
+                "loop_action_list": ["find_best_camera_rotation_of_dtheta_step"],
+                "dtheta_step": dtheta_step,
+                "abs_max_delta_dtheta": abs_max_delta_dtheta,
+                "current_best_dx_dy_dtheta": current_best_dx_dy_dtheta,
+                "pose_rms": current_best_rms_error,
+                "pose_dist_optic_screen": current_best_dist_optic_screen,
+                "better_solution_found": better_solution_found,
+            }
+            loop_record_list.append(subloop_record)
             if self.debug.debug_active:
                 lt.info(
                     f'In optimize_camera_pose_preserving_aim_and_distance(), after rot dth_step={np.degrees(dtheta_step)}deg, '
@@ -1698,6 +1776,8 @@ class SlopeSolver:
                 )
             if not better_solution_found:
                 break
+            else:
+                subsubloop_idx += 1
         # Debugging output.
         if self.debug.debug_active:
             # Force output of debugging figure, which requires some recomputation.
@@ -1714,9 +1794,13 @@ class SlopeSolver:
                 debug_figure_status_str=f'dth_step={np.degrees(dtheta_step)}deg ',
             )
 
+        # Next resolution.
+        subloop_idx += 1
+
         # Search for best translation of distance r.
         r = 0.0025  # 0.002 # m
         beta_step = np.radians(30.0)
+        subsubloop_idx = 1
         while True:
             current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_translation_of_distance_r(
@@ -1733,6 +1817,19 @@ class SlopeSolver:
                     search_spiral,
                 )
             )
+            subloop_record = {
+                "loop_idx": loop_idx,
+                "subloop_idx": subloop_idx,
+                "subsubloop_idx": subsubloop_idx,
+                "loop_action_list": ["find_best_camera_translation_of_distance_r"],
+                "r": r,
+                "beta_step": beta_step,
+                "current_best_dx_dy_dtheta": current_best_dx_dy_dtheta,
+                "pose_rms": current_best_rms_error,
+                "pose_dist_optic_screen": current_best_dist_optic_screen,
+                "better_solution_found": better_solution_found,
+            }
+            loop_record_list.append(subloop_record)
             if self.debug.debug_active:
                 lt.info(
                     f'In optimize_camera_pose_preserving_aim_and_distance(), after trans r={r}m, '
@@ -1742,6 +1839,8 @@ class SlopeSolver:
                 )
             if not better_solution_found:
                 break
+            else:
+                subsubloop_idx += 1
         # Debugging output.
         if self.debug.debug_active:
             # Force output of debugging figure, which requires some recomputation.
@@ -1761,6 +1860,7 @@ class SlopeSolver:
         # Search for best rotation of step dtheta_step.
         dtheta_step = np.radians(0.25)
         abs_max_delta_dtheta = np.radians(1.25)
+        subsubloop_idx += 1
         while True:
             current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_rotation_of_dtheta_step(
@@ -1777,6 +1877,19 @@ class SlopeSolver:
                     search_spiral,
                 )
             )
+            subloop_record = {
+                "loop_idx": loop_idx,
+                "subloop_idx": subloop_idx,
+                "subsubloop_idx": subsubloop_idx,
+                "loop_action_list": ["find_best_camera_rotation_of_dtheta_step"],
+                "dtheta_step": dtheta_step,
+                "abs_max_delta_dtheta": abs_max_delta_dtheta,
+                "current_best_dx_dy_dtheta": current_best_dx_dy_dtheta,
+                "pose_rms": current_best_rms_error,
+                "pose_dist_optic_screen": current_best_dist_optic_screen,
+                "better_solution_found": better_solution_found,
+            }
+            loop_record_list.append(subloop_record)
             if self.debug.debug_active:
                 lt.info(
                     f'In optimize_camera_pose_preserving_aim_and_distance(), after rot dth_step={np.degrees(dtheta_step)}deg, '
@@ -1786,6 +1899,8 @@ class SlopeSolver:
                 )
             if not better_solution_found:
                 break
+            else:
+                subsubloop_idx += 1
         # Debugging output.
         if self.debug.debug_active:
             # Force output of debugging figure, which requires some recomputation.
@@ -1802,9 +1917,13 @@ class SlopeSolver:
                 debug_figure_status_str=f'dth_step={np.degrees(dtheta_step)}deg ',
             )
 
+        # Next resolution.
+        subloop_idx += 1
+
         # Search for best translation of distance r.
         r = 0.001  # 0.002 # m
         beta_step = np.radians(30.0)
+        subsubloop_idx = 1
         while True:
             current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_translation_of_distance_r(
@@ -1821,6 +1940,19 @@ class SlopeSolver:
                     search_spiral,
                 )
             )
+            subloop_record = {
+                "loop_idx": loop_idx,
+                "subloop_idx": subloop_idx,
+                "subsubloop_idx": subsubloop_idx,
+                "loop_action_list": ["find_best_camera_translation_of_distance_r"],
+                "r": r,
+                "beta_step": beta_step,
+                "current_best_dx_dy_dtheta": current_best_dx_dy_dtheta,
+                "pose_rms": current_best_rms_error,
+                "pose_dist_optic_screen": current_best_dist_optic_screen,
+                "better_solution_found": better_solution_found,
+            }
+            loop_record_list.append(subloop_record)
             if self.debug.debug_active:
                 lt.info(
                     f'In optimize_camera_pose_preserving_aim_and_distance(), after trans r={r}m, '
@@ -1830,6 +1962,8 @@ class SlopeSolver:
                 )
             if not better_solution_found:
                 break
+            else:
+                subsubloop_idx += 1
         # Debugging output.
         if self.debug.debug_active:
             # Force output of debugging figure, which requires some recomputation.
@@ -1849,6 +1983,7 @@ class SlopeSolver:
         # Search for best rotation of step dtheta_step.
         dtheta_step = np.radians(0.1)
         abs_max_delta_dtheta = np.radians(0.5)
+        subsubloop_idx += 1
         while True:
             current_best_dx_dy_dtheta, current_best_rms_error, current_best_dist_optic_screen, better_solution_found = (
                 self.find_best_camera_rotation_of_dtheta_step(
@@ -1865,6 +2000,19 @@ class SlopeSolver:
                     search_spiral,
                 )
             )
+            subloop_record = {
+                "loop_idx": loop_idx,
+                "subloop_idx": subloop_idx,
+                "subsubloop_idx": subsubloop_idx,
+                "loop_action_list": ["find_best_camera_rotation_of_dtheta_step"],
+                "dtheta_step": dtheta_step,
+                "abs_max_delta_dtheta": abs_max_delta_dtheta,
+                "current_best_dx_dy_dtheta": current_best_dx_dy_dtheta,
+                "pose_rms": current_best_rms_error,
+                "pose_dist_optic_screen": current_best_dist_optic_screen,
+                "better_solution_found": better_solution_found,
+            }
+            loop_record_list.append(subloop_record)
             if self.debug.debug_active:
                 lt.info(
                     f'In optimize_camera_pose_preserving_aim_and_distance(), after rot dth_step={np.degrees(dtheta_step)}deg, '
@@ -1874,6 +2022,8 @@ class SlopeSolver:
                 )
             if not better_solution_found:
                 break
+            else:
+                subsubloop_idx += 1
         # Debugging output.
         if self.debug.debug_active:
             # Force output of debugging figure, which requires some recomputation.
@@ -2108,6 +2258,8 @@ class SlopeSolver:
         vxyz_corners_sfc: Vxyz,
         mask_processed: np.ndarray,
         search_spiral: list[tuple[int, int, float]],
+        loop_idx: int,
+        loop_record_list: list[dict],
     ):
         optimized_dx_dy_dtheta, camera_view_alignment_rms_error, camera_view_dist_optic_screen = (
             self.optimize_camera_pose_preserving_aim_and_distance(
@@ -2117,6 +2269,8 @@ class SlopeSolver:
                 vxyz_corners_sfc,
                 mask_processed,
                 search_spiral,
+                loop_idx,
+                loop_record_list,
             )
         )
 
